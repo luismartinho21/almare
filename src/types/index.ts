@@ -23,8 +23,8 @@ export interface StaffMember {
   rating: number;
   specialties: string[];
   workingHours: {
-    start: string; // e.g. "09:00"
-    end: string;   // e.g. "19:00"
+    start: string; // e.g. "09:30"
+    end: string;   // e.g. "19:30"
   };
 }
 
@@ -35,10 +35,11 @@ export interface Appointment {
   branch: SalonBranch;
   clientName: string;
   clientPhone: string;
-  serviceId: string;
-  serviceName: string;
-  servicePrice: number;
-  serviceDuration: number;
+  serviceId: string;       // Primary service ID (or joined)
+  serviceName: string;     // Joined names of all selected services
+  servicePrice: number;    // Grand total price (€)
+  serviceDuration: number; // Grand total duration (min)
+  servicesList?: Service[]; // Full array of selected services
   staffId: string;
   staffName: string;
   date: string; // YYYY-MM-DD
