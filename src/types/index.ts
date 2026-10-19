@@ -11,6 +11,7 @@ export interface Service {
   price: number;
   durationMinutes: number;
   iconName: string;
+  compatibleExtraIds?: string[]; // IDs dos extras específicos que podem ser associados a este serviço
 }
 
 export interface StaffMember {

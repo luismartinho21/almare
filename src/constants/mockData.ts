@@ -24,7 +24,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Corte à tesoura ou máquina, lavagem com champô premium e styling final.',
     price: 18,
     durationMinutes: 30,
-    iconName: 'scissors',
+    iconName: '',
+    compatibleExtraIds: ['b-ext1', 'b-ext3', 'b-ext4'], // Lavagem Especial, Sobrancelhas, Antiqueda
   },
   {
     id: 'b2',
@@ -34,7 +35,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Degradê de alta precisão com acabamento a navalha e toalha quente.',
     price: 22,
     durationMinutes: 45,
-    iconName: 'sparkles',
+    iconName: '',
+    compatibleExtraIds: ['b-ext1', 'b-ext3', 'b-ext4'], // Lavagem Especial, Sobrancelhas, Antiqueda
   },
   {
     id: 'b3',
@@ -44,7 +46,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Modelagem de barba, toalha quente hidratante, óleo de argan e bálsamo.',
     price: 14,
     durationMinutes: 30,
-    iconName: 'user',
+    iconName: '',
+    compatibleExtraIds: ['b-ext2', 'b-ext3'], // Máscara Negra Facial, Sobrancelhas
   },
   {
     id: 'b4',
@@ -54,7 +57,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'O pack completo masculino: Corte de cabelo à escolha + Ritual completo de barba.',
     price: 28,
     durationMinutes: 60,
-    iconName: 'crown',
+    iconName: '',
+    compatibleExtraIds: ['b-ext1', 'b-ext2', 'b-ext3', 'b-ext4'],
   },
   {
     id: 'b5',
@@ -64,7 +68,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Tonalização subtil e natural para homens em apenas 15 minutos.',
     price: 15,
     durationMinutes: 20,
-    iconName: 'droplet',
+    iconName: '',
+    compatibleExtraIds: ['b-ext1', 'b-ext4'],
   },
   {
     id: 'b-ext1',
@@ -74,7 +79,7 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Champô esfoliante com massagem capilar relaxante revigorante.',
     price: 5,
     durationMinutes: 10,
-    iconName: 'sparkles',
+    iconName: '',
   },
   {
     id: 'b-ext2',
@@ -84,7 +89,7 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Purificação dos poros na zona T e nariz para pele limpa.',
     price: 7,
     durationMinutes: 15,
-    iconName: 'sparkles',
+    iconName: '',
   },
   {
     id: 'b-ext3',
@@ -94,7 +99,7 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Definição e alinhamento do contorno das sobrancelhas.',
     price: 5,
     durationMinutes: 10,
-    iconName: 'scissors',
+    iconName: '',
   },
   {
     id: 'b-ext4',
@@ -104,7 +109,7 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Ampola concentrada e tónico capilar fortificante no couro cabeludo.',
     price: 8,
     durationMinutes: 10,
-    iconName: 'droplet',
+    iconName: '',
   },
 
   // BEAUTY SERVICES
@@ -117,7 +122,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Cuidado completo das cutículas, limagem, esfoliação e aplicação de verniz gel de alta durabilidade.',
     price: 25,
     durationMinutes: 45,
-    iconName: 'heart',
+    iconName: '',
+    compatibleExtraIds: ['be-ext3', 'be-ext5'], // Nail Art / Decoração, Corte e Limagem Extra de Unhas
   },
   {
     id: 'be2',
@@ -127,7 +133,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Extensão e construção de unhas com acabamento natural ou decorado e máxima resistência.',
     price: 45,
     durationMinutes: 75,
-    iconName: 'sparkles',
+    iconName: '',
+    compatibleExtraIds: ['be-ext3', 'be-ext5'], // Nail Art / Decoração, Corte e Limagem Extra de Unhas
   },
   {
     id: 'be3',
@@ -137,7 +144,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Imersão aromática, remoção de calosidades, esfoliação de sais marinhos, massagem e verniz.',
     price: 35,
     durationMinutes: 50,
-    iconName: 'heart',
+    iconName: '',
+    compatibleExtraIds: ['be-ext3', 'be-ext5'], // Nail Art / Decoração, Corte e Limagem Extra de Unhas
   },
 
   // 2) HEAD-SPA
@@ -149,7 +157,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Terapia de cascata de água morna no couro cabeludo, massagem craniana profunda e aromaterapia anti-stress.',
     price: 50,
     durationMinutes: 60,
-    iconName: 'sparkles',
+    iconName: '',
+    compatibleExtraIds: ['be-ext1', 'be-ext2'], // Ampola Colagénio & Brilho, Massagem Facial & Craniana
   },
   {
     id: 'be5',
@@ -159,7 +168,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Esfoliação profunda do couro cabeludo com micro-correntes, ozonoterapia e revitalização dos folículos.',
     price: 60,
     durationMinutes: 60,
-    iconName: 'droplet',
+    iconName: '',
+    compatibleExtraIds: ['be-ext1', 'be-ext2'], // Ampola Colagénio & Brilho, Massagem Facial & Craniana
   },
 
   // 3) TRATAMENTOS
@@ -171,7 +181,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Limpeza profunda por hidrosucção, infusão de ácido hialurónico e máscara iluminadora com LED.',
     price: 55,
     durationMinutes: 60,
-    iconName: 'sparkles',
+    iconName: '',
+    compatibleExtraIds: ['be-ext2', 'be-ext4'], // Massagem Facial Extra, Epilação de Buço
   },
   {
     id: 'be7',
@@ -181,7 +192,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Nutrição celular intensiva, reposição de massa capilar e selagem térmica com brilho espelhado.',
     price: 45,
     durationMinutes: 60,
-    iconName: 'scissors',
+    iconName: '',
+    compatibleExtraIds: ['be-ext1'], // Ampola Colagénio & Brilho
   },
   {
     id: 'be8',
@@ -191,7 +203,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Alinhamento dos fios com hidratação de queratina, desenho personalizado e tonalização.',
     price: 30,
     durationMinutes: 40,
-    iconName: 'scissors',
+    iconName: '',
+    compatibleExtraIds: ['be-ext4'], // Epilação e Limpeza de Buço
   },
 
   // 4) SIGNATURE
@@ -203,7 +216,8 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'O ritual de luxo definitivo: Head-Spa Holístico + Hydra-Facial Glow + Manicure Spa com massagem.',
     price: 110,
     durationMinutes: 130,
-    iconName: 'crown',
+    iconName: '',
+    compatibleExtraIds: ['be-ext1', 'be-ext2', 'be-ext3', 'be-ext4'],
   },
   {
     id: 'be10',
@@ -213,29 +227,30 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Sessão completa de descompressão com banho de água morna no couro cabeludo e unhas perfeitas.',
     price: 70,
     durationMinutes: 90,
-    iconName: 'crown',
+    iconName: '',
+    compatibleExtraIds: ['be-ext1', 'be-ext3'],
   },
 
-  // EXTRAS BEAUTY (Aparecem na aba expansível ao selecionar qualquer serviço)
+  // EXTRAS BEAUTY
   {
     id: 'be-ext1',
     branch: 'beauty',
     category: 'Extras',
     name: 'Ampola Concentrada de Colagénio & Brilho',
-    description: 'Booster intensivo de nutrição imediata durante a lavagem.',
+    description: 'Booster intensivo de nutrição capilar durante a lavagem.',
     price: 10,
     durationMinutes: 10,
-    iconName: 'sparkles',
+    iconName: '',
   },
   {
     id: 'be-ext2',
     branch: 'beauty',
     category: 'Extras',
     name: 'Massagem Relaxante Facial & Craniana Extra',
-    description: '15 minutos adicionais de drenagem linfática facial e libertação de tensão.',
+    description: '15 minutos adicionais de drenagem linfática facial e alívio de tensão.',
     price: 12,
     durationMinutes: 15,
-    iconName: 'heart',
+    iconName: '',
   },
   {
     id: 'be-ext3',
@@ -245,7 +260,7 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Pormenor decorativo personalizado em unhas selecionadas.',
     price: 5,
     durationMinutes: 15,
-    iconName: 'heart',
+    iconName: '',
   },
   {
     id: 'be-ext4',
@@ -255,7 +270,17 @@ export const INITIAL_SERVICES: Service[] = [
     description: 'Remoção precisa e suave de pelos com técnica de linha egípcia.',
     price: 6,
     durationMinutes: 10,
-    iconName: 'scissors',
+    iconName: '',
+  },
+  {
+    id: 'be-ext5',
+    branch: 'beauty',
+    category: 'Extras',
+    name: 'Corte e Limagem Especial de Unhas',
+    description: 'Acabamento minucioso do formato das unhas e tratamento de cutículas.',
+    price: 5,
+    durationMinutes: 10,
+    iconName: '',
   },
 ];
 
@@ -337,9 +362,20 @@ export const INITIAL_STAFF: StaffMember[] = [
   },
 ];
 
-const todayStr = new Date().toISOString().split('T')[0];
+const getOffsetDate = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
+
+const todayStr = getOffsetDate(0);
+const tomorrowStr = getOffsetDate(1);
+const nextDaysStr = getOffsetDate(3);
+const yesterdayStr = getOffsetDate(-1);
+const pastDateStr = getOffsetDate(-4);
 
 export const INITIAL_APPOINTMENTS: Appointment[] = [
+  // HOJE (O DIA)
   {
     id: 'app-101',
     branch: 'barber',
@@ -404,6 +440,137 @@ export const INITIAL_APPOINTMENTS: Appointment[] = [
     date: todayStr,
     timeSlot: '15:00',
     status: 'confirmed',
+    createdAt: new Date().toISOString(),
+  },
+  // FUTURO
+  {
+    id: 'app-301',
+    branch: 'barber',
+    clientName: 'Ricardo Neves',
+    clientPhone: '913334455',
+    serviceId: 'b2',
+    serviceName: 'Corte Fade / Degradê',
+    servicePrice: 22,
+    serviceDuration: 45,
+    staffId: 's1',
+    staffName: 'Gonçalo Silva',
+    date: tomorrowStr,
+    timeSlot: '10:00',
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+    notes: 'Acabamento a navalha',
+  },
+  {
+    id: 'app-302',
+    branch: 'beauty',
+    clientName: 'Helena Matos',
+    clientPhone: '964445566',
+    serviceId: 'be2',
+    serviceName: 'Aplicação de Gel / Acrigel com Extensão',
+    servicePrice: 45,
+    serviceDuration: 75,
+    staffId: 'se2',
+    staffName: 'Inês Mendes',
+    date: tomorrowStr,
+    timeSlot: '14:00',
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'app-303',
+    branch: 'barber',
+    clientName: 'André Pires',
+    clientPhone: '921112233',
+    serviceId: 'b3',
+    serviceName: 'Ritual de Barba Almare',
+    servicePrice: 14,
+    serviceDuration: 30,
+    staffId: 's3',
+    staffName: 'Lucas Ferreira',
+    date: nextDaysStr,
+    timeSlot: '16:30',
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'app-304',
+    branch: 'beauty',
+    clientName: 'Patrícia Lima',
+    clientPhone: '935556677',
+    serviceId: 'be4',
+    serviceName: 'Head-Spa Ritual Holístico',
+    servicePrice: 50,
+    serviceDuration: 60,
+    staffId: 'se3',
+    staffName: 'Mariana Costa',
+    date: nextDaysStr,
+    timeSlot: '11:30',
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+  },
+  // PASSADO
+  {
+    id: 'app-401',
+    branch: 'barber',
+    clientName: 'Carlos Moreira',
+    clientPhone: '915556677',
+    serviceId: 'b1',
+    serviceName: 'Corte de Cabelo Almare',
+    servicePrice: 18,
+    serviceDuration: 30,
+    staffId: 's1',
+    staffName: 'Gonçalo Silva',
+    date: yesterdayStr,
+    timeSlot: '15:30',
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'app-402',
+    branch: 'beauty',
+    clientName: 'Diana Sousa',
+    clientPhone: '962223344',
+    serviceId: 'be1',
+    serviceName: 'Corte & Brushing Almare',
+    servicePrice: 35,
+    serviceDuration: 50,
+    staffId: 'se1',
+    staffName: 'Sofia Rodrigues',
+    date: yesterdayStr,
+    timeSlot: '11:00',
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'app-403',
+    branch: 'barber',
+    clientName: 'Filipe Martins',
+    clientPhone: '919998877',
+    serviceId: 'b4',
+    serviceName: 'Combo Almare Signature (Corte + Barba)',
+    servicePrice: 28,
+    serviceDuration: 60,
+    staffId: 's2',
+    staffName: 'Tiago Santos',
+    date: pastDateStr,
+    timeSlot: '09:30',
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'app-404',
+    branch: 'beauty',
+    clientName: 'Marta Ribeiro',
+    clientPhone: '923334455',
+    serviceId: 'be3',
+    serviceName: 'Pedicure Spa Almare',
+    servicePrice: 35,
+    serviceDuration: 50,
+    staffId: 'se2',
+    staffName: 'Inês Mendes',
+    date: pastDateStr,
+    timeSlot: '16:00',
+    status: 'completed',
     createdAt: new Date().toISOString(),
   },
 ];

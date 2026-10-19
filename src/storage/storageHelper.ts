@@ -45,7 +45,15 @@ export const loadAppointments = async (): Promise<Appointment[]> => {
     return INITIAL_APPOINTMENTS;
   }
   try {
-    return JSON.parse(json);
+    const stored: Appointment[] = JSON.parse(json);
+    const storedIds = new Set(stored.map(a => a.id));
+    const missing = INITIAL_APPOINTMENTS.filter(a => !storedIds.has(a.id));
+    if (missing.length > 0) {
+      const merged = [...stored, ...missing];
+      await saveAppointments(merged);
+      return merged;
+    }
+    return stored;
   } catch (e) {
     return INITIAL_APPOINTMENTS;
   }

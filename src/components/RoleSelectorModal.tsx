@@ -27,31 +27,31 @@ export const RoleSelectorModal: React.FC<RoleSelectorModalProps> = ({ visible, o
       role: 'client',
       title: 'Cliente (Modo Marcação)',
       desc: 'Marcar serviços no Barber ou Beauty com nome e telemóvel.',
-      icon: '📱',
+      icon: '',
     },
     {
       role: 'gestor_barber',
       title: 'Gestor Almare Barber',
       desc: 'Ver agenda de barba/cabelo, gerir profissionais e horários.',
-      icon: '💈',
+      icon: '',
     },
     {
       role: 'gestor_beauty',
       title: 'Gestor Almare Beauty',
       desc: 'Ver agenda de beleza/cabelo/unhas, controlar vagas e estatísticas.',
-      icon: '💅',
+      icon: '',
     },
     {
       role: 'staff',
       title: 'Staff / Funcionário',
-      desc: 'Ver horários e aceder ao histórico de clientes (últimos 3 meses).',
-      icon: '✂️',
+      desc: 'Ver marcações e respetivos horários de cada um (hoje, futuro e passado).',
+      icon: '',
     },
     {
       role: 'admin',
       title: 'Administrador (Configs)',
       desc: 'Gerir dados da empresa, lista global de serviços e profissionais.',
-      icon: '⚙️',
+      icon: '',
     },
   ];
 
@@ -73,8 +73,8 @@ export const RoleSelectorModal: React.FC<RoleSelectorModalProps> = ({ visible, o
                 onPress={() => handleSelectRole(item.role)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.roleIcon}>{item.icon}</Text>
-                <View style={styles.roleInfo}>
+                {item.icon ? <Text style={styles.roleIcon}>{item.icon}</Text> : null}
+                <View style={[styles.roleInfo, !item.icon && { marginLeft: 0 }]}>
                   <Text style={[styles.roleTitleText, isSelected && styles.roleTitleSelected]}>
                     {item.title}
                   </Text>

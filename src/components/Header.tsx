@@ -13,11 +13,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
 
   const getRoleLabel = () => {
     switch (role) {
-      case 'client': return '👤 Cliente';
-      case 'gestor_barber': return '💈 Gestor Barber';
-      case 'gestor_beauty': return '💅 Gestor Beauty';
-      case 'staff': return '✂️ Staff / Funcionário';
-      case 'admin': return '⚙️ Admin';
+      case 'client': return 'Cliente';
+      case 'gestor_barber': return 'Gestor Barber';
+      case 'gestor_beauty': return 'Gestor Beauty';
+      case 'staff': return 'Staff / Funcionário';
+      case 'admin': return 'Admin';
       default: return 'Perfil';
     }
   };
@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
               ALMARE
             </Text>
             <Text style={[styles.logoSubtitle, { color: isBarber ? '#D1D5DB' : '#4B5563' }]}>
-              BARBEARIA ✕ ESTÉTICA
+              BARBEARIA & ESTÉTICA
             </Text>
           </View>
         </TouchableOpacity>

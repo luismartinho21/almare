@@ -170,7 +170,6 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
               ]}
             >
               <View style={styles.reminderCardHeader}>
-                <Text style={styles.reminderCardIcon}>🔔</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.reminderCardTitle, { color: accentColor }]}>
                     LEMBRETE 2 HORAS ANTES
@@ -201,8 +200,8 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
                   ]}
                 >
                   {reminderActive
-                    ? `✓ Notificação 2h Antes Ativada (${twoHoursBeforeTime})`
-                    : '➕ Ativar Notificação 2 Horas Antes'}
+                    ? `Notificação 2h Antes Ativada (${twoHoursBeforeTime})`
+                    : 'Ativar Notificação 2 Horas Antes'}
                 </Text>
               </TouchableOpacity>
 
@@ -217,7 +216,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.calendarBtnText, { color: isBarber ? '#F8FAFC' : '#1F2937' }]}>
-                    📅 Adicionar aos Lembretes / Calendário {showCalendarMenu ? '▲' : '▼'}
+                    Adicionar aos Lembretes / Calendário {showCalendarMenu ? '▲' : '▼'}
                   </Text>
                 </TouchableOpacity>
 
@@ -233,7 +232,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
                       onPress={handleAddDeviceCalendar}
                     >
                       <Text style={[styles.dropdownOptionText, isBarber ? styles.dropdownTextBarber : styles.dropdownTextBeauty]}>
-                        📱 Calendário do Telemóvel (Apple / Android / .ics)
+                        Calendário do Telemóvel (Apple / Android / .ics)
                       </Text>
                       <Text style={styles.dropdownOptionHint}>
                         Inclui alarme programado 2 horas antes
@@ -247,7 +246,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
                       onPress={handleOpenGoogleCalendar}
                     >
                       <Text style={[styles.dropdownOptionText, isBarber ? styles.dropdownTextBarber : styles.dropdownTextBeauty]}>
-                        🌐 Google Calendar
+                        Google Calendar
                       </Text>
                       <Text style={styles.dropdownOptionHint}>
                         Abre diretamente no Google Agenda
@@ -266,7 +265,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
 
             {/* WhatsApp Contact */}
             <TouchableOpacity style={styles.whatsappBtn} onPress={handleOpenWhatsApp} activeOpacity={0.85}>
-              <Text style={styles.whatsappBtnText}>💬 Contactar Salão via WhatsApp</Text>
+              <Text style={styles.whatsappBtnText}>Contactar Salão via WhatsApp</Text>
             </TouchableOpacity>
 
             {/* Done Button */}

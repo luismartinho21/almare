@@ -5,144 +5,198 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  TextInput,
-  Modal,
-  Pressable,
   Linking,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { StaffMember, ClientHistoryNote, Appointment } from '../types';
+import { Appointment } from '../types';
 import { Theme } from '../constants/theme';
 
-type StaffTab = 'personal' | 'team' | 'history';
+type TimeFilter = 'today' | 'future' | 'past';
 
 export const StaffView: React.FC = () => {
-  const { staff, appointments, clientHistory, addStaffNoteForClient, updateAppointmentStatus } = useApp();
+  const { staff, appointments, updateAppointmentStatus } = useApp();
 
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(staff[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<StaffTab>('personal');
-  const [dateFilter, setDateFilter] = useState<'today' | 'tomorrow' | 'all'>('today');
-  const [teamMemberFilter, setTeamMemberFilter] = useState<string>('ALL');
-  const [historySearch, setHistorySearch] = useState('');
+  // Selected staff member ID ('ALL' or specific staff ID)
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
+  // Branch filter for staff selector ('all' | 'barber' | 'beauty')
+  const [branchFilter, setBranchFilter] = useState<'all' | 'barber' | 'beauty'>('all');
+  // Active Tab: Hoje (o dia) | Futuro | Passado
+  const [activeTab, setActiveTab] = useState<TimeFilter>('today');
 
-  // Add Note Modal
-  const [addModalVisible, setAddModalVisible] = useState(false);
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [serviceName, setServiceName] = useState('');
-  const [details, setDetails] = useState('');
+  const todayStr = useMemo(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
+
+  const formatDateLabel = (dateStr: string) => {
+    if (!dateStr) return '';
+    if (dateStr === todayStr) return 'Hoje';
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    if (dateStr === tomorrowStr) return 'Amanhã';
+
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Ontem';
+
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  // Staff members matching branch filter
+  const filteredStaffList = useMemo(() => {
+    if (branchFilter === 'all') return staff;
+    return staff.filter(s => s.branch === branchFilter);
+  }, [staff, branchFilter]);
 
   const currentStaff = useMemo(() => {
-    return staff.find(s => s.id === selectedStaffId) || staff[0];
+    if (selectedStaffId === 'ALL') return null;
+    return staff.find(s => s.id === selectedStaffId) || null;
   }, [staff, selectedStaffId]);
 
-  const isBarber = currentStaff?.branch === 'barber';
-  const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+  const accentColor = useMemo(() => {
+    if (currentStaff) {
+      return currentStaff.branch === 'barber' ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+    }
+    if (branchFilter === 'beauty') return Theme.colors.beauty.accent;
+    return Theme.colors.barber.accent;
+  }, [currentStaff, branchFilter]);
 
-  // Dates
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-  const targetDate = dateFilter === 'today' ? todayStr : dateFilter === 'tomorrow' ? tomorrowStr : null;
-
-  // Colleagues in the same branch
-  const teamMembers = useMemo(() => {
-    if (!currentStaff) return [];
-    return staff.filter(s => s.branch === currentStaff.branch);
-  }, [staff, currentStaff]);
-
-  // Personal appointments for current staff
-  const personalAppointments = useMemo(() => {
-    if (!currentStaff) return [];
-    return appointments
-      .filter(a => {
-        if (a.staffId !== currentStaff.id) return false;
-        if (a.status === 'cancelled') return false;
-        if (targetDate && a.date !== targetDate) return false;
-        return true;
-      })
-      .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
-  }, [appointments, currentStaff, targetDate]);
-
-  // Team appointments for the entire branch
-  const teamAppointments = useMemo(() => {
-    if (!currentStaff) return [];
-    return appointments
-      .filter(a => {
-        if (a.branch !== currentStaff.branch) return false;
-        if (a.status === 'cancelled') return false;
-        if (teamMemberFilter !== 'ALL' && a.staffId !== teamMemberFilter) return false;
-        if (targetDate && a.date !== targetDate) return false;
-        return true;
-      })
-      .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
-  }, [appointments, currentStaff, teamMemberFilter, targetDate]);
-
-  // Client history filtered (last 3 months)
-  const filteredHistory = useMemo(() => {
-    return clientHistory.filter(item => {
-      if (historySearch.trim()) {
-        const query = historySearch.toLowerCase();
-        const matchName = item.clientName.toLowerCase().includes(query);
-        const matchPhone = item.clientPhone.includes(query);
-        const matchDetails = item.details.toLowerCase().includes(query);
-        return matchName || matchPhone || matchDetails;
+  // Base list of appointments filtered by selected staff member / branch
+  const staffAppointments = useMemo(() => {
+    return appointments.filter(app => {
+      if (selectedStaffId !== 'ALL' && app.staffId !== selectedStaffId) {
+        return false;
+      }
+      if (selectedStaffId === 'ALL' && branchFilter !== 'all' && app.branch !== branchFilter) {
+        return false;
       }
       return true;
     });
-  }, [clientHistory, historySearch]);
+  }, [appointments, selectedStaffId, branchFilter]);
 
-  const handleSaveNote = async () => {
-    if (!clientName.trim() || !clientPhone.trim() || !details.trim()) {
-      alert('Preencha os campos obrigatórios.');
-      return;
+  // Filtered by Period: Hoje (o dia), Futuro, Passado
+  const todayAppointments = useMemo(() => {
+    return staffAppointments
+      .filter(a => a.date === todayStr && a.status !== 'cancelled')
+      .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+  }, [staffAppointments, todayStr]);
+
+  const futureAppointments = useMemo(() => {
+    return staffAppointments
+      .filter(a => a.date > todayStr && a.status !== 'cancelled')
+      .sort((a, b) => {
+        const dateComp = a.date.localeCompare(b.date);
+        if (dateComp !== 0) return dateComp;
+        return a.timeSlot.localeCompare(b.timeSlot);
+      });
+  }, [staffAppointments, todayStr]);
+
+  const pastAppointments = useMemo(() => {
+    return staffAppointments
+      .filter(a => a.date < todayStr || a.status === 'cancelled')
+      .sort((a, b) => {
+        const dateComp = b.date.localeCompare(a.date); // Most recent past first
+        if (dateComp !== 0) return dateComp;
+        return b.timeSlot.localeCompare(a.timeSlot);
+      });
+  }, [staffAppointments, todayStr]);
+
+  const currentList = useMemo(() => {
+    switch (activeTab) {
+      case 'today':
+        return todayAppointments;
+      case 'future':
+        return futureAppointments;
+      case 'past':
+        return pastAppointments;
+      default:
+        return todayAppointments;
     }
+  }, [activeTab, todayAppointments, futureAppointments, pastAppointments]);
 
-    if (!currentStaff) return;
-
-    await addStaffNoteForClient({
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.trim(),
-      staffId: currentStaff.id,
-      staffName: currentStaff.name,
-      branch: currentStaff.branch,
-      date: todayStr,
-      serviceName: serviceName || 'Corte / Serviço Geral',
-      details: details.trim(),
-    });
-
-    setClientName('');
-    setClientPhone('');
-    setServiceName('');
-    setDetails('');
-    setAddModalVisible(false);
-  };
-
-  const handleOpenWhatsApp = (phone: string, client: string) => {
-    const cleanPhone = phone.replace(/\s+/g, '');
-    const msg = encodeURIComponent(`Olá ${client}! A mensagem é da Almare sobre a sua marcação.`);
-    Linking.openURL(`https://wa.me/${cleanPhone}?text=${msg}`);
+  const handleOpenWhatsApp = (app: Appointment) => {
+    const cleanPhone = app.clientPhone.replace(/\s+/g, '');
+    const dateLabel = formatDateLabel(app.date);
+    const text = encodeURIComponent(
+      `Olá ${app.clientName}! Contacto da Almare sobre a sua marcação para ${dateLabel} às ${app.timeSlot} (${app.serviceName}).`
+    );
+    Linking.openURL(`https://wa.me/${cleanPhone}?text=${text}`);
   };
 
   return (
     <View style={styles.container}>
-      {/* Top Header & Staff Identity Picker */}
+      {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <Text style={[styles.headerTitle, { color: accentColor }]}>ÁREA DO FUNCIONÁRIO</Text>
-          <Text style={styles.headerBranchBadge}>
-            {isBarber ? 'ALMARE BARBER' : 'ALMARE BEAUTY'}
-          </Text>
+          <Text style={[styles.headerTitle, { color: accentColor }]}>MARCAÇÕES DO STAFF</Text>
+          <View style={styles.branchBadgesRow}>
+            <TouchableOpacity
+              style={[
+                styles.branchBadgeBtn,
+                branchFilter === 'all' && styles.branchBadgeBtnActive,
+              ]}
+              onPress={() => setBranchFilter('all')}
+            >
+              <Text style={[styles.branchBadgeText, branchFilter === 'all' && styles.branchBadgeTextActive]}>
+                Todos
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.branchBadgeBtn,
+                branchFilter === 'barber' && styles.branchBadgeBtnActive,
+              ]}
+              onPress={() => setBranchFilter('barber')}
+            >
+              <Text style={[styles.branchBadgeText, branchFilter === 'barber' && styles.branchBadgeTextActive]}>
+                Barber
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.branchBadgeBtn,
+                branchFilter === 'beauty' && styles.branchBadgeBtnActive,
+              ]}
+              onPress={() => setBranchFilter('beauty')}
+            >
+              <Text style={[styles.branchBadgeText, branchFilter === 'beauty' && styles.branchBadgeTextActive]}>
+                Beauty
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.headerSub}>Selecione o seu perfil de atendimento:</Text>
 
+        <Text style={styles.headerSub}>Selecione o profissional para ver as suas marcações:</Text>
+
+        {/* Staff Members Selector */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.staffPickerScroll}>
-          {staff.map(s => {
-            const isSelected = s.id === currentStaff?.id;
+          <TouchableOpacity
+            style={[
+              styles.staffChip,
+              selectedStaffId === 'ALL' && { backgroundColor: accentColor, borderColor: accentColor },
+            ]}
+            onPress={() => setSelectedStaffId('ALL')}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.staffChipText,
+                selectedStaffId === 'ALL' && { color: '#111', fontWeight: '900' },
+              ]}
+            >
+              Toda a Equipa
+            </Text>
+          </TouchableOpacity>
+
+          {filteredStaffList.map(s => {
+            const isSelected = s.id === selectedStaffId;
             return (
               <TouchableOpacity
                 key={s.id}
@@ -153,7 +207,12 @@ export const StaffView: React.FC = () => {
                 onPress={() => setSelectedStaffId(s.id)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.staffChipText, isSelected && { color: '#111', fontWeight: '900' }]}>
+                <Text
+                  style={[
+                    styles.staffChipText,
+                    isSelected && { color: '#111', fontWeight: '900' },
+                  ]}
+                >
                   {s.name} ({s.branch === 'barber' ? 'Barber' : 'Beauty'})
                 </Text>
               </TouchableOpacity>
@@ -162,498 +221,168 @@ export const StaffView: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* 3 Main Tabs: Horário Pessoal | Horário da Equipa | Fichas & Histórico */}
+      {/* Selected Staff Info Bar */}
+      <View style={styles.currentStaffBar}>
+        <View style={styles.currentStaffInfo}>
+          <Text style={styles.currentStaffName}>
+            {currentStaff ? currentStaff.name : 'Toda a Equipa'}
+          </Text>
+          <Text style={styles.currentStaffRole}>
+            {currentStaff
+              ? `${currentStaff.roleTitle} • ${currentStaff.branch === 'barber' ? 'Almare Barber' : 'Almare Beauty'}`
+              : `A visualizar todos os profissionais (${filteredStaffList.length} membros)`}
+          </Text>
+        </View>
+      </View>
+
+      {/* 3 Main Tabs: Hoje (o dia) | Futuro | Passado */}
       <View style={styles.tabBar}>
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'personal' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('personal')}
+          style={[styles.tabBtn, activeTab === 'today' && [styles.tabBtnActive, { borderBottomColor: accentColor }]]}
+          onPress={() => setActiveTab('today')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'personal' && styles.tabBtnTextActive]}>
-            Horário Pessoal ({personalAppointments.length})
+          <Text style={[styles.tabBtnText, activeTab === 'today' && styles.tabBtnTextActive]}>
+            Hoje ({todayAppointments.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'team' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('team')}
+          style={[styles.tabBtn, activeTab === 'future' && [styles.tabBtnActive, { borderBottomColor: accentColor }]]}
+          onPress={() => setActiveTab('future')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'team' && styles.tabBtnTextActive]}>
-            Horário da Equipa ({teamAppointments.length})
+          <Text style={[styles.tabBtnText, activeTab === 'future' && styles.tabBtnTextActive]}>
+            Futuro ({futureAppointments.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'history' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('history')}
+          style={[styles.tabBtn, activeTab === 'past' && [styles.tabBtnActive, { borderBottomColor: accentColor }]]}
+          onPress={() => setActiveTab('past')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'history' && styles.tabBtnTextActive]}>
-            Fichas & Histórico
+          <Text style={[styles.tabBtnText, activeTab === 'past' && styles.tabBtnTextActive]}>
+            Passado ({pastAppointments.length})
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* Appointments List */}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* ============================================================ */}
-        {/* TAB 1: HORÁRIO PESSOAL E RESPETIVAS MARCAÇÕES */}
-        {/* ============================================================ */}
-        {activeTab === 'personal' && (
-          <View>
-            {/* Banner: Horário Definido pelo Gestor */}
-            <View style={styles.scheduleBannerBox}>
-              <View style={styles.scheduleBannerHeader}>
-                <Text style={[styles.scheduleBannerLabel, { color: accentColor }]}>
-                  HORÁRIO PESSOAL DEFINIDO PELO GESTOR
-                </Text>
-                <Text style={styles.scheduleBannerGestorTag}>Gestão Almare</Text>
-              </View>
-
-              <Text style={styles.scheduleStaffName}>{currentStaff?.name}</Text>
-              <Text style={styles.scheduleStaffRole}>{currentStaff?.roleTitle}</Text>
-
-              <View style={styles.hoursRow}>
-                <View style={styles.hourPill}>
-                  <Text style={styles.hourPillLabel}>Dias de Trabalho</Text>
-                  <Text style={styles.hourPillVal}>{currentStaff?.workDays || 'Terça a Sábado'}</Text>
-                </View>
-
-                <View style={styles.hourPill}>
-                  <Text style={styles.hourPillLabel}>Turno Manhã</Text>
-                  <Text style={styles.hourPillVal}>
-                    {currentStaff?.workingHours?.start || '09:00'} às{' '}
-                    {currentStaff?.workingHours?.lunchStart || '12:00'}
-                  </Text>
-                </View>
-
-                <View style={styles.hourPill}>
-                  <Text style={styles.hourPillLabel}>Turno Tarde</Text>
-                  <Text style={styles.hourPillVal}>
-                    {currentStaff?.workingHours?.lunchEnd || '14:00'} às{' '}
-                    {currentStaff?.workingHours?.end || '19:00'}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.lunchNoticeText}>
-                Pausa de almoço: {currentStaff?.workingHours?.lunchStart || '12:00'} às{' '}
-                {currentStaff?.workingHours?.lunchEnd || '14:00'} • Domingo e Segunda: Folga
-              </Text>
-            </View>
-
-            {/* Date Filter Toolbar */}
-            <View style={styles.dateFilterRow}>
-              <TouchableOpacity
-                style={[styles.filterChip, dateFilter === 'today' && styles.filterChipActive]}
-                onPress={() => setDateFilter('today')}
-              >
-                <Text style={[styles.filterChipText, dateFilter === 'today' && styles.filterChipTextActive]}>
-                  Hoje ({todayStr})
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterChip, dateFilter === 'tomorrow' && styles.filterChipActive]}
-                onPress={() => setDateFilter('tomorrow')}
-              >
-                <Text style={[styles.filterChipText, dateFilter === 'tomorrow' && styles.filterChipTextActive]}>
-                  Amanhã
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterChip, dateFilter === 'all' && styles.filterChipActive]}
-                onPress={() => setDateFilter('all')}
-              >
-                <Text style={[styles.filterChipText, dateFilter === 'all' && styles.filterChipTextActive]}>
-                  Todas as Datas
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Personal Appointments List */}
-            <Text style={styles.sectionHeaderTitle}>
-              As Minhas Marcações ({personalAppointments.length})
+        {currentList.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>
+              {activeTab === 'today'
+                ? 'Sem marcações para hoje'
+                : activeTab === 'future'
+                ? 'Sem marcações futuras'
+                : 'Sem marcações no histórico passado'}
             </Text>
+            <Text style={styles.emptySub}>
+              {activeTab === 'today'
+                ? 'Não existem clientes agendados para a data de hoje com o filtro selecionado.'
+                : activeTab === 'future'
+                ? 'Não há novos agendamentos marcados para datas futuras.'
+                : 'Não existem registos de marcações anteriores.'}
+            </Text>
+          </View>
+        ) : (
+          currentList.map(app => {
+            const isCompleted = app.status === 'completed';
+            const isCancelled = app.status === 'cancelled';
+            const dateLabel = formatDateLabel(app.date);
 
-            {personalAppointments.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Sem marcações agendadas</Text>
-                <Text style={styles.emptySub}>
-                  Não tem clientes agendados para este período. O seu horário de atendimento está disponível para novas marcações.
-                </Text>
-              </View>
-            ) : (
-              personalAppointments.map(app => (
-                <View key={app.id} style={styles.appointmentCard}>
-                  <View style={styles.appCardTop}>
-                    <View style={styles.appTimeBadge}>
-                      <Text style={styles.appTimeText}>{app.timeSlot}</Text>
-                      <Text style={styles.appDurationText}>({app.serviceDuration} min)</Text>
+            return (
+              <View key={app.id} style={styles.appointmentCard}>
+                {/* Header Row: Horário & Badge de Data / Profissional */}
+                <View style={styles.appCardTop}>
+                  <View style={styles.timeContainer}>
+                    <Text style={[styles.appTimeSlot, { color: accentColor }]}>
+                      {app.timeSlot}
+                    </Text>
+                    <Text style={styles.appDuration}>
+                      ({app.serviceDuration} min)
+                    </Text>
+                  </View>
+
+                  <View style={styles.dateAndStaffContainer}>
+                    <View style={styles.dateBadge}>
+                      <Text style={styles.dateBadgeText}>{dateLabel}</Text>
                     </View>
-
                     <View
                       style={[
                         styles.appStatusBadge,
-                        app.status === 'completed'
+                        isCompleted
                           ? styles.statusCompleted
+                          : isCancelled
+                          ? styles.statusCancelled
                           : styles.statusConfirmed,
                       ]}
                     >
                       <Text
                         style={[
                           styles.appStatusText,
-                          app.status === 'completed'
+                          isCompleted
                             ? { color: '#3B82F6' }
+                            : isCancelled
+                            ? { color: '#EF4444' }
                             : { color: '#10B981' },
                         ]}
                       >
-                        {app.status === 'completed' ? 'Concluído' : 'Confirmado'}
+                        {isCompleted ? 'Concluído' : isCancelled ? 'Cancelado' : 'Confirmado'}
                       </Text>
                     </View>
-                  </View>
-
-                  <Text style={styles.appClientName}>{app.clientName}</Text>
-                  <Text style={styles.appClientPhone}>{app.clientPhone}</Text>
-
-                  <View style={styles.appDetailsBox}>
-                    <Text style={styles.appServiceName}>{app.serviceName}</Text>
-                    <Text style={styles.appDatePrice}>
-                      Data: {app.date} • {app.servicePrice.toFixed(2)} €
-                    </Text>
-                    {app.notes ? (
-                      <Text style={styles.appNotesText}>Nota: "{app.notes}"</Text>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.appActionsRow}>
-                    <TouchableOpacity
-                      style={styles.actionBtnWhatsApp}
-                      onPress={() => handleOpenWhatsApp(app.clientPhone, app.clientName)}
-                    >
-                      <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
-                    </TouchableOpacity>
-
-                    {app.status === 'confirmed' && (
-                      <TouchableOpacity
-                        style={styles.actionBtnComplete}
-                        onPress={() => updateAppointmentStatus(app.id, 'completed')}
-                      >
-                        <Text style={styles.actionBtnCompleteText}>Concluir</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity
-                      style={styles.actionBtnNote}
-                      onPress={() => {
-                        setClientName(app.clientName);
-                        setClientPhone(app.clientPhone);
-                        setServiceName(app.serviceName);
-                        setAddModalVisible(true);
-                      }}
-                    >
-                      <Text style={styles.actionBtnNoteText}>+ Ficha Técnica</Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
-              ))
-            )}
-          </View>
-        )}
 
-        {/* ============================================================ */}
-        {/* TAB 2: HORÁRIO DA EQUIPA E RESPETIVAS MARCAÇÕES */}
-        {/* ============================================================ */}
-        {activeTab === 'team' && (
-          <View>
-            <View style={styles.teamOverviewBanner}>
-              <Text style={[styles.teamOverviewLabel, { color: accentColor }]}>
-                HORÁRIOS DA EQUIPA DEFINIDOS PELO GESTOR
-              </Text>
-              <Text style={styles.teamOverviewSub}>
-                Escala de trabalho e agenda de todos os profissionais em {isBarber ? 'Almare Barber' : 'Almare Beauty'}:
-              </Text>
-            </View>
+                {/* Staff member responsible (very helpful when viewing All or verifying) */}
+                <View style={styles.staffRow}>
+                  <Text style={styles.staffLabel}>Profissional:</Text>
+                  <Text style={styles.staffNameText}>
+                    {app.staffName} ({app.branch === 'barber' ? 'Barber' : 'Beauty'})
+                  </Text>
+                </View>
 
-            {/* List of team members & their manager-defined working hours */}
-            <View style={styles.teamGrid}>
-              {teamMembers.map(member => {
-                const memberAppsToday = appointments.filter(
-                  a => a.staffId === member.id && a.date === todayStr && a.status !== 'cancelled'
-                ).length;
+                {/* Client info */}
+                <View style={styles.clientSection}>
+                  <Text style={styles.appClientName}>{app.clientName}</Text>
+                  <Text style={styles.appClientPhone}>{app.clientPhone}</Text>
+                </View>
 
-                return (
-                  <View key={member.id} style={styles.teamMemberCard}>
-                    <View style={styles.teamMemberHeader}>
-                      <Text style={styles.teamMemberName}>{member.name}</Text>
-                      <View style={styles.teamMemberAppsCount}>
-                        <Text style={styles.teamMemberAppsCountText}>{memberAppsToday} hoje</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.teamMemberRole, { color: accentColor }]}>
-                      {member.roleTitle}
-                    </Text>
+                {/* Service details */}
+                <View style={styles.appDetailsBox}>
+                  <Text style={styles.appServiceName}>{app.serviceName}</Text>
+                  <Text style={styles.appPriceText}>
+                    Valor: {app.servicePrice.toFixed(2)} € • Data: {app.date}
+                  </Text>
+                  {app.notes ? (
+                    <Text style={styles.appNotesText}>Nota: &quot;{app.notes}&quot;</Text>
+                  ) : null}
+                </View>
 
-                    <View style={styles.teamMemberHours}>
-                      <Text style={styles.teamMemberHoursText}>
-                        Horário: {member.workingHours?.start || '09:00'} -{' '}
-                        {member.workingHours?.lunchStart || '12:00'} /{' '}
-                        {member.workingHours?.lunchEnd || '14:00'} -{' '}
-                        {member.workingHours?.end || '19:00'}
-                      </Text>
-                      <Text style={styles.teamMemberDaysText}>
-                        {member.workDays || 'Terça a Sábado'}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Filter by Colleague */}
-            <Text style={styles.filterSectionTitle}>Filtrar Marcações da Equipa:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.teamFilterScroll}>
-              <TouchableOpacity
-                style={[
-                  styles.teamFilterChip,
-                  teamMemberFilter === 'ALL' && styles.teamFilterChipActive,
-                ]}
-                onPress={() => setTeamMemberFilter('ALL')}
-              >
-                <Text
-                  style={[
-                    styles.teamFilterChipText,
-                    teamMemberFilter === 'ALL' && styles.teamFilterChipTextActive,
-                  ]}
-                >
-                  Toda a Equipa ({teamMembers.length})
-                </Text>
-              </TouchableOpacity>
-
-              {teamMembers.map(m => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={[
-                    styles.teamFilterChip,
-                    teamMemberFilter === m.id && styles.teamFilterChipActive,
-                  ]}
-                  onPress={() => setTeamMemberFilter(m.id)}
-                >
-                  <Text
-                    style={[
-                      styles.teamFilterChipText,
-                      teamMemberFilter === m.id && styles.teamFilterChipTextActive,
-                    ]}
+                {/* Actions */}
+                <View style={styles.appActionsRow}>
+                  <TouchableOpacity
+                    style={styles.actionBtnWhatsApp}
+                    onPress={() => handleOpenWhatsApp(app)}
+                    activeOpacity={0.8}
                   >
-                    {m.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                    <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
+                  </TouchableOpacity>
 
-            {/* Date Filter Toolbar */}
-            <View style={styles.dateFilterRow}>
-              <TouchableOpacity
-                style={[styles.filterChip, dateFilter === 'today' && styles.filterChipActive]}
-                onPress={() => setDateFilter('today')}
-              >
-                <Text style={[styles.filterChipText, dateFilter === 'today' && styles.filterChipTextActive]}>
-                  Hoje ({todayStr})
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterChip, dateFilter === 'tomorrow' && styles.filterChipActive]}
-                onPress={() => setDateFilter('tomorrow')}
-              >
-                <Text style={[styles.filterChipText, dateFilter === 'tomorrow' && styles.filterChipTextActive]}>
-                  Amanhã
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterChip, dateFilter === 'all' && styles.filterChipActive]}
-                onPress={() => setDateFilter('all')}
-              >
-                <Text style={[styles.filterChipText, dateFilter === 'all' && styles.filterChipTextActive]}>
-                  Todas as Datas
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Team Appointments List */}
-            <Text style={styles.sectionHeaderTitle}>
-              Marcações da Equipa ({teamAppointments.length})
-            </Text>
-
-            {teamAppointments.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Sem marcações da equipa</Text>
-                <Text style={styles.emptySub}>
-                  Não existem marcações registadas para os filtros de profissional e data selecionados.
-                </Text>
-              </View>
-            ) : (
-              teamAppointments.map(app => (
-                <View key={app.id} style={styles.appointmentCard}>
-                  <View style={styles.appCardTop}>
-                    <View style={styles.appTimeBadge}>
-                      <Text style={styles.appTimeText}>{app.timeSlot}</Text>
-                      <Text style={styles.appDurationText}>({app.serviceDuration} min)</Text>
-                    </View>
-
-                    <View style={styles.staffResponsibleBadge}>
-                      <Text style={styles.staffResponsibleText}>{app.staffName}</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.appClientName}>{app.clientName}</Text>
-                  <Text style={styles.appClientPhone}>{app.clientPhone}</Text>
-
-                  <View style={styles.appDetailsBox}>
-                    <Text style={styles.appServiceName}>{app.serviceName}</Text>
-                    <Text style={styles.appDatePrice}>
-                      Data: {app.date} • Valor: {app.servicePrice.toFixed(2)} €
-                    </Text>
-                    {app.notes ? (
-                      <Text style={styles.appNotesText}>Nota: "{app.notes}"</Text>
-                    ) : null}
-                  </View>
+                  {app.status === 'confirmed' && (
+                    <TouchableOpacity
+                      style={styles.actionBtnComplete}
+                      onPress={() => updateAppointmentStatus(app.id, 'completed')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.actionBtnCompleteText}>Concluir</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* ============================================================ */}
-        {/* TAB 3: HISTÓRICO E FICHAS TÉCNICAS (3 MESES) */}
-        {/* ============================================================ */}
-        {activeTab === 'history' && (
-          <View>
-            <View style={styles.historyHeaderRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sectionHeaderTitle}>Fichas Técnicas & Histórico</Text>
-                <Text style={styles.historySub}>Guardado localmente no dispositivo (últimos 90 dias)</Text>
               </View>
-
-              <TouchableOpacity
-                style={[styles.newRecordBtn, { backgroundColor: accentColor }]}
-                onPress={() => setAddModalVisible(true)}
-              >
-                <Text style={styles.newRecordBtnText}>+ Nova Ficha</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Search Input */}
-            <TextInput
-              style={styles.historySearchInput}
-              placeholder="Pesquisar por cliente, telemóvel ou fórmula..."
-              placeholderTextColor="#9CA3AF"
-              value={historySearch}
-              onChangeText={setHistorySearch}
-            />
-
-            {filteredHistory.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Sem fichas técnicas registadas</Text>
-                <Text style={styles.emptySub}>
-                  Registe as preferências, números de corte, colorações ou detalhes de tratamentos dos clientes.
-                </Text>
-              </View>
-            ) : (
-              filteredHistory.map(item => (
-                <View key={item.id} style={styles.historyCard}>
-                  <View style={styles.historyCardHeader}>
-                    <Text style={styles.historyClientName}>{item.clientName}</Text>
-                    <Text style={styles.historyDate}>{item.date}</Text>
-                  </View>
-
-                  <Text style={styles.historyClientPhone}>Tel: {item.clientPhone}</Text>
-                  <Text style={[styles.historyService, { color: accentColor }]}>
-                    Serviço: {item.serviceName}
-                  </Text>
-
-                  <View style={styles.historyDetailsBox}>
-                    <Text style={styles.historyDetailsText}>{item.details}</Text>
-                  </View>
-
-                  <Text style={styles.historyAuthor}>Atendido por: {item.staffName}</Text>
-                </View>
-              ))
-            )}
-          </View>
+            );
+          })
         )}
       </ScrollView>
-
-      {/* Modal: Add Client Technical Note */}
-      <Modal visible={addModalVisible} transparent animationType="slide" onRequestClose={() => setAddModalVisible(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setAddModalVisible(false)}>
-          <Pressable style={styles.modalBody} onPress={e => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Nova Ficha Técnica do Cliente</Text>
-            <Text style={styles.modalSub}>
-              Guarde os detalhes do corte, tamanho de pentes, tom de coloração ou produtos utilizados.
-            </Text>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>Nome do Cliente *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Ex: Manuel Silva"
-                placeholderTextColor="#71717A"
-                value={clientName}
-                onChangeText={setClientName}
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>Telemóvel *</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Ex: 912345678"
-                placeholderTextColor="#71717A"
-                keyboardType="phone-pad"
-                value={clientPhone}
-                onChangeText={setClientPhone}
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>Serviço Realizado</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Ex: Fade Médio + Ritual Barba"
-                placeholderTextColor="#71717A"
-                value={serviceName}
-                onChangeText={setServiceName}
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>Detalhes Técnicos / Notas *</Text>
-              <TextInput
-                style={[styles.modalInput, { height: 90, textAlignVertical: 'top' }]}
-                placeholder="Ex: Pente 1.5 na transição, navalha nas patilhas, óleo de sândalo..."
-                placeholderTextColor="#71717A"
-                multiline
-                value={details}
-                onChangeText={setDetails}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.modalSaveBtn, { backgroundColor: accentColor }]}
-              onPress={handleSaveNote}
-            >
-              <Text style={styles.modalSaveBtnText}>Guardar Ficha Técnica</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCancelBtn}
-              onPress={() => setAddModalVisible(false)}
-            >
-              <Text style={styles.modalCancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 };
@@ -677,18 +406,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
-  headerBranchBadge: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#9CA3AF',
+  branchBadgesRow: {
+    flexDirection: 'row',
     backgroundColor: '#272730',
+    borderRadius: 8,
+    padding: 2,
+  },
+  branchBadgeBtn: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
+  },
+  branchBadgeBtnActive: {
+    backgroundColor: '#3F3F46',
+  },
+  branchBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#9CA3AF',
+  },
+  branchBadgeTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '900',
   },
   headerSub: {
     fontSize: 11,
@@ -714,6 +457,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  currentStaffBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#141419',
+    borderBottomWidth: 1,
+    borderBottomColor: '#22222A',
+  },
+  currentStaffInfo: {
+    flexDirection: 'column',
+  },
+  currentStaffName: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  currentStaffRole: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 1,
+  },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#141419',
@@ -728,11 +491,11 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabBtnActive: {
-    borderBottomColor: '#D4AF37',
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   tabBtnText: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   tabBtnTextActive: {
@@ -743,132 +506,37 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  /* Schedule Banner Box */
-  scheduleBannerBox: {
-    backgroundColor: '#18181E',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-  },
-  scheduleBannerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  scheduleBannerLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  scheduleBannerGestorTag: {
-    fontSize: 9,
-    color: '#9CA3AF',
-    fontWeight: '700',
-  },
-  scheduleStaffName: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginTop: 2,
-  },
-  scheduleStaffRole: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 1,
-    marginBottom: 10,
-  },
-  hoursRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 4,
-  },
-  hourPill: {
-    flex: 1,
-    backgroundColor: '#272730',
-    padding: 8,
-    borderRadius: 8,
-    marginRight: 6,
-  },
-  hourPillLabel: {
-    fontSize: 9,
-    color: '#9CA3AF',
-    fontWeight: '700',
-  },
-  hourPillVal: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  lunchNoticeText: {
-    fontSize: 11,
-    color: '#71717A',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  /* Date Filter Row */
-  dateFilterRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  filterChip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#18181E',
-    alignItems: 'center',
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-  },
-  filterChipActive: {
-    backgroundColor: '#272730',
-    borderColor: '#D4AF37',
-  },
-  filterChipText: {
-    color: '#9CA3AF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  filterChipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  sectionHeaderTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 10,
-  },
   emptyCard: {
     backgroundColor: '#18181E',
-    padding: 24,
-    borderRadius: 12,
+    padding: 32,
+    borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#2E2E3A',
+    marginTop: 16,
+  },
+  emptyIcon: {
+    fontSize: 32,
+    marginBottom: 10,
   },
   emptyTitle: {
     color: '#F4F4F5',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
   emptySub: {
     color: '#71717A',
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 16,
+    marginTop: 6,
+    lineHeight: 18,
+    maxWidth: 280,
   },
-  /* Appointment Card */
   appointmentCard: {
     backgroundColor: '#18181E',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#2E2E3A',
   },
@@ -876,25 +544,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#24242E',
+    marginBottom: 8,
   },
-  appTimeBadge: {
+  timeContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
   },
-  appTimeText: {
-    fontSize: 16,
+  appTimeSlot: {
+    fontSize: 20,
     fontWeight: '900',
-    color: '#FFFFFF',
     marginRight: 6,
   },
-  appDurationText: {
-    fontSize: 11,
+  appDuration: {
+    fontSize: 12,
     color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  dateAndStaffContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateBadge: {
+    backgroundColor: '#272730',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  dateBadgeText: {
+    color: '#D4D4D8',
+    fontSize: 11,
+    fontWeight: '700',
   },
   appStatusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   statusConfirmed: {
@@ -903,30 +590,42 @@ const styles = StyleSheet.create({
   statusCompleted: {
     backgroundColor: 'rgba(59,130,246,0.15)',
   },
+  statusCancelled: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+  },
   appStatusText: {
     fontSize: 10,
     fontWeight: '800',
   },
-  staffResponsibleBadge: {
-    backgroundColor: '#272730',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+  staffRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  staffResponsibleText: {
-    color: '#D4AF37',
+  staffLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    color: '#71717A',
+    marginRight: 4,
+    fontWeight: '600',
+  },
+  staffNameText: {
+    fontSize: 12,
+    color: '#E4E4E7',
+    fontWeight: '800',
+  },
+  clientSection: {
+    marginVertical: 4,
   },
   appClientName: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '900',
     color: '#FFFFFF',
   },
   appClientPhone: {
     fontSize: 12,
     color: '#9CA3AF',
-    marginTop: 1,
+    marginTop: 2,
+    fontWeight: '600',
   },
   appDetailsBox: {
     backgroundColor: '#22222A',
@@ -936,18 +635,18 @@ const styles = StyleSheet.create({
   },
   appServiceName: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#F4F4F5',
   },
-  appDatePrice: {
+  appPriceText: {
     fontSize: 11,
     color: '#9CA3AF',
-    marginTop: 2,
+    marginTop: 3,
   },
   appNotesText: {
     fontSize: 11,
     color: '#FBBF24',
-    marginTop: 4,
+    marginTop: 5,
     fontStyle: 'italic',
   },
   appActionsRow: {
@@ -958,290 +657,25 @@ const styles = StyleSheet.create({
   actionBtnWhatsApp: {
     flex: 1,
     backgroundColor: '#25D366',
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 8,
     alignItems: 'center',
   },
   actionBtnWhatsAppText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
   },
   actionBtnComplete: {
     flex: 1,
     backgroundColor: '#3B82F6',
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 8,
     alignItems: 'center',
   },
   actionBtnCompleteText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-  },
-  actionBtnNote: {
-    flex: 1,
-    backgroundColor: '#272730',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#3F3F46',
-  },
-  actionBtnNoteText: {
-    color: '#E4E4E7',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  /* Team Overview */
-  teamOverviewBanner: {
-    backgroundColor: '#18181E',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-  },
-  teamOverviewLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  teamOverviewSub: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 2,
-  },
-  teamGrid: {
-    marginBottom: 14,
-  },
-  teamMemberCard: {
-    backgroundColor: '#1C1C22',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-  },
-  teamMemberHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  teamMemberName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  teamMemberAppsCount: {
-    backgroundColor: '#272730',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  teamMemberAppsCountText: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    fontWeight: '700',
-  },
-  teamMemberRole: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  teamMemberHours: {
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-  },
-  teamMemberHoursText: {
-    fontSize: 11,
-    color: '#D4D4D8',
-    fontWeight: '600',
-  },
-  teamMemberDaysText: {
-    fontSize: 10,
-    color: '#71717A',
-    marginTop: 1,
-  },
-  filterSectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#9CA3AF',
-    marginBottom: 6,
-  },
-  teamFilterScroll: {
-    marginBottom: 10,
-  },
-  teamFilterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: '#18181E',
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-  },
-  teamFilterChipActive: {
-    backgroundColor: '#272730',
-    borderColor: '#D4AF37',
-  },
-  teamFilterChipText: {
-    color: '#9CA3AF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  teamFilterChipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  /* History Tab */
-  historyHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  historySub: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 2,
-  },
-  newRecordBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  newRecordBtnText: {
-    color: '#111',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  historySearchInput: {
-    backgroundColor: '#18181E',
-    borderColor: '#2E2E3A',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: '#FFF',
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  historyCard: {
-    backgroundColor: '#18181E',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-  },
-  historyCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  historyClientName: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  historyDate: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  historyClientPhone: {
-    fontSize: 11,
-    color: '#71717A',
-    marginTop: 1,
-  },
-  historyService: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  historyDetailsBox: {
-    backgroundColor: '#22222A',
-    padding: 8,
-    borderRadius: 6,
-    marginVertical: 6,
-  },
-  historyDetailsText: {
-    fontSize: 12,
-    color: '#E4E4E7',
-    lineHeight: 16,
-  },
-  historyAuthor: {
-    fontSize: 10,
-    color: '#71717A',
-    fontStyle: 'italic',
-  },
-  /* Modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  modalBody: {
-    backgroundColor: '#18181E',
-    borderRadius: 16,
-    padding: 18,
-    width: '100%',
-    maxWidth: 420,
-    borderWidth: 1,
-    borderColor: '#3F3F46',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  modalSub: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 2,
-    marginBottom: 12,
-  },
-  modalField: {
-    marginBottom: 10,
-  },
-  modalLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#D4D4D8',
-    marginBottom: 4,
-  },
-  modalInput: {
-    backgroundColor: '#272730',
-    borderColor: '#3F3F46',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    color: '#FFF',
-    fontSize: 12,
-  },
-  modalSaveBtn: {
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  modalSaveBtnText: {
-    color: '#111',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  modalCancelBtn: {
-    paddingVertical: 8,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  modalCancelBtnText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

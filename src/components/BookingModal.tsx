@@ -130,14 +130,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </View>
 
             <Text style={[styles.summaryStaff, { color: isBarber ? '#D1D5DB' : '#4B5563' }]}>
-              👤 Profissional: {staff.name} {isNoPreference ? '(Sem preferência)' : ''}
+              Profissional: {staff.name} {isNoPreference ? '(Sem preferência)' : ''}
             </Text>
             <Text style={[styles.summaryDateTime, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-              📅 Data: {date} às {timeSlot}
+              Data: {date} às {timeSlot}
             </Text>
           </View>
 
-          {errorMsg ? <Text style={styles.errorText}>⚠️ {errorMsg}</Text> : null}
+          {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
           {/* Form Fields */}
           <View style={styles.fieldGroup}>

@@ -47,7 +47,7 @@ export const GestorBeautyView: React.FC = () => {
     <View style={styles.container}>
       {/* Dashboard Top Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>💅 PAINEL DE GESTÃO - BEAUTY</Text>
+        <Text style={styles.headerTitle}>PAINEL DE GESTÃO - BEAUTY</Text>
         <Text style={styles.headerSub}>Almare Beauty Salon • Acesso Exclusivo Gestor</Text>
       </View>
 
@@ -97,7 +97,7 @@ export const GestorBeautyView: React.FC = () => {
           {/* Search Bar */}
           <TextInput
             style={styles.searchInput}
-            placeholder="🔍 Pesquisar por cliente, telemóvel ou serviço..."
+            placeholder="Pesquisar por cliente, telemóvel ou serviço..."
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -111,7 +111,6 @@ export const GestorBeautyView: React.FC = () => {
 
         {beautyAppointments.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>💅</Text>
             <Text style={styles.emptyTitle}>Sem marcações de beleza encontradas</Text>
             <Text style={styles.emptySub}>
               Não existem agendamentos para os filtros selecionados.
@@ -122,7 +121,7 @@ export const GestorBeautyView: React.FC = () => {
             <View key={app.id} style={styles.appCard}>
               <View style={styles.appCardHeader}>
                 <View style={styles.timeBadge}>
-                  <Text style={styles.timeBadgeText}>⏰ {app.timeSlot}</Text>
+                  <Text style={styles.timeBadgeText}>{app.timeSlot}</Text>
                 </View>
 
                 <View
@@ -142,27 +141,27 @@ export const GestorBeautyView: React.FC = () => {
                     ]}
                   >
                     {app.status === 'confirmed'
-                      ? '✓ Confirmado'
+                      ? 'Confirmado'
                       : app.status === 'completed'
-                      ? '★ Concluído'
-                      : '✕ Cancelado'}
+                      ? 'Concluído'
+                      : 'Cancelado'}
                   </Text>
                 </View>
               </View>
 
               <Text style={styles.clientName}>{app.clientName}</Text>
-              <Text style={styles.clientPhone}>📞 {app.clientPhone}</Text>
+              <Text style={styles.clientPhone}>{app.clientPhone}</Text>
 
               <View style={styles.detailsBox}>
-                <Text style={styles.serviceName}>💅 {app.serviceName}</Text>
-                <Text style={styles.staffName}>👤 Especialista: {app.staffName}</Text>
+                <Text style={styles.serviceName}>{app.serviceName}</Text>
+                <Text style={styles.staffName}>Especialista: {app.staffName}</Text>
                 <Text style={styles.priceDuration}>
-                  💰 {app.servicePrice} € • {app.serviceDuration} min • Data: {app.date}
+                  {app.servicePrice} € • {app.serviceDuration} min • Data: {app.date}
                 </Text>
-                {app.notes ? <Text style={styles.notesText}>📝 Nota: "{app.notes}"</Text> : null}
+                {app.notes ? <Text style={styles.notesText}>Nota: "{app.notes}"</Text> : null}
                 <View style={styles.reminderStatusRow}>
                   <Text style={styles.reminderStatusText}>
-                    🔔 Lembrete 2h: {app.reminderEnabled !== false ? '✓ Ativo (notificação programada)' : '✕ Inativo'}
+                    Lembrete 2h: {app.reminderEnabled !== false ? 'Ativo (notificação programada)' : 'Inativo'}
                   </Text>
                 </View>
               </View>
@@ -177,7 +176,7 @@ export const GestorBeautyView: React.FC = () => {
                       Linking.openURL(url);
                     }}
                   >
-                    <Text style={styles.notifyBtnText}>🔔 Notificar Cliente (2h)</Text>
+                    <Text style={styles.notifyBtnText}>Notificar Cliente (2h)</Text>
                   </TouchableOpacity>
                 )}
 

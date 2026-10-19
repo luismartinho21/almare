@@ -169,7 +169,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       {/* Top Header: logo centrado tocável */}
       <TouchableOpacity style={styles.topLogoHeader} onPress={handleBack} activeOpacity={0.9}>
         <Image
-          source={require('../../assets/logo.jpg')}
+          source={require('../../assets/logo.png')}
           style={styles.topLogoImg}
           resizeMode="contain"
         />
@@ -284,110 +284,11 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                       { color: isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent },
                     ]}
                   >
-                    ✓ {selectedServices.length}{' '}
+                    {selectedServices.length}{' '}
                     {selectedServices.length === 1 ? 'Serviço Selecionado' : 'Serviços Selecionados'}:{' '}
                     <Text style={{ fontWeight: '900' }}>{totalPrice.toFixed(2)} €</Text> ({totalDuration} min)
                   </Text>
                 </View>
-
-                {/* Extras Accordion */}
-                {extraServices.length > 0 && (
-                  <View
-                    style={[
-                      styles.extrasAccordion,
-                      isBarber ? styles.extrasAccordionBarber : styles.extrasAccordionBeauty,
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={styles.extrasAccordionHeader}
-                      onPress={() => setIsExtrasExpanded(prev => !prev)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.extrasHeaderLeft}>
-                        <View>
-                          <Text style={[styles.extrasHeaderTitle, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
-                            Adicionar Extras (Opcional)
-                          </Text>
-                          <Text style={styles.extrasHeaderSub}>
-                            {selectedExtrasCount > 0
-                              ? `${selectedExtrasCount} extra(s) adicionado(s)`
-                              : 'Toque para ver tratamentos e cuidados extra'}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.extrasHeaderRight}>
-                        {selectedExtrasCount > 0 && (
-                          <View style={[styles.extrasBadge, { backgroundColor: accentColor }]}>
-                            <Text style={styles.extrasBadgeText}>+{selectedExtrasCount}</Text>
-                          </View>
-                        )}
-                        <Text style={[styles.extrasChevron, { color: accentColor }]}>
-                          {isExtrasExpanded ? '▲' : '▼'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Dropdown Content */}
-                    {isExtrasExpanded && (
-                      <View style={styles.extrasDropdownBody}>
-                        <Text style={styles.extrasInfoHint}>
-                          Selecione extras para complementar o seu serviço:
-                        </Text>
-
-                        {extraServices.map(extra => {
-                          const isExtraSelected = selectedServices.some(s => s.id === extra.id);
-                          return (
-                            <TouchableOpacity
-                              key={extra.id}
-                              style={[
-                                styles.extraRowItem,
-                                isExtraSelected && {
-                                  backgroundColor: isBarber ? 'rgba(212, 175, 55, 0.15)' : '#FCE7F3',
-                                  borderColor: accentColor,
-                                },
-                              ]}
-                              onPress={() => handleToggleService(extra)}
-                              activeOpacity={0.7}
-                            >
-                              <View style={styles.extraRowInfo}>
-                                <Text style={[styles.extraRowName, { color: isBarber ? '#FFFFFF' : '#111827' }]}>
-                                  {extra.name}
-                                </Text>
-                                <Text style={styles.extraRowDesc} numberOfLines={2}>
-                                  {extra.description}
-                                </Text>
-                                <Text style={styles.extraRowDuration}>
-                                  +{extra.durationMinutes} min
-                                </Text>
-                              </View>
-
-                              <View style={styles.extraRowAction}>
-                                <Text style={[styles.extraRowPrice, { color: accentColor }]}>
-                                  +{extra.price.toFixed(2)} €
-                                </Text>
-                                <View
-                                  style={[
-                                    styles.extraCheckCircle,
-                                    isExtraSelected && { backgroundColor: accentColor, borderColor: accentColor },
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.extraCheckText,
-                                      { color: isExtraSelected ? '#111' : isBarber ? '#71717A' : '#9CA3AF' },
-                                    ]}
-                                  >
-                                    {isExtraSelected ? '✓' : '+'}
-                                  </Text>
-                                </View>
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                )}
               </View>
             )}
 
@@ -418,9 +319,17 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               })}
             </ScrollView>
 
-            {/* Service Cards List */}
+            {/* Service Cards List com extras específicos compatíveis em cada card */}
             {filteredServices.map(service => {
               const isSelected = selectedServices.some(s => s.id === service.id);
+              // Filtrar extras compatíveis exclusivamente com este serviço
+              const compatibleExtras = service.compatibleExtraIds && service.compatibleExtraIds.length > 0
+                ? extraServices.filter(e => service.compatibleExtraIds!.includes(e.id))
+                : [];
+              const selectedExtrasForThisCard = selectedServices.filter(s =>
+                compatibleExtras.some(e => e.id === s.id)
+              );
+
               return (
                 <ServiceCard
                   key={service.id}
@@ -428,6 +337,9 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   branch={activeBranch}
                   isSelected={isSelected}
                   onToggleSelect={handleToggleService}
+                  availableExtras={compatibleExtras}
+                  selectedExtras={selectedExtrasForThisCard}
+                  onToggleExtra={handleToggleService}
                 />
               );
             })}

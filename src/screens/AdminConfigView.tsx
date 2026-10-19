@@ -116,7 +116,7 @@ export const AdminConfigView: React.FC = () => {
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⚙️ PAINEL ADMINISTRADOR (CONFIGS)</Text>
+        <Text style={styles.headerTitle}>PAINEL ADMINISTRADOR (CONFIGS)</Text>
         <Text style={styles.headerSub}>Gerir dados das marcas, catálogo de serviços e equipa</Text>
       </View>
 
@@ -127,7 +127,7 @@ export const AdminConfigView: React.FC = () => {
           onPress={() => setActiveTab('general')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'general' && styles.tabBtnTextActive]}>
-            🏬 Lojas & Contactos
+            Lojas & Contactos
           </Text>
         </TouchableOpacity>
 
@@ -136,7 +136,7 @@ export const AdminConfigView: React.FC = () => {
           onPress={() => setActiveTab('services')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'services' && styles.tabBtnTextActive]}>
-            ✂️ Serviços ({services.length})
+            Serviços ({services.length})
           </Text>
         </TouchableOpacity>
 
@@ -145,7 +145,7 @@ export const AdminConfigView: React.FC = () => {
           onPress={() => setActiveTab('staff')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextActive]}>
-            👥 Colaboradores ({staff.length})
+            Colaboradores ({staff.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -156,13 +156,13 @@ export const AdminConfigView: React.FC = () => {
           <View>
             {saveSuccess ? (
               <View style={styles.successBanner}>
-                <Text style={styles.successBannerText}>✓ Configurações guardadas com sucesso!</Text>
+                <Text style={styles.successBannerText}>Configurações guardadas com sucesso!</Text>
               </View>
             ) : null}
 
             {/* Barber Shop Settings */}
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>💈 Configuração Almare Barber</Text>
+              <Text style={styles.sectionTitle}>Configuração Almare Barber</Text>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Nome do Estabelecimento</Text>
@@ -187,7 +187,7 @@ export const AdminConfigView: React.FC = () => {
 
             {/* Beauty Shop Settings */}
             <View style={styles.sectionCard}>
-              <Text style={[styles.sectionTitle, { color: '#F472B6' }]}>💅 Configuração Almare Beauty</Text>
+              <Text style={[styles.sectionTitle, { color: '#F472B6' }]}>Configuração Almare Beauty</Text>
 
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Nome do Estabelecimento</Text>
@@ -231,7 +231,7 @@ export const AdminConfigView: React.FC = () => {
               <View key={item.id} style={styles.itemRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemTitle}>
-                    {item.branch === 'barber' ? '💈' : '💅'} {item.name}
+                    {item.name} ({item.branch === 'barber' ? 'Barber' : 'Beauty'})
                   </Text>
                   <Text style={styles.itemSub}>
                     {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
@@ -264,10 +264,10 @@ export const AdminConfigView: React.FC = () => {
               <View key={item.id} style={styles.itemRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemTitle}>
-                    👤 {item.name} ({item.branch === 'barber' ? 'Barber' : 'Beauty'})
+                    {item.name} ({item.branch === 'barber' ? 'Barber' : 'Beauty'})
                   </Text>
                   <Text style={styles.itemSub}>
-                    {item.roleTitle} • ⭐ {item.rating} • {item.phone}
+                    {item.roleTitle} • Avaliação: {item.rating} • {item.phone}
                   </Text>
                 </View>
 
@@ -296,14 +296,14 @@ export const AdminConfigView: React.FC = () => {
                   style={[styles.branchTab, newServBranch === 'barber' && styles.branchTabActive]}
                   onPress={() => setNewServBranch('barber')}
                 >
-                  <Text style={styles.branchTabText}>💈 Barber</Text>
+                  <Text style={styles.branchTabText}>Barber</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.branchTab, newServBranch === 'beauty' && styles.branchTabActive]}
                   onPress={() => setNewServBranch('beauty')}
                 >
-                  <Text style={styles.branchTabText}>💅 Beauty</Text>
+                  <Text style={styles.branchTabText}>Beauty</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -353,14 +353,14 @@ export const AdminConfigView: React.FC = () => {
                   style={[styles.branchTab, newStaffBranch === 'barber' && styles.branchTabActive]}
                   onPress={() => setNewStaffBranch('barber')}
                 >
-                  <Text style={styles.branchTabText}>💈 Barber</Text>
+                  <Text style={styles.branchTabText}>Barber</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.branchTab, newStaffBranch === 'beauty' && styles.branchTabActive]}
                   onPress={() => setNewStaffBranch('beauty')}
                 >
-                  <Text style={styles.branchTabText}>💅 Beauty</Text>
+                  <Text style={styles.branchTabText}>Beauty</Text>
                 </TouchableOpacity>
               </View>
             </View>

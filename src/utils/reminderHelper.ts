@@ -349,7 +349,7 @@ export function getGestorNotifyClientWhatsAppUrl(
   const isBarber = appointment.branch === 'barber';
   const salonName = isBarber ? 'Almare Barber Shop' : 'Almare Beauty Salon';
   const text = encodeURIComponent(
-    `Olá ${appointment.clientName}! 👋 Lembramos que tem marcação hoje às ${appointment.timeSlot} no ${salonName} para ${appointment.serviceName} com ${appointment.staffName}. Por favor compareça com alguns minutos de antecedência. Qualquer imprevisto, responda a esta mensagem. Até já!`
+    `Olá ${appointment.clientName}! Lembramos que tem marcação hoje às ${appointment.timeSlot} no ${salonName} para ${appointment.serviceName} com ${appointment.staffName}. Por favor compareça com alguns minutos de antecedência. Qualquer imprevisto, responda a esta mensagem. Até já!`
   );
 
   const cleanPhone = appointment.clientPhone.replace(/\D/g, '');
