@@ -19,6 +19,7 @@ interface BookingModalProps {
   branch: SalonBranch;
   selectedServices: Service[];
   staff: StaffMember | null;
+  isNoPreference?: boolean;
   date: string;
   timeSlot: string;
   onConfirmBooking: (clientName: string, clientPhone: string, notes?: string) => Promise<void>;
@@ -30,6 +31,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   branch,
   selectedServices,
   staff,
+  isNoPreference,
   date,
   timeSlot,
   onConfirmBooking,
@@ -75,18 +77,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.modalCard} onPress={e => e.stopPropagation()}>
-          <Text style={[styles.title, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+        <Pressable
+          style={[
+            styles.modalCard,
+            isBarber ? styles.modalCardBarber : styles.modalCardBeauty,
+          ]}
+          onPress={e => e.stopPropagation()}
+        >
+          <Text style={[styles.title, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
             Finalizar Marcação
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
             Basta indicar o seu nome e telemóvel para confirmar a vaga instantaneamente.
           </Text>
 
           {/* Booking Summary Box with Multi-Services */}
-          <View style={[styles.summaryBox, { backgroundColor: isBarber ? '#27272A' : '#FFF5F7' }]}>
+          <View
+            style={[
+              styles.summaryBox,
+              isBarber ? styles.summaryBoxBarber : styles.summaryBoxBeauty,
+            ]}
+          >
             <Text style={[styles.summaryHeaderTitle, { color: accentColor }]}>
-              📋 SERVIÇOS SELECIONADOS ({selectedServices.length}):
+              SERVIÇOS SELECIONADOS ({selectedServices.length}):
             </Text>
 
             <ScrollView style={{ maxHeight: 110 }} nestedScrollEnabled>
@@ -95,24 +108,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <Text style={[styles.summaryService, { color: isBarber ? '#F4F4F5' : '#1F2937' }]}>
                     • {s.name} ({s.durationMinutes} min)
                   </Text>
-                  <Text style={[styles.servicePrice, { color: isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.badge }]}>
+                  <Text style={[styles.servicePrice, { color: accentColor }]}>
                     {s.price.toFixed(2)} €
                   </Text>
                 </View>
               ))}
             </ScrollView>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isBarber ? '#3F3F46' : '#E5DCBA' }]} />
 
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>TOTAL A PAGAR NO SALÃO:</Text>
+              <Text style={[styles.totalLabel, { color: isBarber ? '#E5E7EB' : '#374151' }]}>
+                TOTAL A PAGAR NO SALÃO:
+              </Text>
               <Text style={[styles.totalValue, { color: accentColor }]}>
-                {totalPrice.toFixed(2)} € <Text style={{ fontSize: 11, color: '#9CA3AF' }}>({totalDuration} min)</Text>
+                {totalPrice.toFixed(2)} €{' '}
+                <Text style={{ fontSize: 11, color: isBarber ? '#9CA3AF' : '#71717A' }}>
+                  ({totalDuration} min)
+                </Text>
               </Text>
             </View>
 
-            <Text style={styles.summaryStaff}>👤 Profissional: {staff.name}</Text>
-            <Text style={styles.summaryDateTime}>
+            <Text style={[styles.summaryStaff, { color: isBarber ? '#D1D5DB' : '#4B5563' }]}>
+              👤 Profissional: {staff.name} {isNoPreference ? '(Sem preferência)' : ''}
+            </Text>
+            <Text style={[styles.summaryDateTime, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
               📅 Data: {date} às {timeSlot}
             </Text>
           </View>
@@ -121,22 +141,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           {/* Form Fields */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>O seu Nome *</Text>
+            <Text style={[styles.label, { color: isBarber ? '#E5E7EB' : '#2D3748' }]}>
+              O seu Nome *
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isBarber ? styles.inputBarber : styles.inputBeauty]}
               placeholder="Ex: João Silva"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={isBarber ? '#71717A' : '#9CA3AF'}
               value={clientName}
               onChangeText={setClientName}
             />
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Número de Telemóvel *</Text>
+            <Text style={[styles.label, { color: isBarber ? '#E5E7EB' : '#2D3748' }]}>
+              Número de Telemóvel *
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isBarber ? styles.inputBarber : styles.inputBeauty]}
               placeholder="Ex: 912 345 678"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={isBarber ? '#71717A' : '#9CA3AF'}
               keyboardType="phone-pad"
               value={clientPhone}
               onChangeText={setClientPhone}
@@ -144,11 +168,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Notas ou Preferências (Opcional)</Text>
+            <Text style={[styles.label, { color: isBarber ? '#E5E7EB' : '#2D3748' }]}>
+              Notas ou Preferências (Opcional)
+            </Text>
             <TextInput
-              style={[styles.input, { height: 50, textAlignVertical: 'top' }]}
-              placeholder="Ex: Preferência fade baixo..."
-              placeholderTextColor="#9CA3AF"
+              style={[
+                styles.input,
+                isBarber ? styles.inputBarber : styles.inputBeauty,
+                { height: 48, textAlignVertical: 'top' },
+              ]}
+              placeholder={isBarber ? 'Ex: Preferência fade baixo...' : 'Ex: Preferência unhas redondas...'}
+              placeholderTextColor={isBarber ? '#71717A' : '#9CA3AF'}
               multiline
               value={notes}
               onChangeText={setNotes}
@@ -160,16 +190,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             style={[styles.confirmBtn, { backgroundColor: accentColor }]}
             onPress={handleSubmit}
             disabled={loading}
+            activeOpacity={0.85}
           >
             {loading ? (
               <ActivityIndicator color="#111" />
             ) : (
-              <Text style={styles.confirmBtnText}>Confirmar Marcação ({totalPrice.toFixed(2)} €)</Text>
+              <Text style={styles.confirmBtnText}>
+                Confirmar Marcação ({totalPrice.toFixed(2)} €)
+              </Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelBtnText}>Voltar atrás</Text>
+          <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={[styles.cancelBtnText, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+              Voltar atrás
+            </Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
@@ -184,12 +219,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#18181B',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    borderWidth: 1,
+    borderWidth: 1.5,
+  },
+  modalCardBarber: {
+    backgroundColor: '#18181B', // Preto que está
     borderColor: '#3F3F46',
+  },
+  modalCardBeauty: {
+    backgroundColor: '#FAF7F0', // Tom creme (branco)
+    borderColor: '#E0D4B8',
   },
   title: {
     fontSize: 20,
@@ -197,7 +238,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    color: '#9CA3AF',
     fontSize: 12,
     textAlign: 'center',
     marginBottom: 12,
@@ -207,6 +247,14 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 12,
+  },
+  summaryBoxBarber: {
+    backgroundColor: '#27272A',
+  },
+  summaryBoxBeauty: {
+    backgroundColor: '#F3EFE6',
+    borderWidth: 1,
+    borderColor: '#E5DCBA',
   },
   summaryHeaderTitle: {
     fontSize: 11,
@@ -232,7 +280,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#3F3F46',
     marginVertical: 6,
   },
   totalRow: {
@@ -242,7 +289,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   totalLabel: {
-    color: '#E5E7EB',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -252,12 +298,10 @@ const styles = StyleSheet.create({
   },
   summaryStaff: {
     fontSize: 12,
-    color: '#D1D5DB',
     marginTop: 2,
   },
   summaryDateTime: {
     fontSize: 12,
-    color: '#9CA3AF',
     fontWeight: '600',
     marginTop: 1,
   },
@@ -272,20 +316,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    color: '#E5E7EB',
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 4,
   },
   input: {
-    backgroundColor: '#27272A',
-    borderColor: '#3F3F46',
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: '#FFFFFF',
     fontSize: 13,
+  },
+  inputBarber: {
+    backgroundColor: '#27272A',
+    borderColor: '#3F3F46',
+    color: '#FFFFFF',
+  },
+  inputBeauty: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#DCD2BC',
+    color: '#111827',
   },
   confirmBtn: {
     paddingVertical: 14,
@@ -294,7 +344,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   confirmBtnText: {
-    color: '#111827',
+    color: '#0D0D11',
     fontSize: 15,
     fontWeight: '900',
   },
@@ -304,7 +354,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cancelBtnText: {
-    color: '#9CA3AF',
     fontSize: 13,
     fontWeight: '600',
   },

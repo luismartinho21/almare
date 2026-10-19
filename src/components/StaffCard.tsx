@@ -1,18 +1,64 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StaffMember, SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
 
 interface StaffCardProps {
-  staff: StaffMember;
+  staff?: StaffMember;
+  isNoPreference?: boolean;
   isSelected?: boolean;
-  onSelect: (staff: StaffMember) => void;
+  onSelect: () => void;
   branch: SalonBranch;
 }
 
-export const StaffCard: React.FC<StaffCardProps> = ({ staff, isSelected, onSelect, branch }) => {
+export const StaffCard: React.FC<StaffCardProps> = ({
+  staff,
+  isNoPreference,
+  isSelected,
+  onSelect,
+  branch,
+}) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+
+  if (isNoPreference) {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.card,
+          isBarber ? styles.cardBarber : styles.cardBeauty,
+          isSelected && { borderColor: accentColor, borderWidth: 2 },
+        ]}
+        onPress={onSelect}
+        activeOpacity={0.8}
+      >
+        <View style={styles.info}>
+          <Text style={[styles.name, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+            Sem preferência
+          </Text>
+          <Text style={[styles.role, { color: accentColor }]}>
+            Qualquer profissional disponível
+          </Text>
+          <Text style={[styles.desc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+            Apresenta os horários disponíveis de todos os profissionais da equipa
+          </Text>
+        </View>
+
+        <View style={styles.rightSection}>
+          <View
+            style={[
+              styles.selectRadio,
+              isSelected && { backgroundColor: accentColor, borderColor: accentColor },
+            ]}
+          >
+            {isSelected && <Text style={styles.radioCheck}>✓</Text>}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  if (!staff) return null;
 
   return (
     <TouchableOpacity
@@ -21,28 +67,42 @@ export const StaffCard: React.FC<StaffCardProps> = ({ staff, isSelected, onSelec
         isBarber ? styles.cardBarber : styles.cardBeauty,
         isSelected && { borderColor: accentColor, borderWidth: 2 },
       ]}
-      onPress={() => onSelect(staff)}
+      onPress={onSelect}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: staff.avatar }} style={styles.avatar} />
-
       <View style={styles.info}>
-        <Text style={[styles.name, { color: isBarber ? '#F3F4F6' : '#111827' }]}>{staff.name}</Text>
-        <Text style={[styles.role, { color: accentColor }]}>{staff.roleTitle}</Text>
+        <Text style={[styles.name, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+          {staff.name}
+        </Text>
+        <Text style={[styles.role, { color: accentColor }]}>
+          {staff.roleTitle}
+        </Text>
 
-        <View style={styles.specialtiesRow}>
-          {staff.specialties.slice(0, 2).map((spec, i) => (
-            <View key={i} style={[styles.tag, { backgroundColor: isBarber ? '#27272A' : '#FCE7F3' }]}>
-              <Text style={[styles.tagText, { color: isBarber ? '#D4D4D8' : '#9D174D' }]}>
-                {spec}
-              </Text>
-            </View>
-          ))}
-        </View>
+        {staff.specialties && staff.specialties.length > 0 && (
+          <View style={styles.specialtiesRow}>
+            {staff.specialties.map((spec, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.tag,
+                  { backgroundColor: isBarber ? '#27272A' : '#F7F2E7' },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.tagText,
+                    { color: isBarber ? '#D4D4D8' : '#78350F' },
+                  ]}
+                >
+                  {spec}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.rightSection}>
-        <Text style={styles.ratingText}>⭐ {staff.rating.toFixed(1)}</Text>
         <View
           style={[
             styles.selectRadio,
@@ -60,8 +120,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
     marginBottom: 10,
     borderWidth: 1,
   },
@@ -71,50 +132,46 @@ const styles = StyleSheet.create({
   },
   cardBeauty: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#F3E8FF',
-  },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    marginRight: 12,
-    backgroundColor: '#333',
+    borderColor: '#E5DCBA',
   },
   info: {
     flex: 1,
+    marginRight: 12,
   },
   name: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
   role: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 2,
+  },
+  desc: {
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 16,
   },
   specialtiesRow: {
     flexDirection: 'row',
-    marginTop: 6,
+    flexWrap: 'wrap',
+    marginTop: 8,
   },
   tag: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
     marginRight: 6,
+    marginBottom: 4,
   },
   tagText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   rightSection: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: 50,
-  },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectRadio: {
     width: 22,

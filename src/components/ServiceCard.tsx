@@ -8,6 +8,9 @@ interface ServiceCardProps {
   isSelected?: boolean;
   onToggleSelect: (service: Service) => void;
   branch: SalonBranch;
+  availableExtras?: Service[];
+  selectedExtras?: Service[];
+  onToggleExtra?: (extra: Service) => void;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -15,80 +18,149 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   isSelected,
   onToggleSelect,
   branch,
+  availableExtras,
+  selectedExtras = [],
+  onToggleExtra,
 }) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
 
-  const getCategoryIcon = (cat: string) => {
-    switch (cat.toLowerCase()) {
-      case 'cortes':
-      case 'cabelo':
-        return '✂️';
-      case 'barba':
-        return '🪒';
-      case 'coloração':
-        return '🎨';
-      case 'estética':
-      case 'tratamentos':
-        return '✨';
-      case 'unhas':
-        return '💅';
-      case 'combos':
-        return '👑';
-      default:
-        return '💈';
-    }
-  };
-
   return (
-    <TouchableOpacity
+    <View
       style={[
         styles.card,
         isBarber ? styles.cardBarber : styles.cardBeauty,
-        isSelected && { borderColor: accentColor, borderWidth: 2, backgroundColor: isBarber ? '#272730' : '#FFF0F5' },
+        isSelected && {
+          borderColor: accentColor,
+          borderWidth: 2,
+          backgroundColor: isBarber ? '#272730' : '#FFFDF5',
+        },
       ]}
-      onPress={() => onToggleSelect(service)}
-      activeOpacity={0.8}
     >
-      <View style={styles.headerRow}>
-        <View style={styles.titleArea}>
-          <Text style={styles.icon}>{getCategoryIcon(service.category)}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.category, { color: accentColor }]}>
-              {service.category.toUpperCase()}
+      <TouchableOpacity
+        onPress={() => onToggleSelect(service)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.headerRow}>
+          <View style={styles.titleArea}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.category, { color: accentColor }]}>
+                {service.category.toUpperCase()}
+              </Text>
+              <Text style={[styles.name, { color: isBarber ? '#FFF' : '#111827' }]}>
+                {service.name}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.priceTag,
+              { backgroundColor: isBarber ? '#27272A' : '#F7F2E7' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.priceText,
+                { color: isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.badge },
+              ]}
+            >
+              {service.price.toFixed(2)} €
             </Text>
-            <Text style={[styles.name, { color: isBarber ? '#FFF' : '#111827' }]}>{service.name}</Text>
           </View>
         </View>
 
-        <View style={[styles.priceTag, { backgroundColor: isBarber ? '#27272A' : '#FCE7F3' }]}>
-          <Text style={[styles.priceText, { color: isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.badge }]}>
-            {service.price.toFixed(2)} €
-          </Text>
-        </View>
-      </View>
-
-      <Text style={[styles.description, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-        {service.description}
-      </Text>
-
-      <View style={styles.footerRow}>
-        <Text style={[styles.duration, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-          ⏱️ {service.durationMinutes} min
+        <Text style={[styles.description, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+          {service.description}
         </Text>
-        <TouchableOpacity
-          style={[
-            styles.selectBtn,
-            { backgroundColor: isSelected ? accentColor : isBarber ? '#27272A' : Theme.colors.beauty.primary },
-          ]}
-          onPress={() => onToggleSelect(service)}
-        >
-          <Text style={[styles.selectBtnText, { color: isSelected || !isBarber ? (isSelected ? '#111' : '#FFF') : '#F4F4F5' }]}>
-            {isSelected ? '✓ Selecionado' : '+ Adicionar'}
+
+        <View style={styles.footerRow}>
+          <Text style={[styles.duration, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+            {service.durationMinutes} min
           </Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.selectBtn,
+              {
+                backgroundColor: isSelected
+                  ? accentColor
+                  : isBarber
+                  ? '#27272A'
+                  : Theme.colors.beauty.primary,
+              },
+            ]}
+            onPress={() => onToggleSelect(service)}
+          >
+            <Text
+              style={[
+                styles.selectBtnText,
+                {
+                  color:
+                    isSelected || !isBarber
+                      ? isSelected
+                        ? '#111'
+                        : '#FFF'
+                      : '#F4F4F5',
+                },
+              ]}
+            >
+              {isSelected ? '✓ Selecionado' : '+ Adicionar'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+
+      {/* ABA DE EXTRAS (aparece quando o serviço é selecionado) */}
+      {isSelected && availableExtras && availableExtras.length > 0 && onToggleExtra && (
+        <View style={styles.extrasContainer}>
+          <View style={styles.extrasDivider} />
+          <Text style={[styles.extrasHeaderTitle, { color: accentColor }]}>
+            EXTRAS DISPONÍVEIS (OPCIONAL):
+          </Text>
+          {availableExtras.map(extra => {
+            const isExtraSelected = selectedExtras.some(e => e.id === extra.id);
+            return (
+              <TouchableOpacity
+                key={extra.id}
+                style={[
+                  styles.extraRow,
+                  isExtraSelected && {
+                    backgroundColor: isBarber ? '#36342E' : '#FFF3D6',
+                    borderColor: accentColor,
+                  },
+                ]}
+                onPress={() => onToggleExtra(extra)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.extraCheckCircle}>
+                  <Text
+                    style={[
+                      styles.extraCheckText,
+                      { color: isExtraSelected ? accentColor : '#9CA3AF' },
+                    ]}
+                  >
+                    {isExtraSelected ? '✓' : '+'}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, marginHorizontal: 8 }}>
+                  <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
+                    {extra.name}
+                  </Text>
+                  {extra.description ? (
+                    <Text style={styles.extraDesc}>{extra.description}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.extraPriceBadge}>
+                  <Text style={[styles.extraPriceText, { color: accentColor }]}>
+                    +{extra.price.toFixed(2)} €
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+    </View>
   );
 };
 
@@ -109,8 +181,8 @@ const styles = StyleSheet.create({
     borderColor: '#2D2D38',
   },
   cardBeauty: {
-    backgroundColor: '#FFF8FA',
-    borderColor: '#FBCFE8',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5DCBA',
   },
   headerRow: {
     flexDirection: 'row',
@@ -122,10 +194,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
-  },
-  icon: {
-    fontSize: 24,
     marginRight: 10,
   },
   category: {
@@ -169,5 +237,59 @@ const styles = StyleSheet.create({
   selectBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  /* ── ABA DE EXTRAS ── */
+  extrasContainer: {
+    marginTop: 12,
+    paddingTop: 10,
+  },
+  extrasDivider: {
+    height: 1,
+    backgroundColor: 'rgba(212, 175, 55, 0.25)',
+    marginBottom: 10,
+  },
+  extrasHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  extraRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 6,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  extraCheckCircle: {
+    width: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  extraCheckText: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  extraName: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  extraDesc: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  extraPriceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  extraPriceText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

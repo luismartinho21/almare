@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Linking } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
+import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 
 export const GestorBeautyView: React.FC = () => {
   const { appointments, updateAppointmentStatus, staff } = useApp();
@@ -159,16 +160,33 @@ export const GestorBeautyView: React.FC = () => {
                   💰 {app.servicePrice} € • {app.serviceDuration} min • Data: {app.date}
                 </Text>
                 {app.notes ? <Text style={styles.notesText}>📝 Nota: "{app.notes}"</Text> : null}
+                <View style={styles.reminderStatusRow}>
+                  <Text style={styles.reminderStatusText}>
+                    🔔 Lembrete 2h: {app.reminderEnabled !== false ? '✓ Ativo (notificação programada)' : '✕ Inativo'}
+                  </Text>
+                </View>
               </View>
 
               {/* Action Buttons */}
               <View style={styles.actionsRow}>
                 {app.status === 'confirmed' && (
                   <TouchableOpacity
+                    style={styles.notifyBtn}
+                    onPress={() => {
+                      const url = getGestorNotifyClientWhatsAppUrl(app, 'Almare Beauty Salon');
+                      Linking.openURL(url);
+                    }}
+                  >
+                    <Text style={styles.notifyBtnText}>🔔 Notificar Cliente (2h)</Text>
+                  </TouchableOpacity>
+                )}
+
+                {app.status === 'confirmed' && (
+                  <TouchableOpacity
                     style={styles.completeBtn}
                     onPress={() => updateAppointmentStatus(app.id, 'completed')}
                   >
-                    <Text style={styles.completeBtnText}>Concluir Serviço</Text>
+                    <Text style={styles.completeBtnText}>Concluir</Text>
                   </TouchableOpacity>
                 )}
 
@@ -408,5 +426,28 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '800',
+  },
+  notifyBtn: {
+    backgroundColor: '#25D366',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  notifyBtnText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  reminderStatusRow: {
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#FBCFE8',
+  },
+  reminderStatusText: {
+    color: Theme.colors.beauty.badge,
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

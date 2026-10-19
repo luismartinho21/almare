@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
 
@@ -27,17 +27,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
   return (
     <View style={[styles.container, isBarber ? styles.barberBg : styles.beautyBg]}>
       <View style={styles.topRow}>
-        {/* Clickable Logo & Title to return to Home Page */}
-        <TouchableOpacity
-          style={styles.logoBtn}
-          onPress={onGoHome}
-          activeOpacity={0.8}
-        >
-          <Image
-            source={require('../../assets/logo.jpg')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
+        {/* Texto do logo — clicável para ir ao Home */}
+        <TouchableOpacity style={styles.logoBtn} onPress={onGoHome} activeOpacity={0.8}>
           <View style={styles.logoTextContainer}>
             <Text style={[styles.logoTitle, { color: isBarber ? Theme.colors.brandSecondary : '#B8860B' }]}>
               ALMARE
@@ -92,14 +83,6 @@ const styles = StyleSheet.create({
   logoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  logoImage: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: Theme.colors.brandSecondary,
   },
   logoTextContainer: {
     justifyContent: 'center',

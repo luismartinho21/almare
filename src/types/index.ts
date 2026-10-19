@@ -23,9 +23,12 @@ export interface StaffMember {
   rating: number;
   specialties: string[];
   workingHours: {
-    start: string; // e.g. "09:30"
-    end: string;   // e.g. "19:30"
+    start: string; // e.g. "09:00"
+    end: string;   // e.g. "19:00"
+    lunchStart?: string; // e.g. "12:00"
+    lunchEnd?: string;   // e.g. "14:00"
   };
+  workDays?: string; // e.g. "Terça a Sábado"
 }
 
 export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled';
@@ -47,6 +50,8 @@ export interface Appointment {
   status: AppointmentStatus;
   createdAt: string;
   notes?: string;
+  reminderEnabled?: boolean;
+  reminderNotified?: boolean;
 }
 
 export interface ClientHistoryNote {

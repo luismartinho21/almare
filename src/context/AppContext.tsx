@@ -22,6 +22,7 @@ import {
   saveBusinessConfig,
 } from '../storage/storageHelper';
 import { INITIAL_BUSINESS_CONFIG } from '../constants/mockData';
+import { scheduleTwoHourReminder, checkAndTriggerDueReminders } from '../utils/reminderHelper';
 
 interface AppContextType {
   role: UserRole;
@@ -48,13 +49,20 @@ interface AppContextType {
   ) => Promise<Appointment>;
 
   updateAppointmentStatus: (id: string, status: Appointment['status']) => Promise<void>;
+  updateAppointmentReminder: (id: string, reminderEnabled: boolean) => Promise<void>;
   addStaffNoteForClient: (note: Omit<ClientHistoryNote, 'id' | 'createdAt'>) => Promise<void>;
   
-  // Admin actions
-  addService: (newService: Omit<Service, 'id'>) => Promise<void>;
-  deleteService: (id: string) => Promise<void>;
+  // In-app notifications
+  activeNotification: { title: string; message: string; branch: SalonBranch } | null;
+  dismissNotification: () => void;
+  
+  // Staff management
+  updateStaffWorkingHours: (id: string, workingHours: { start: string; end: string; lunchStart?: string; lunchEnd?: string }) => Promise<void>;
+  updateStaffMember: (updatedMember: StaffMember) => Promise<void>;
   addStaffMember: (newStaff: Omit<StaffMember, 'id'>) => Promise<void>;
   deleteStaffMember: (id: string) => Promise<void>;
+  addService: (newService: Omit<Service, 'id'>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
   updateConfig: (newConfig: BusinessConfig) => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -70,6 +78,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientHistory, setClientHistory] = useState<ClientHistoryNote[]>([]);
   const [config, setConfig] = useState<BusinessConfig>(INITIAL_BUSINESS_CONFIG);
+
+  const [activeNotification, setActiveNotification] = useState<{
+    title: string;
+    message: string;
+    branch: SalonBranch;
+  } | null>(null);
+
+  const dismissNotification = () => setActiveNotification(null);
 
   const refreshData = async () => {
     const loadedApps = await loadAppointments();
@@ -87,6 +103,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     refreshData();
+
+    // Check for any due reminders (2 hours before appointments)
+    const runReminderCheck = async () => {
+      await checkAndTriggerDueReminders(rem => {
+        const branchLabel = rem.branch === 'barber' ? 'Barber' : 'Beauty';
+        setActiveNotification({
+          title: `⏰ Lembrete Almare ${branchLabel}`,
+          message: `Olá ${rem.clientName}! A sua marcação para ${rem.serviceName} com ${rem.staffName} é hoje às ${rem.timeSlot} (daqui a 2 horas).`,
+          branch: rem.branch,
+        });
+      });
+    };
+
+    runReminderCheck();
+    const interval = setInterval(runReminderCheck, 45000); // Check every 45s
+    return () => clearInterval(interval);
   }, []);
 
   const createAppointment = async (
@@ -121,15 +153,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'confirmed',
       createdAt: new Date().toISOString(),
       notes: notes || '',
+      reminderEnabled: true,
+      reminderNotified: false,
     };
 
     const updated = await addAppointment(newBooking);
     setAppointments(updated);
+
+    // Always schedule notification 2 hours before the appointment
+    const shopName = branch === 'barber' ? config.barberShopName : config.beautyShopName;
+    scheduleTwoHourReminder(newBooking, shopName).catch(err => {
+      console.warn('Could not auto-schedule 2h reminder:', err);
+    });
+
     return newBooking;
   };
 
   const updateAppointmentStatus = async (id: string, status: Appointment['status']) => {
     const updated = appointments.map(app => (app.id === id ? { ...app, status } : app));
+    await saveAppointments(updated);
+    setAppointments(updated);
+  };
+
+  const updateAppointmentReminder = async (id: string, reminderEnabled: boolean) => {
+    const updated = appointments.map(app => (app.id === id ? { ...app, reminderEnabled } : app));
     await saveAppointments(updated);
     setAppointments(updated);
   };
@@ -170,6 +217,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStaff(updated);
   };
 
+  const updateStaffWorkingHours = async (id: string, workingHours: { start: string; end: string; lunchStart?: string; lunchEnd?: string }) => {
+    const updated = staff.map(s => (s.id === id ? { ...s, workingHours } : s));
+    await saveStaff(updated);
+    setStaff(updated);
+  };
+
+  const updateStaffMember = async (updatedMember: StaffMember) => {
+    const updated = staff.map(s => (s.id === updatedMember.id ? updatedMember : s));
+    await saveStaff(updated);
+    setStaff(updated);
+  };
+
   const updateConfig = async (newConfig: BusinessConfig) => {
     await saveBusinessConfig(newConfig);
     setConfig(newConfig);
@@ -189,9 +248,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         config,
         createAppointment,
         updateAppointmentStatus,
+        updateAppointmentReminder,
         addStaffNoteForClient,
+        activeNotification,
+        dismissNotification,
         addService,
         deleteService,
+        updateStaffWorkingHours,
+        updateStaffMember,
         addStaffMember,
         deleteStaffMember,
         updateConfig,

@@ -70,7 +70,16 @@ export const loadServices = async (): Promise<Service[]> => {
     return INITIAL_SERVICES;
   }
   try {
-    return JSON.parse(json);
+    const stored: Service[] = JSON.parse(json);
+    // Ensure any newly added initial services (like extras) exist
+    const storedIds = new Set(stored.map(s => s.id));
+    const missing = INITIAL_SERVICES.filter(s => !storedIds.has(s.id));
+    if (missing.length > 0) {
+      const merged = [...stored, ...missing];
+      await saveServices(merged);
+      return merged;
+    }
+    return stored;
   } catch (e) {
     return INITIAL_SERVICES;
   }
