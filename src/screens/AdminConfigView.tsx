@@ -386,13 +386,13 @@ export const AdminConfigView: React.FC = () => {
                     {hasCompatibleExtras ? (
                       <View style={styles.extrasCountBadge}>
                         <Text style={styles.extrasCountBadgeText}>
-                          ✨ {item.compatibleExtraIds!.length} extras disponíveis
+                          {item.compatibleExtraIds!.length} extras disponíveis
                         </Text>
                       </View>
                     ) : isExtraItem ? (
                       <View style={[styles.extrasCountBadge, { backgroundColor: '#312E81' }]}>
                         <Text style={[styles.extrasCountBadgeText, { color: '#C7D2FE' }]}>
-                          🎁 Item de Extra
+                          Item de Extra
                         </Text>
                       </View>
                     ) : null}

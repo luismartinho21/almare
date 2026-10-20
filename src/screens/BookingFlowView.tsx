@@ -170,15 +170,6 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
 
   return (
     <View style={[styles.container, isBarber ? styles.bgBarber : styles.bgBeauty]}>
-      {/* Top Header: logo centrado tocável */}
-      <TouchableOpacity style={styles.topLogoHeader} onPress={handleBack} activeOpacity={0.9}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.topLogoImg}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-
       {/* Step Indicator Bar */}
       <View style={[styles.stepBar, isBarber ? styles.stepBarBarber : styles.stepBarBeauty]}>
         <TouchableOpacity
@@ -268,9 +259,14 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         {currentStep === 1 && (
           <View>
             <View style={styles.sectionTitleRow}>
-              <Text style={[styles.stepHeader, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                1. Selecione os Serviços
-              </Text>
+              <View>
+                <TouchableOpacity onPress={onBackToHome} style={{ marginBottom: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: accentColor }}>← Voltar ao Início</Text>
+                </TouchableOpacity>
+                <Text style={[styles.stepHeader, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+                  1. Selecione os Serviços
+                </Text>
+              </View>
               {selectedServices.length > 0 && (
                 <TouchableOpacity onPress={() => setSelectedServices([])}>
                   <Text style={styles.clearText}>Limpar ({selectedServices.length})</Text>
@@ -558,19 +554,6 @@ const styles = StyleSheet.create({
   },
   bgBeauty: {
     backgroundColor: '#FAF7F2',
-  },
-  topLogoHeader: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0D0D11',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#22222A',
-  },
-  topLogoImg: {
-    width: 140,
-    height: 90,
   },
   /* Step Bar */
   stepBar: {

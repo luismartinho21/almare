@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
           style={[
             styles.roleBadge,
             {
-              backgroundColor: isBarber ? 'rgba(212, 175, 55, 0.18)' : '#FFFDF0',
+              backgroundColor: isBarber ? 'rgba(212, 175, 55, 0.18)' : '#F2ECE1',
               borderColor: isBarber ? Theme.colors.brandSecondary : '#D4AF37',
             },
           ]}
@@ -72,8 +72,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#2A2415',
   },
   beautyBg: {
-    backgroundColor: '#FFFFFF', // White for Mulheres
-    borderBottomColor: '#E6D5AC',
+    backgroundColor: '#FAF7F2', // Mesmo tom de bege (branco sujo)
+    borderBottomColor: '#E8E1D5',
   },
   topRow: {
     flexDirection: 'row',

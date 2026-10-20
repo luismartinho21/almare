@@ -56,9 +56,19 @@ function MainScreen() {
     }
   };
 
+  const isBeauty = activeBranch === 'beauty';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D0D11" />
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { backgroundColor: isBeauty ? '#FAF7F2' : '#0D0D11' },
+      ]}
+    >
+      <StatusBar
+        barStyle={isBeauty ? 'dark-content' : 'light-content'}
+        backgroundColor={isBeauty ? '#FAF7F2' : '#0D0D11'}
+      />
       {activeNotification && (
         <View
           style={[

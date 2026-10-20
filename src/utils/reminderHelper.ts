@@ -248,7 +248,7 @@ export async function scheduleTwoHourReminder(
   if (permissionGranted && delayMs > 0 && delayMs < 24 * 60 * 60 * 1000) {
     setTimeout(() => {
       try {
-        new Notification(`⏰ Almare ${branchLabel} - Lembrete`, {
+        new Notification(`Almare ${branchLabel} - Lembrete`, {
           body: `Olá ${appointment.clientName}! A sua marcação para ${appointment.serviceName} com ${appointment.staffName} é hoje às ${appointment.timeSlot} (daqui a 2 horas). Esperamos por si!`,
           icon: '/assets/logo.jpg',
         });
@@ -263,7 +263,7 @@ export async function scheduleTwoHourReminder(
     message = `A marcação é em menos de 2 horas (${appointment.timeSlot}). Enviaremos o alerta imediatamente.`;
     if (permissionGranted && typeof window !== 'undefined' && 'Notification' in window) {
       try {
-        new Notification(`⏰ Almare ${branchLabel} - Lembrete de Marcação`, {
+        new Notification(`Almare ${branchLabel} - Lembrete de Marcação`, {
           body: `Olá ${appointment.clientName}! Tem marcação para ${appointment.serviceName} hoje às ${appointment.timeSlot}!`,
           icon: '/assets/logo.jpg',
         });
@@ -308,7 +308,7 @@ export async function checkAndTriggerDueReminders(
             Notification.permission === 'granted'
           ) {
             try {
-              new Notification(`⏰ Almare ${branchLabel} - Lembrete de Marcação`, {
+              new Notification(`Almare ${branchLabel} - Lembrete de Marcação`, {
                 body: `Olá ${rem.clientName}! A sua marcação para ${rem.serviceName} com ${rem.staffName} é hoje às ${rem.timeSlot} (daqui a 2 horas).`,
                 icon: '/assets/logo.jpg',
               });
