@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,9 @@ export const AdminConfigView: React.FC = () => {
 
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Services Tab Filter
+  const [servicesBranchFilter, setServicesBranchFilter] = useState<'all' | 'barber' | 'beauty'>('all');
+
   // New Service Modal State
   const [serviceModalVisible, setServiceModalVisible] = useState(false);
   const [newServBranch, setNewServBranch] = useState<SalonBranch>('barber');
@@ -49,12 +52,67 @@ export const AdminConfigView: React.FC = () => {
   const [newServPrice, setNewServPrice] = useState('20');
   const [newServDur, setNewServDur] = useState('30');
 
+  // Extras toggle & selection state for new service
+  const [hasExtras, setHasExtras] = useState(false);
+  const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
+
+  // Inline creation of a new extra
+  const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
+  const [inlineExtraName, setInlineExtraName] = useState('');
+  const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
+  const [inlineExtraDur, setInlineExtraDur] = useState('10');
+
   // New Staff Modal State
   const [staffModalVisible, setStaffModalVisible] = useState(false);
   const [newStaffBranch, setNewStaffBranch] = useState<SalonBranch>('barber');
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffRole, setNewStaffRole] = useState('Master Barber');
   const [newStaffPhone, setNewStaffPhone] = useState('');
+
+  // Available extras for the currently chosen branch
+  const availableBranchExtras = useMemo(() => {
+    return services.filter(s => s.branch === newServBranch && s.category.toLowerCase() === 'extras');
+  }, [services, newServBranch]);
+
+  // Filtered services for management view
+  const displayedServices = useMemo(() => {
+    if (servicesBranchFilter === 'all') return services;
+    return services.filter(s => s.branch === servicesBranchFilter);
+  }, [services, servicesBranchFilter]);
+
+  const handleBranchChangeForNewService = (branch: SalonBranch) => {
+    setNewServBranch(branch);
+    setNewServCat(branch === 'barber' ? 'Cortes' : 'Manicure / Pedicure');
+    setSelectedExtraIds([]);
+    setShowInlineNewExtra(false);
+  };
+
+  const handleToggleExtraId = (extraId: string) => {
+    setSelectedExtraIds(prev =>
+      prev.includes(extraId) ? prev.filter(id => id !== extraId) : [...prev, extraId]
+    );
+  };
+
+  const handleCreateInlineExtra = async () => {
+    if (!inlineExtraName.trim()) {
+      alert('Introduza o nome do novo extra.');
+      return;
+    }
+    const createdExtra = await addService({
+      branch: newServBranch,
+      category: 'Extras',
+      name: inlineExtraName.trim(),
+      description: `Extra opcional para ${newServBranch === 'barber' ? 'Barber' : 'Beauty'}.`,
+      price: parseFloat(inlineExtraPrice) || 5,
+      durationMinutes: parseInt(inlineExtraDur, 10) || 10,
+      iconName: 'sparkles',
+    });
+
+    // Automatically select the newly created extra
+    setSelectedExtraIds(prev => [...prev, createdExtra.id]);
+    setInlineExtraName('');
+    setShowInlineNewExtra(false);
+  };
 
   const handleSaveGeneralConfig = async () => {
     await updateConfig({
@@ -81,14 +139,18 @@ export const AdminConfigView: React.FC = () => {
       branch: newServBranch,
       category: newServCat,
       name: newServName.trim(),
-      description: newServDesc.trim() || 'Serviço de alta qualidade Almaria.',
+      description: newServDesc.trim() || 'Serviço de alta qualidade Almare.',
       price: parseFloat(newServPrice) || 15,
       durationMinutes: parseInt(newServDur, 10) || 30,
       iconName: 'scissors',
+      compatibleExtraIds: hasExtras ? selectedExtraIds : [],
     });
 
     setNewServName('');
     setNewServDesc('');
+    setHasExtras(false);
+    setSelectedExtraIds([]);
+    setShowInlineNewExtra(false);
     setServiceModalVisible(false);
   };
 
@@ -227,25 +289,124 @@ export const AdminConfigView: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {services.map(item => (
-              <View key={item.id} style={styles.itemRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.itemTitle}>
-                    {item.name} ({item.branch === 'barber' ? 'Barber' : 'Beauty'})
-                  </Text>
-                  <Text style={styles.itemSub}>
-                    {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => deleteService(item.id)}
+            {/* Branch Filter Pills */}
+            <View style={styles.servicesFilterRow}>
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  servicesBranchFilter === 'all' && styles.filterPillActive,
+                ]}
+                onPress={() => setServicesBranchFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    servicesBranchFilter === 'all' && styles.filterPillTextActive,
+                  ]}
                 >
-                  <Text style={styles.deleteBtnText}>Eliminar</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+                  Todos ({services.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  servicesBranchFilter === 'barber' && styles.filterPillActive,
+                ]}
+                onPress={() => setServicesBranchFilter('barber')}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    servicesBranchFilter === 'barber' && styles.filterPillTextActive,
+                  ]}
+                >
+                  Barber ({services.filter(s => s.branch === 'barber').length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  servicesBranchFilter === 'beauty' && styles.filterPillActive,
+                ]}
+                onPress={() => setServicesBranchFilter('beauty')}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    servicesBranchFilter === 'beauty' && styles.filterPillTextActive,
+                  ]}
+                >
+                  Beauty ({services.filter(s => s.branch === 'beauty').length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {displayedServices.map(item => {
+              const hasCompatibleExtras = item.compatibleExtraIds && item.compatibleExtraIds.length > 0;
+              const isExtraItem = item.category.toLowerCase() === 'extras';
+
+              return (
+                <View key={item.id} style={styles.itemRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Text style={styles.itemTitle}>
+                        {item.name}
+                      </Text>
+                      <View
+                        style={[
+                          styles.branchBadge,
+                          {
+                            backgroundColor:
+                              item.branch === 'barber' ? '#2A2A35' : 'rgba(212,175,55,0.15)',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.branchBadgeText,
+                            {
+                              color:
+                                item.branch === 'barber'
+                                  ? Theme.colors.barber.accent
+                                  : Theme.colors.beauty.badge,
+                            },
+                          ]}
+                        >
+                          {item.branch === 'barber' ? 'Barber' : 'Beauty'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.itemSub}>
+                      {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
+                    </Text>
+
+                    {hasCompatibleExtras ? (
+                      <View style={styles.extrasCountBadge}>
+                        <Text style={styles.extrasCountBadgeText}>
+                          ✨ {item.compatibleExtraIds!.length} extras disponíveis
+                        </Text>
+                      </View>
+                    ) : isExtraItem ? (
+                      <View style={[styles.extrasCountBadge, { backgroundColor: '#312E81' }]}>
+                        <Text style={[styles.extrasCountBadgeText, { color: '#C7D2FE' }]}>
+                          🎁 Item de Extra
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => deleteService(item.id)}
+                  >
+                    <Text style={styles.deleteBtnText}>Eliminar</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
         ) : (
           /* STAFF CONFIG */
@@ -286,56 +447,225 @@ export const AdminConfigView: React.FC = () => {
       {/* Add Service Modal */}
       <Modal visible={serviceModalVisible} transparent animationType="slide" onRequestClose={() => setServiceModalVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setServiceModalVisible(false)}>
-          <Pressable style={styles.modalContent} onPress={e => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Adicionar Novo Serviço</Text>
+          <Pressable style={[styles.modalContent, { maxHeight: '90%' }]} onPress={e => e.stopPropagation()}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Adicionar Novo Serviço</Text>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Ramo / Salão</Text>
-              <View style={styles.branchSelectRow}>
-                <TouchableOpacity
-                  style={[styles.branchTab, newServBranch === 'barber' && styles.branchTabActive]}
-                  onPress={() => setNewServBranch('barber')}
-                >
-                  <Text style={styles.branchTabText}>Barber</Text>
-                </TouchableOpacity>
+              {/* Branch Selector */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Ramo / Salão</Text>
+                <View style={styles.branchSelectRow}>
+                  <TouchableOpacity
+                    style={[styles.branchTab, newServBranch === 'barber' && styles.branchTabActive]}
+                    onPress={() => handleBranchChangeForNewService('barber')}
+                  >
+                    <Text style={styles.branchTabText}>Barber</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.branchTab, newServBranch === 'beauty' && styles.branchTabActive]}
-                  onPress={() => setNewServBranch('beauty')}
-                >
-                  <Text style={styles.branchTabText}>Beauty</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.branchTab, newServBranch === 'beauty' && styles.branchTabActive]}
+                    onPress={() => handleBranchChangeForNewService('beauty')}
+                  >
+                    <Text style={styles.branchTabText}>Beauty</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Nome do Serviço *</Text>
-              <TextInput style={styles.input} value={newServName} onChangeText={setNewServName} placeholder="Ex: Corte Skin Fade" placeholderTextColor="#71717A" />
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Categoria</Text>
-              <TextInput style={styles.input} value={newServCat} onChangeText={setNewServCat} />
-            </View>
-
-            <View style={styles.rowTwo}>
-              <View style={[styles.fieldGroup, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.label}>Preço (€)</Text>
-                <TextInput style={styles.input} keyboardType="numeric" value={newServPrice} onChangeText={setNewServPrice} />
+              {/* Service Name */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Nome do Serviço *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newServName}
+                  onChangeText={setNewServName}
+                  placeholder={newServBranch === 'barber' ? 'Ex: Corte Skin Fade' : 'Ex: Head-Spa Holístico'}
+                  placeholderTextColor="#71717A"
+                />
               </View>
-              <View style={[styles.fieldGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Duração (min)</Text>
-                <TextInput style={styles.input} keyboardType="numeric" value={newServDur} onChangeText={setNewServDur} />
+
+              {/* Category Pills & Input */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Categoria do Serviço</Text>
+                <View style={styles.catPillRow}>
+                  {(newServBranch === 'barber'
+                    ? ['Cortes', 'Barbas', 'Signature', 'Extras']
+                    : ['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Extras']
+                  ).map(cat => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.catPill, newServCat === cat && styles.catPillActive]}
+                      onPress={() => setNewServCat(cat)}
+                    >
+                      <Text style={[styles.catPillText, newServCat === cat && styles.catPillTextActive]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[styles.input, { marginTop: 6 }]}
+                  value={newServCat}
+                  onChangeText={setNewServCat}
+                  placeholder="Ou digite outra categoria personalizada"
+                  placeholderTextColor="#71717A"
+                />
               </View>
-            </View>
 
-            <TouchableOpacity style={styles.modalSaveBtn} onPress={handleCreateService}>
-              <Text style={styles.modalSaveBtnText}>Criar Serviço</Text>
-            </TouchableOpacity>
+              {/* Price & Duration */}
+              <View style={styles.rowTwo}>
+                <View style={[styles.fieldGroup, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.label}>Preço (€)</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="numeric"
+                    value={newServPrice}
+                    onChangeText={setNewServPrice}
+                  />
+                </View>
+                <View style={[styles.fieldGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Duração (min)</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="numeric"
+                    value={newServDur}
+                    onChangeText={setNewServDur}
+                  />
+                </View>
+              </View>
 
-            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setServiceModalVisible(false)}>
-              <Text style={styles.modalCancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
+              {/* Description */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Descrição do Serviço</Text>
+                <TextInput
+                  style={[styles.input, { height: 60 }]}
+                  multiline
+                  value={newServDesc}
+                  onChangeText={setNewServDesc}
+                  placeholder="Descreva o que inclui o serviço..."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* EXTRAS CONFIGURATION */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Inclui Extras Disponíveis para o Cliente?</Text>
+                <View style={styles.extrasToggleRow}>
+                  <TouchableOpacity
+                    style={[styles.extrasToggleBtn, !hasExtras && styles.extrasToggleBtnActive]}
+                    onPress={() => setHasExtras(false)}
+                  >
+                    <Text style={[styles.extrasToggleText, !hasExtras && styles.extrasToggleTextActive]}>
+                      Não (Sem extras)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.extrasToggleBtn, hasExtras && styles.extrasToggleBtnActive]}
+                    onPress={() => setHasExtras(true)}
+                  >
+                    <Text style={[styles.extrasToggleText, hasExtras && styles.extrasToggleTextActive]}>
+                      Sim (Associar Extras)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {hasExtras && (
+                <View style={styles.extrasSelectContainer}>
+                  <Text style={styles.extrasSelectTitle}>
+                    Selecione os extras que vão aparecer no menu drop-down deste serviço:
+                  </Text>
+
+                  {availableBranchExtras.length === 0 ? (
+                    <Text style={styles.noExtrasText}>
+                      Ainda não existem extras em {newServBranch === 'barber' ? 'Barber' : 'Beauty'}. Crie um novo abaixo:
+                    </Text>
+                  ) : (
+                    <View style={styles.extraChipsGrid}>
+                      {availableBranchExtras.map(extra => {
+                        const isSelected = selectedExtraIds.includes(extra.id);
+                        return (
+                          <TouchableOpacity
+                            key={extra.id}
+                            style={[styles.extraChip, isSelected && styles.extraChipSelected]}
+                            onPress={() => handleToggleExtraId(extra.id)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.extraChipText, isSelected && styles.extraChipTextSelected]}>
+                              {isSelected ? '✓ ' : '+ '}
+                              {extra.name} (+{extra.price.toFixed(2)} €)
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  {/* Inline creation of new extra */}
+                  {!showInlineNewExtra ? (
+                    <TouchableOpacity
+                      style={styles.newInlineExtraBtn}
+                      onPress={() => setShowInlineNewExtra(true)}
+                    >
+                      <Text style={styles.newInlineExtraBtnText}>+ Criar e Adicionar Outro Extra</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.inlineExtraForm}>
+                      <Text style={styles.inlineExtraTitle}>
+                        Novo Extra para {newServBranch === 'barber' ? 'Barber' : 'Beauty'}:
+                      </Text>
+                      <TextInput
+                        style={[styles.input, { marginBottom: 6 }]}
+                        placeholder="Nome do Extra (Ex: Ampola Nutritiva)"
+                        placeholderTextColor="#71717A"
+                        value={inlineExtraName}
+                        onChangeText={setInlineExtraName}
+                      />
+                      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                        <TextInput
+                          style={[styles.input, { flex: 1 }]}
+                          placeholder="Preço € (Ex: 6)"
+                          placeholderTextColor="#71717A"
+                          keyboardType="numeric"
+                          value={inlineExtraPrice}
+                          onChangeText={setInlineExtraPrice}
+                        />
+                        <TextInput
+                          style={[styles.input, { flex: 1 }]}
+                          placeholder="Duração min (Ex: 10)"
+                          placeholderTextColor="#71717A"
+                          keyboardType="numeric"
+                          value={inlineExtraDur}
+                          onChangeText={setInlineExtraDur}
+                        />
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity style={styles.inlineSaveBtn} onPress={handleCreateInlineExtra}>
+                          <Text style={styles.inlineSaveBtnText}>Adicionar Extra à Lista</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.inlineCancelBtn}
+                          onPress={() => setShowInlineNewExtra(false)}
+                        >
+                          <Text style={styles.inlineCancelBtnText}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.modalSaveBtn} onPress={handleCreateService}>
+                <Text style={styles.modalSaveBtnText}>Criar Serviço</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setServiceModalVisible(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -610,5 +940,205 @@ const styles = StyleSheet.create({
   modalCancelBtnText: {
     color: '#9CA3AF',
     fontSize: 13,
+  },
+  servicesFilterRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#2E2E38',
+    marginRight: 8,
+  },
+  filterPillActive: {
+    backgroundColor: Theme.colors.brandSecondary,
+    borderColor: Theme.colors.brandSecondary,
+  },
+  filterPillText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filterPillTextActive: {
+    color: '#111',
+    fontWeight: '800',
+  },
+  branchBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  branchBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  extrasCountBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(212,175,55,0.18)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  extrasCountBadgeText: {
+    color: Theme.colors.brandSecondary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  catPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  catPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#27272A',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  catPillActive: {
+    backgroundColor: Theme.colors.brandSecondary,
+    borderColor: Theme.colors.brandSecondary,
+  },
+  catPillText: {
+    color: '#D1D5DB',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  catPillTextActive: {
+    color: '#111827',
+    fontWeight: '900',
+  },
+  extrasToggleRow: {
+    flexDirection: 'row',
+  },
+  extrasToggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+    marginRight: 6,
+  },
+  extrasToggleBtnActive: {
+    backgroundColor: Theme.colors.brandSecondary,
+    borderColor: Theme.colors.brandSecondary,
+  },
+  extrasToggleText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  extrasToggleTextActive: {
+    color: '#111',
+    fontWeight: '800',
+  },
+  extrasSelectContainer: {
+    backgroundColor: '#222228',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  extrasSelectTitle: {
+    color: Theme.colors.brandSecondary,
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  noExtrasText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  extraChipsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  extraChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#1C1C22',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  extraChipSelected: {
+    backgroundColor: 'rgba(212,175,55,0.25)',
+    borderColor: Theme.colors.brandSecondary,
+  },
+  extraChipText: {
+    color: '#D1D5DB',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  extraChipTextSelected: {
+    color: Theme.colors.brandSecondary,
+    fontWeight: '800',
+  },
+  newInlineExtraBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Theme.colors.brandSecondary,
+    backgroundColor: 'transparent',
+  },
+  newInlineExtraBtnText: {
+    color: Theme.colors.brandSecondary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  inlineExtraForm: {
+    backgroundColor: '#18181C',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  inlineExtraTitle: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  inlineSaveBtn: {
+    flex: 1,
+    backgroundColor: Theme.colors.brandSecondary,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  inlineSaveBtnText: {
+    color: '#111',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  inlineCancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  inlineCancelBtnText: {
+    color: '#9CA3AF',
+    fontSize: 12,
   },
 });

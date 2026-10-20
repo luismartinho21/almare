@@ -4,7 +4,8 @@ import { INITIAL_APPOINTMENTS, INITIAL_SERVICES, INITIAL_STAFF, INITIAL_BUSINESS
 
 const KEYS = {
   APPOINTMENTS: '@almare_appointments',
-  SERVICES: '@almare_services',
+  SERVICES: '@almare_services_v3',
+  SERVICES_LEGACY: '@almare_services',
   STAFF: '@almare_staff',
   CLIENT_HISTORY: '@almare_client_history',
   CONFIG: '@almare_business_config',
@@ -72,20 +73,59 @@ export const addAppointment = async (appointment: Appointment): Promise<Appointm
 
 // --- SERVICES ---
 export const loadServices = async (): Promise<Service[]> => {
-  const json = await getItem(KEYS.SERVICES);
+  let json = await getItem(KEYS.SERVICES);
+  if (!json) {
+    // Check legacy key
+    json = await getItem(KEYS.SERVICES_LEGACY);
+  }
   if (!json) {
     await saveServices(INITIAL_SERVICES);
     return INITIAL_SERVICES;
   }
   try {
-    const stored: Service[] = JSON.parse(json);
+    let stored: Service[] = JSON.parse(json);
+    let changed = false;
+
+    // Map of initial services by id
+    const initialMap = new Map<string, Service>(INITIAL_SERVICES.map(s => [s.id, s]));
+
+    // Reconcile stored services: ensure updated compatibleExtraIds and categories from INITIAL_SERVICES
+    stored = stored.map(s => {
+      const initial = initialMap.get(s.id);
+      if (initial) {
+        let itemUpdated = false;
+        const newObj = { ...s };
+
+        if (!newObj.compatibleExtraIds || newObj.compatibleExtraIds.length === 0) {
+          if (initial.compatibleExtraIds && initial.compatibleExtraIds.length > 0) {
+            newObj.compatibleExtraIds = initial.compatibleExtraIds;
+            itemUpdated = true;
+          }
+        }
+
+        if (s.branch === 'beauty' && (s.category === 'Cabelo' || s.category === 'Combos')) {
+          newObj.category = initial.category;
+          itemUpdated = true;
+        }
+
+        if (itemUpdated) {
+          changed = true;
+          return newObj;
+        }
+      }
+      return s;
+    });
+
     // Ensure any newly added initial services (like extras) exist
     const storedIds = new Set(stored.map(s => s.id));
     const missing = INITIAL_SERVICES.filter(s => !storedIds.has(s.id));
     if (missing.length > 0) {
-      const merged = [...stored, ...missing];
-      await saveServices(merged);
-      return merged;
+      stored = [...stored, ...missing];
+      changed = true;
+    }
+
+    if (changed || !(await getItem(KEYS.SERVICES))) {
+      await saveServices(stored);
     }
     return stored;
   } catch (e) {

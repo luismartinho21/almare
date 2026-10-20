@@ -61,7 +61,7 @@ interface AppContextType {
   updateStaffMember: (updatedMember: StaffMember) => Promise<void>;
   addStaffMember: (newStaff: Omit<StaffMember, 'id'>) => Promise<void>;
   deleteStaffMember: (id: string) => Promise<void>;
-  addService: (newService: Omit<Service, 'id'>) => Promise<void>;
+  addService: (newService: Omit<Service, 'id'>) => Promise<Service>;
   deleteService: (id: string) => Promise<void>;
   updateConfig: (newConfig: BusinessConfig) => Promise<void>;
   refreshData: () => Promise<void>;
@@ -191,11 +191,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClientHistory(updated);
   };
 
-  const addService = async (newService: Omit<Service, 'id'>) => {
+  const addService = async (newService: Omit<Service, 'id'>): Promise<Service> => {
     const created: Service = { ...newService, id: `serv-${Date.now()}` };
     const updated = [...services, created];
     await saveServices(updated);
     setServices(updated);
+    return created;
   };
 
   const deleteService = async (id: string) => {

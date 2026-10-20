@@ -64,6 +64,10 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     setSelectedServices(prev => {
       const exists = prev.some(s => s.id === service.id);
       if (exists) {
+        // Se remover o serviço principal, desmarca também os extras compatíveis associados
+        if (service.compatibleExtraIds && service.compatibleExtraIds.length > 0) {
+          return prev.filter(s => s.id !== service.id && !service.compatibleExtraIds!.includes(s.id));
+        }
         return prev.filter(s => s.id !== service.id);
       } else {
         return [...prev, service];
@@ -322,10 +326,29 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
             {/* Service Cards List com extras específicos compatíveis em cada card */}
             {filteredServices.map(service => {
               const isSelected = selectedServices.some(s => s.id === service.id);
-              // Filtrar extras compatíveis exclusivamente com este serviço
-              const compatibleExtras = service.compatibleExtraIds && service.compatibleExtraIds.length > 0
-                ? extraServices.filter(e => service.compatibleExtraIds!.includes(e.id))
-                : [];
+              // Determinar extras compatíveis com o serviço:
+              let compatibleExtras: Service[] = [];
+              if (Array.isArray(service.compatibleExtraIds)) {
+                if (service.compatibleExtraIds.length > 0) {
+                  compatibleExtras = extraServices.filter(e => service.compatibleExtraIds!.includes(e.id));
+                }
+              } else {
+                // Fallback para garantir que nunca falham extras mesmo em dados legados
+                if (service.branch === 'beauty') {
+                  const cat = service.category.toLowerCase();
+                  if (cat.includes('manicure') || cat.includes('pedicure') || cat.includes('unhas')) {
+                    compatibleExtras = extraServices.filter(e => e.id === 'be-ext3' || e.id === 'be-ext5');
+                  } else if (cat.includes('head-spa')) {
+                    compatibleExtras = extraServices.filter(e => e.id === 'be-ext1' || e.id === 'be-ext2');
+                  } else if (cat.includes('tratamento')) {
+                    compatibleExtras = extraServices.filter(e => e.id === 'be-ext1' || e.id === 'be-ext2' || e.id === 'be-ext4');
+                  } else {
+                    compatibleExtras = extraServices;
+                  }
+                } else {
+                  compatibleExtras = extraServices;
+                }
+              }
               const selectedExtrasForThisCard = selectedServices.filter(s =>
                 compatibleExtras.some(e => e.id === s.id)
               );

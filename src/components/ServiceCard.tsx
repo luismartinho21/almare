@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Service, SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
@@ -24,6 +24,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 }) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+  const [isDropdownOpen, setIsDropdownOpen] = useState(true);
+
+  // Auto-open dropdown menu whenever service becomes selected
+  useEffect(() => {
+    if (isSelected) {
+      setIsDropdownOpen(true);
+    }
+  }, [isSelected]);
 
   return (
     <View
@@ -110,54 +118,122 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         </View>
       </TouchableOpacity>
 
-      {/* ABA DE EXTRAS (aparece quando o serviço é selecionado) */}
+      {/* MENU DROP-DOWN DE EXTRAS (aparece imediatamente abaixo quando o serviço é selecionado) */}
       {isSelected && availableExtras && availableExtras.length > 0 && onToggleExtra && (
         <View style={styles.extrasContainer}>
           <View style={styles.extrasDivider} />
-          <Text style={[styles.extrasHeaderTitle, { color: accentColor }]}>
-            EXTRAS DISPONÍVEIS (OPCIONAL):
-          </Text>
-          {availableExtras.map(extra => {
-            const isExtraSelected = selectedExtras.some(e => e.id === extra.id);
-            return (
-              <TouchableOpacity
-                key={extra.id}
-                style={[
-                  styles.extraRow,
-                  isExtraSelected && {
-                    backgroundColor: isBarber ? '#36342E' : '#FFF3D6',
-                    borderColor: accentColor,
-                  },
-                ]}
-                onPress={() => onToggleExtra(extra)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.extraCheckCircle}>
-                  <Text
+
+          <TouchableOpacity
+            style={[
+              styles.dropdownHeader,
+              {
+                backgroundColor: isBarber ? '#1E1E26' : '#FAF6EC',
+                borderColor: accentColor,
+              },
+            ]}
+            onPress={() => setIsDropdownOpen(prev => !prev)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.dropdownHeaderLeft}>
+              <Text style={[styles.dropdownChevron, { color: accentColor }]}>
+                {isDropdownOpen ? '▼' : '▶'}
+              </Text>
+              <Text style={[styles.dropdownHeaderTitle, { color: isBarber ? '#FFF' : '#1F2937' }]}>
+                Extras Disponíveis ({availableExtras.length})
+              </Text>
+            </View>
+
+            <View style={styles.dropdownHeaderRight}>
+              {selectedExtras.length > 0 && (
+                <View style={[styles.extraBadgeSelected, { backgroundColor: accentColor }]}>
+                  <Text style={[styles.extraBadgeSelectedText, { color: isBarber ? '#000' : '#FFF' }]}>
+                    ✓ {selectedExtras.length}
+                  </Text>
+                </View>
+              )}
+              <Text style={[styles.dropdownHint, { color: accentColor }]}>
+                {isDropdownOpen ? 'Recolher ▲' : 'Ver Extras ▼'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {isDropdownOpen && (
+            <View style={styles.dropdownContent}>
+              <Text style={[styles.dropdownSubtitle, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                Selecione extras para associar a este serviço:
+              </Text>
+              {availableExtras.map(extra => {
+                const isExtraSelected = selectedExtras.some(e => e.id === extra.id);
+                return (
+                  <TouchableOpacity
+                    key={extra.id}
                     style={[
-                      styles.extraCheckText,
-                      { color: isExtraSelected ? accentColor : '#9CA3AF' },
+                      styles.extraRow,
+                      {
+                        backgroundColor: isExtraSelected
+                          ? (isBarber ? '#36342E' : '#FFF3D6')
+                          : (isBarber ? '#202027' : '#FDFCFA'),
+                        borderColor: isExtraSelected ? accentColor : (isBarber ? '#2E2E38' : '#E8E3D5'),
+                      },
                     ]}
+                    onPress={() => onToggleExtra(extra)}
+                    activeOpacity={0.7}
                   >
-                    {isExtraSelected ? '✓' : '+'}
-                  </Text>
-                </View>
-                <View style={{ flex: 1, marginHorizontal: 8 }}>
-                  <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
-                    {extra.name}
-                  </Text>
-                  {extra.description ? (
-                    <Text style={styles.extraDesc}>{extra.description}</Text>
-                  ) : null}
-                </View>
-                <View style={styles.extraPriceBadge}>
-                  <Text style={[styles.extraPriceText, { color: accentColor }]}>
-                    +{extra.price.toFixed(2)} €
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                    <View
+                      style={[
+                        styles.extraCheckCircle,
+                        isExtraSelected && {
+                          backgroundColor: accentColor,
+                          borderColor: accentColor,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.extraCheckText,
+                          { color: isExtraSelected ? (isBarber ? '#000' : '#FFF') : '#9CA3AF' },
+                        ]}
+                      >
+                        {isExtraSelected ? '✓' : '+'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, marginHorizontal: 8 }}>
+                      <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
+                        {extra.name}
+                      </Text>
+                      {extra.description ? (
+                        <Text style={[styles.extraDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                          {extra.description}
+                        </Text>
+                      ) : null}
+                      <Text style={[styles.extraDuration, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
+                        +{extra.durationMinutes} min
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.extraPriceBadge,
+                        {
+                          backgroundColor: isExtraSelected
+                            ? accentColor
+                            : (isBarber ? '#2D2D36' : '#EDE8DC'),
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.extraPriceText,
+                          { color: isExtraSelected ? (isBarber ? '#000' : '#FFF') : accentColor },
+                        ]}
+                      >
+                        +{extra.price.toFixed(2)} €
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -238,40 +314,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  /* ── ABA DE EXTRAS ── */
+  /* ── ABA DE EXTRAS / MENU DROP-DOWN ── */
   extrasContainer: {
     marginTop: 12,
-    paddingTop: 10,
+    paddingTop: 8,
   },
   extrasDivider: {
     height: 1,
     backgroundColor: 'rgba(212, 175, 55, 0.25)',
     marginBottom: 10,
   },
-  extrasHeaderTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
     marginBottom: 8,
+  },
+  dropdownHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownChevron: {
+    fontSize: 12,
+    fontWeight: '900',
+    marginRight: 8,
+  },
+  dropdownHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  dropdownHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dropdownHint: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  extraBadgeSelected: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  extraBadgeSelectedText: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  dropdownContent: {
+    marginTop: 4,
+  },
+  dropdownSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginLeft: 2,
   },
   extraRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'transparent',
-    marginBottom: 6,
-    backgroundColor: 'rgba(0,0,0,0.03)',
+    marginBottom: 8,
   },
   extraCheckCircle: {
-    width: 22,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#9CA3AF',
   },
   extraCheckText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '900',
   },
   extraName: {
@@ -280,13 +404,18 @@ const styles = StyleSheet.create({
   },
   extraDesc: {
     fontSize: 11,
-    color: '#6B7280',
-    marginTop: 1,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  extraDuration: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
   extraPriceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   extraPriceText: {
     fontSize: 12,
