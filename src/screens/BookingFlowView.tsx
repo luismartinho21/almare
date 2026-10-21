@@ -325,7 +325,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         )}
 
         {/* ============================================================ */}
-        {/* STEP 2: PROFISSIONAL & HORÁRIO INTEGRADO NO MESMO ECRÃ */}
+        {/* STEP 2: PROFISSIONAL & HORÁRIO (COMO OS EXTRAS) */}
         {/* ============================================================ */}
         {currentStep === 2 && (
           <View>
@@ -341,7 +341,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
             </View>
 
             <Text style={[styles.stepSubHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-              Selecione o profissional pretendido. O seu horário disponível aparecerá logo por baixo para escolher a data e a hora.
+              Selecione o profissional pretendido. O seu horário abre diretamente no cartão para escolher o dia e a vaga disponível.
             </Text>
 
             {/* Current Summary Banner */}
@@ -369,30 +369,18 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               </View>
             </View>
 
-            {/* Opção 1: Sem preferência */}
-            <View style={styles.staffItemContainer}>
-              <StaffCard
-                isNoPreference={true}
-                branch={activeBranch}
-                isSelected={isNoPreference}
-                onSelect={() => {
-                  setIsNoPreference(true);
-                  setSelectedStaff(null);
-                }}
-              />
-
-              {/* Horário por baixo de "Sem preferência" quando selecionado */}
-              {isNoPreference && (
-                <View style={[styles.inlineScheduleBox, isBarber ? styles.inlineScheduleBoxBarber : styles.inlineScheduleBoxBeauty]}>
-                  <View style={styles.inlineScheduleHeader}>
-                    <Text style={[styles.inlineScheduleTitle, { color: accentColor }]}>
-                      HORÁRIOS DISPONÍVEIS • EQUIPA COMPLETA
-                    </Text>
-                    <Text style={[styles.inlineScheduleDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                      Vagas com pelo menos 1 profissional livre durante os {totalDuration} min acumulados
-                    </Text>
-                  </View>
-
+            {/* Opção 1: Sem preferência (Abre o horário no próprio cartão, como os extras) */}
+            <StaffCard
+              isNoPreference={true}
+              branch={activeBranch}
+              isSelected={isNoPreference}
+              onSelect={() => {
+                setIsNoPreference(true);
+                setSelectedStaff(null);
+              }}
+              selectedScheduleLabel={isNoPreference ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
+              scheduleNode={
+                <View>
                   <TimeSlotPicker
                     branch={activeBranch}
                     selectedDate={selectedDate}
@@ -417,37 +405,26 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                     </Text>
                   </TouchableOpacity>
                 </View>
-              )}
-            </View>
+              }
+            />
 
-            {/* Opção 2..N: Membros da equipa com horários integrados por baixo */}
+            {/* Opção 2..N: Membros da equipa (Abrem os horários no próprio cartão como os extras) */}
             {branchStaff.map(s => {
               const isSelected = !isNoPreference && selectedStaff?.id === s.id;
 
               return (
-                <View key={s.id} style={styles.staffItemContainer}>
-                  <StaffCard
-                    staff={s}
-                    branch={activeBranch}
-                    isSelected={isSelected}
-                    onSelect={() => {
-                      setSelectedStaff(s);
-                      setIsNoPreference(false);
-                    }}
-                  />
-
-                  {/* Horário do funcionário logo por baixo do seu cartão quando selecionado */}
-                  {isSelected && (
-                    <View style={[styles.inlineScheduleBox, isBarber ? styles.inlineScheduleBoxBarber : styles.inlineScheduleBoxBeauty]}>
-                      <View style={styles.inlineScheduleHeader}>
-                        <Text style={[styles.inlineScheduleTitle, { color: accentColor }]}>
-                          HORÁRIOS DISPONÍVEIS DE {s.name.toUpperCase()}
-                        </Text>
-                        <Text style={[styles.inlineScheduleDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                          Vagas livres e sem sobreposição com os seus {totalDuration} min de serviços
-                        </Text>
-                      </View>
-
+                <StaffCard
+                  key={s.id}
+                  staff={s}
+                  branch={activeBranch}
+                  isSelected={isSelected}
+                  onSelect={() => {
+                    setSelectedStaff(s);
+                    setIsNoPreference(false);
+                  }}
+                  selectedScheduleLabel={isSelected ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
+                  scheduleNode={
+                    <View>
                       <TimeSlotPicker
                         branch={activeBranch}
                         selectedDate={selectedDate}
@@ -472,8 +449,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  )}
-                </View>
+                  }
+                />
               );
             })}
           </View>
@@ -636,40 +613,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
     marginLeft: 10,
-  },
-  /* Staff Item & Inline Schedule Box */
-  staffItemContainer: {
-    marginBottom: 12,
-  },
-  inlineScheduleBox: {
-    marginTop: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-  },
-  inlineScheduleBoxBarber: {
-    backgroundColor: '#16161D',
-    borderColor: '#2E2E3C',
-  },
-  inlineScheduleBoxBeauty: {
-    backgroundColor: '#FAF5EE',
-    borderColor: '#E6D7B8',
-  },
-  inlineScheduleHeader: {
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.15)',
-    paddingBottom: 8,
-  },
-  inlineScheduleTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  inlineScheduleDesc: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
   },
   proceedBtn: {
     marginTop: 16,
