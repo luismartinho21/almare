@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
+import { WomanSilhouette, ManSilhouette } from '../components/Silhouettes';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
@@ -97,7 +98,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
       <StatusBar barStyle="light-content" backgroundColor="#0D0D11" />
 
       <Animated.View style={[styles.cardsRow, { opacity: buttonsFadeAnim }]}>
-        {/* BEAUTY — ESQUERDA (Branco e Dourado) */}
+        {/* BEAUTY — ESQUERDA (Branco com silhueta feminina subentendida a preto) */}
         <Animated.View
           style={[
             styles.cardWrapper,
@@ -117,16 +118,21 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
             onPress={handleBeautyPress}
             activeOpacity={0.85}
           >
-            <Text style={styles.beautyTitle}>ALMARE</Text>
-            <Text style={styles.beautySubtitle}>BEAUTY</Text>
-            <View style={styles.beautyLine} />
+            {/* Silhueta feminina sutil em preto no fundo branco */}
+            <WomanSilhouette color="#000000" opacity={0.09} />
+
+            <View style={styles.cardContent}>
+              <Text style={styles.beautyTitle}>ALMARE</Text>
+              <Text style={styles.beautySubtitle}>BEAUTY</Text>
+              <View style={styles.beautyLine} />
+            </View>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Lombada central dourada do livro */}
         <View style={styles.spineDivider} />
 
-        {/* BARBER — DIREITA (Preto e Dourado) */}
+        {/* BARBER — DIREITA (Preto com silhueta masculina subentendida a branco) */}
         <Animated.View
           style={[
             styles.cardWrapper,
@@ -146,9 +152,14 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
             onPress={handleBarberPress}
             activeOpacity={0.85}
           >
-            <Text style={styles.barberTitle}>ALMARE</Text>
-            <Text style={styles.barberSubtitle}>BARBER</Text>
-            <View style={styles.barberLine} />
+            {/* Silhueta masculina sutil em branco no fundo preto */}
+            <ManSilhouette color="#FFFFFF" opacity={0.14} />
+
+            <View style={styles.cardContent}>
+              <Text style={styles.barberTitle}>ALMARE</Text>
+              <Text style={styles.barberSubtitle}>BARBER</Text>
+              <View style={styles.barberLine} />
+            </View>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
@@ -177,6 +188,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRightWidth: 0.5,
     borderRightColor: '#E2E8F0',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
   beautyTitle: {
     color: '#B8860B',
@@ -213,6 +231,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderLeftWidth: 0.5,
     borderLeftColor: '#272733',
+    position: 'relative',
+    overflow: 'hidden',
   },
   barberTitle: {
     color: '#D4AF37',
