@@ -2,6 +2,18 @@ import React, { useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Appointment, SalonBranch, StaffMember } from '../types';
 import { Theme } from '../constants/theme';
+import {
+  MORNING_SLOTS,
+  AFTERNOON_SLOTS,
+  ALL_WORKING_SLOTS,
+  isSalonOpenDay,
+  getOccupiedSlots,
+  timeToMinutes,
+  minutesToTime,
+} from '../utils/scheduleHelper';
+
+// Re-exportar para retrocompatibilidade
+export { MORNING_SLOTS, AFTERNOON_SLOTS, ALL_WORKING_SLOTS, isSalonOpenDay };
 
 interface TimeSlotPickerProps {
   branch: SalonBranch;
@@ -13,18 +25,8 @@ interface TimeSlotPickerProps {
   isNoPreference?: boolean;
   branchStaff: StaffMember[];
   appointments: Appointment[];
+  durationMinutes?: number;
 }
-
-// Horários do salão: 09:00 às 12:00 e das 14:00 às 19:00 (Terça a Sábado)
-export const MORNING_SLOTS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
-export const AFTERNOON_SLOTS = ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'];
-export const ALL_WORKING_SLOTS = [...MORNING_SLOTS, ...AFTERNOON_SLOTS];
-
-export const isSalonOpenDay = (dateStr: string): boolean => {
-  const d = new Date(dateStr + 'T00:00:00');
-  const day = d.getDay(); // 0 = Domingo, 1 = Segunda
-  return day !== 0 && day !== 1;
-};
 
 export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
   branch,
@@ -36,6 +38,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
   isNoPreference = false,
   branchStaff,
   appointments,
+  durationMinutes = 30,
 }) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
@@ -76,67 +79,17 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     return isSalonOpenDay(selectedDate);
   }, [selectedDate]);
 
-  // Check if a staff member is available for a given slot on selectedDate
-  const isStaffAvailableForSlot = (staff: StaffMember, slot: string, date: string): boolean => {
-    if (!isSalonOpenDay(date)) return false;
-
-    // Check staff working hours and lunch break
-    const start = staff.workingHours?.start || '09:00';
-    const end = staff.workingHours?.end || '19:00';
-    const lunchStart = staff.workingHours?.lunchStart || '12:00';
-    const lunchEnd = staff.workingHours?.lunchEnd || '14:00';
-
-    const isMorning = slot >= start && slot < lunchStart;
-    const isAfternoon = slot >= lunchEnd && slot < end;
-
-    if (!isMorning && !isAfternoon) {
-      return false;
-    }
-
-    // Check existing appointments
-    const hasApp = appointments.some(
-      app =>
-        app.status !== 'cancelled' &&
-        app.date === date &&
-        app.timeSlot === slot &&
-        app.staffId === staff.id
-    );
-
-    return !hasApp;
-  };
-
-  // Find occupied slots for selected date
+  // Find occupied slots for selected date considering accumulated service duration
   const occupiedSlots = useMemo(() => {
-    const occupiedSet = new Set<string>();
-
-    if (!isCurrentDateOpen) {
-      // Salão fechado neste dia (Domingo ou Segunda)
-      ALL_WORKING_SLOTS.forEach(slot => occupiedSet.add(slot));
-      return occupiedSet;
-    }
-
-    ALL_WORKING_SLOTS.forEach(slot => {
-      if (isNoPreference) {
-        // Sem preferência: ocupado apenas se nenhum staff estiver livre
-        const hasFreeStaff = branchStaff.some(s => isStaffAvailableForSlot(s, slot, selectedDate));
-        if (!hasFreeStaff) {
-          occupiedSet.add(slot);
-        }
-      } else if (staffMember) {
-        // Profissional específico
-        if (!isStaffAvailableForSlot(staffMember, slot, selectedDate)) {
-          occupiedSet.add(slot);
-        }
-      } else {
-        const hasFreeStaff = branchStaff.some(s => isStaffAvailableForSlot(s, slot, selectedDate));
-        if (!hasFreeStaff) {
-          occupiedSet.add(slot);
-        }
-      }
+    return getOccupiedSlots({
+      date: selectedDate,
+      durationMinutes,
+      staffMember,
+      isNoPreference,
+      branchStaff,
+      appointments,
     });
-
-    return occupiedSet;
-  }, [ALL_WORKING_SLOTS, isCurrentDateOpen, isNoPreference, branchStaff, staffMember, appointments, selectedDate]);
+  }, [selectedDate, durationMinutes, staffMember, isNoPreference, branchStaff, appointments]);
 
   // If selected slot is occupied, auto-pick first available
   useEffect(() => {
@@ -148,14 +101,51 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     }
   }, [occupiedSlots, selectedDate, staffMember, isNoPreference]);
 
+  // Calculate ending time for the selected slot based on accumulated duration
+  const slotEndTime = useMemo(() => {
+    if (!selectedTimeSlot) return '';
+    const startMins = timeToMinutes(selectedTimeSlot);
+    return minutesToTime(startMins + durationMinutes);
+  }, [selectedTimeSlot, durationMinutes]);
+
+  const targetStaffName = isNoPreference
+    ? 'Qualquer profissional disponível'
+    : staffMember?.name || 'Profissional';
+
   return (
     <View style={styles.container}>
+      {/* Target Staff & Accumulated Duration Banner */}
+      <View style={[styles.durationBanner, isBarber ? styles.durationBannerBarber : styles.durationBannerBeauty]}>
+        <View style={styles.durationBannerHeader}>
+          <Text style={[styles.durationBannerStaff, { color: accentColor }]}>
+            {targetStaffName.toUpperCase()}
+          </Text>
+          <View style={[styles.durationBadge, { backgroundColor: accentColor }]}>
+            <Text style={styles.durationBadgeText}>{durationMinutes} MIN ACUMULADOS</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.durationBannerSub, { color: isBarber ? '#D1D5DB' : '#4B5563' }]}>
+          {selectedTimeSlot ? (
+            <>
+              Horário selecionado:{' '}
+              <Text style={{ fontWeight: '800', color: accentColor }}>
+                {selectedTimeSlot} às {slotEndTime}
+              </Text>{' '}
+              ({durationMinutes} min contínuos de atendimento)
+            </>
+          ) : (
+            'Selecione uma vaga disponível abaixo'
+          )}
+        </Text>
+      </View>
+
       <View style={styles.headerInfoRow}>
         <Text style={[styles.sectionTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-          Escolha a Data
+          1. Escolha a Data
         </Text>
         <Text style={[styles.scheduleBadge, { color: accentColor }]}>
-          Terça a Sábado: 09:00-12:00 e 14:00-19:00
+          Ter a Sáb: 09:00-12:00 e 14:00-19:00
         </Text>
       </View>
 
@@ -235,14 +225,10 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           <View style={styles.shiftSection}>
             <View style={styles.shiftHeaderRow}>
               <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                Manhã (09:00 às 12:00)
+                2. Manhã (09:00 às 12:00)
               </Text>
               <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                {isNoPreference
-                  ? 'Vagas disponíveis com qualquer profissional'
-                  : staffMember
-                  ? `Vagas de ${staffMember.name}`
-                  : 'Vagas'}
+                Vagas disponíveis para {durationMinutes} min
               </Text>
             </View>
 
@@ -291,7 +277,10 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           <View style={styles.shiftSection}>
             <View style={styles.shiftHeaderRow}>
               <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                Tarde (14:00 às 19:00)
+                3. Tarde (14:00 às 19:00)
+              </Text>
+              <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                Vagas disponíveis para {durationMinutes} min
               </Text>
             </View>
 
@@ -338,29 +327,71 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
   },
+  durationBanner: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+  },
+  durationBannerBarber: {
+    backgroundColor: '#18181F',
+    borderColor: '#2D2D38',
+  },
+  durationBannerBeauty: {
+    backgroundColor: '#F5EFE6',
+    borderColor: '#DFD2C0',
+  },
+  durationBannerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  durationBannerStaff: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  durationBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  durationBadgeText: {
+    color: '#111827',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  durationBannerSub: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
   headerInfoRow: {
     marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
   },
   scheduleBadge: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 2,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   dateScroll: {
     marginBottom: 12,
   },
   dateCard: {
-    width: 68,
-    height: 76,
+    width: 66,
+    height: 74,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 8,
     borderWidth: 1,
   },
   dateCardBarber: {
@@ -379,7 +410,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dateDayNum: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '900',
     marginVertical: 1,
   },
@@ -432,9 +463,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   lunchNoticeRow: {
-    paddingVertical: 6,
+    paddingVertical: 4,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   lunchNoticeText: {
     fontSize: 11,

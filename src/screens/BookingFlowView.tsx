@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { SalonBranch, Service, StaffMember, Appointment } from '../types';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Service, StaffMember, Appointment } from '../types';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
 import { ServiceCard } from '../components/ServiceCard';
@@ -8,12 +8,13 @@ import { StaffCard } from '../components/StaffCard';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { BookingModal } from '../components/BookingModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
+import { getFreeStaffForInterval } from '../utils/scheduleHelper';
 
 interface BookingFlowViewProps {
   onBackToHome: () => void;
 }
 
-type BookingStep = 1 | 2 | 3;
+type BookingStep = 1 | 2;
 
 export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }) => {
   const { activeBranch, services, staff, appointments, createAppointment } = useApp();
@@ -21,8 +22,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const isBarber = activeBranch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
 
-  // Current Step in the booking flow:
-  // 1: Serviços -> 2: Profissional (Staff / Sem preferência) -> 3: Agendamento (Data & Horário)
+  // Fluxo de agendamento em 2 passos integrados:
+  // 1: Serviços -> 2: Profissional & Horário integrado
   const [currentStep, setCurrentStep] = useState<BookingStep>(1);
 
   // Filter services by branch
@@ -48,7 +49,6 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
 
   const [selectedCategory, setSelectedCategory] = useState<string>('TODOS');
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
-  const [isExtrasExpanded, setIsExtrasExpanded] = useState<boolean>(false);
 
   // Staff selection state:
   // Can be a specific staff member OR "sem preferência"
@@ -64,7 +64,6 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     setSelectedServices(prev => {
       const exists = prev.some(s => s.id === service.id);
       if (exists) {
-        // Se remover o serviço principal, desmarca também os extras compatíveis associados
         if (service.compatibleExtraIds && service.compatibleExtraIds.length > 0) {
           return prev.filter(s => s.id !== service.id && !service.compatibleExtraIds!.includes(s.id));
         }
@@ -74,10 +73,6 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       }
     });
   };
-
-  const selectedExtrasCount = useMemo(() => {
-    return selectedServices.filter(s => s.category.toLowerCase() === 'extras').length;
-  }, [selectedServices]);
 
   const totalPrice = useMemo(() => {
     return selectedServices.reduce((sum, s) => sum + s.price, 0);
@@ -101,29 +96,18 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     return regularServices.filter(s => s.category === selectedCategory);
   }, [regularServices, selectedCategory]);
 
-  // Helper: Find free staff members for a specific slot on selectedDate
-  const getFreeStaffForSlot = (slot: string, date: string): StaffMember[] => {
-    return branchStaff.filter(s => {
-      if (s.workingHours && (slot < s.workingHours.start || slot >= s.workingHours.end)) {
-        return false;
-      }
-      const hasApp = appointments.some(
-        a =>
-          a.status !== 'cancelled' &&
-          a.date === date &&
-          a.timeSlot === slot &&
-          a.staffId === s.id
-      );
-      return !hasApp;
-    });
-  };
-
-  // Determine effective staff for checkout
+  // Determine effective staff for checkout based on accumulated duration
   const getEffectiveStaff = (): StaffMember => {
     if (!isNoPreference && selectedStaff) {
       return selectedStaff;
     }
-    const freeList = getFreeStaffForSlot(selectedTimeSlot, selectedDate);
+    const freeList = getFreeStaffForInterval(
+      branchStaff,
+      selectedTimeSlot,
+      totalDuration,
+      selectedDate,
+      appointments
+    );
     return freeList[0] || branchStaff[0];
   };
 
@@ -158,19 +142,9 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     setConfirmedBooking(created);
   };
 
-  const handleBack = () => {
-    if (currentStep === 3) {
-      setCurrentStep(2);
-    } else if (currentStep === 2) {
-      setCurrentStep(1);
-    } else {
-      onBackToHome();
-    }
-  };
-
   return (
     <View style={[styles.container, isBarber ? styles.bgBarber : styles.bgBeauty]}>
-      {/* Step Indicator Bar */}
+      {/* Step Indicator Bar (2 passos apenas) */}
       <View style={[styles.stepBar, isBarber ? styles.stepBarBarber : styles.stepBarBeauty]}>
         <TouchableOpacity
           style={[styles.stepTab, currentStep === 1 && { borderBottomColor: accentColor, borderBottomWidth: 2 }]}
@@ -215,39 +189,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               },
             ]}
           >
-            {currentStep > 2 ? '✓ ' : ''}2. Profissional
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.stepTab,
-            currentStep === 3 && { borderBottomColor: accentColor, borderBottomWidth: 2 },
-          ]}
-          onPress={() => {
-            if (selectedServices.length > 0) setCurrentStep(3);
-          }}
-          disabled={selectedServices.length === 0}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.stepTabText,
-              {
-                color:
-                  currentStep === 3
-                    ? accentColor
-                    : selectedServices.length > 0
-                    ? isBarber
-                      ? '#D1D5DB'
-                      : '#374151'
-                    : isBarber
-                    ? '#52525B'
-                    : '#D1D5DB',
-              },
-            ]}
-          >
-            3. Horário
+            2. Profissional & Horário
           </Text>
         </TouchableOpacity>
       </View>
@@ -319,17 +261,15 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               })}
             </ScrollView>
 
-            {/* Service Cards List com extras específicos compatíveis em cada card */}
+            {/* Service Cards List com extras específicos compatíveis */}
             {filteredServices.map(service => {
               const isSelected = selectedServices.some(s => s.id === service.id);
-              // Determinar extras compatíveis com o serviço:
               let compatibleExtras: Service[] = [];
               if (Array.isArray(service.compatibleExtraIds)) {
                 if (service.compatibleExtraIds.length > 0) {
                   compatibleExtras = extraServices.filter(e => service.compatibleExtraIds!.includes(e.id));
                 }
               } else {
-                // Fallback para garantir que nunca falham extras mesmo em dados legados
                 if (service.branch === 'beauty') {
                   const cat = service.category.toLowerCase();
                   if (cat.includes('manicure') || cat.includes('pedicure') || cat.includes('unhas')) {
@@ -377,7 +317,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
             >
               <Text style={styles.proceedBtnText}>
                 {selectedServices.length > 0
-                  ? `Continuar para Escolha do Profissional • ${totalPrice.toFixed(2)} €`
+                  ? `Continuar para Escolha do Profissional & Horário • ${totalPrice.toFixed(2)} €`
                   : 'Selecione 1 ou mais Serviços para Continuar'}
               </Text>
             </TouchableOpacity>
@@ -385,76 +325,24 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         )}
 
         {/* ============================================================ */}
-        {/* STEP 2: SELECIONE O PROFISSIONAL (STAFF) */}
+        {/* STEP 2: PROFISSIONAL & HORÁRIO INTEGRADO NO MESMO ECRÃ */}
         {/* ============================================================ */}
         {currentStep === 2 && (
           <View>
             <View style={styles.sectionTitleRow}>
-              <Text style={[styles.stepHeader, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                2. Selecione o Profissional
-              </Text>
-              <TouchableOpacity onPress={() => setCurrentStep(1)}>
-                <Text style={[styles.backStepText, { color: accentColor }]}>Voltar a Serviços</Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity onPress={() => setCurrentStep(1)} style={{ marginBottom: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: accentColor }}>← Alterar Serviços</Text>
+                </TouchableOpacity>
+                <Text style={[styles.stepHeader, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+                  2. Profissional & Horário
+                </Text>
+              </View>
             </View>
 
             <Text style={[styles.stepSubHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-              Escolha quem irá realizar o seu atendimento ou selecione sem preferência para ver todas as vagas disponíveis.
+              Selecione o profissional pretendido. O seu horário disponível aparecerá logo por baixo para escolher a data e a hora.
             </Text>
-
-            {/* Option 1: Sem preferência */}
-            <StaffCard
-              isNoPreference={true}
-              branch={activeBranch}
-              isSelected={isNoPreference}
-              onSelect={() => {
-                setIsNoPreference(true);
-                setSelectedStaff(null);
-                setCurrentStep(3);
-              }}
-            />
-
-            {/* Option 2..N: Branch Staff Members */}
-            {branchStaff.map(s => (
-              <StaffCard
-                key={s.id}
-                staff={s}
-                branch={activeBranch}
-                isSelected={!isNoPreference && selectedStaff?.id === s.id}
-                onSelect={() => {
-                  setSelectedStaff(s);
-                  setIsNoPreference(false);
-                  setCurrentStep(3);
-                }}
-              />
-            ))}
-
-            {/* Proceed Button */}
-            <TouchableOpacity
-              style={[styles.proceedBtn, { backgroundColor: accentColor }]}
-              onPress={() => setCurrentStep(3)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.proceedBtnText}>
-                Continuar para Data e Horário →
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 3: AGENDAMENTO POSSÍVEL (DATA E HORÁRIO) */}
-        {/* ============================================================ */}
-        {currentStep === 3 && (
-          <View>
-            <View style={styles.sectionTitleRow}>
-              <Text style={[styles.stepHeader, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                3. Data e Horário Disponível
-              </Text>
-              <TouchableOpacity onPress={() => setCurrentStep(2)}>
-                <Text style={[styles.backStepText, { color: accentColor }]}>Mudar Profissional</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Current Summary Banner */}
             <View
@@ -464,7 +352,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               ]}
             >
               <View style={styles.summaryBannerRow}>
-                <Text style={[styles.summaryBannerLabel, { color: accentColor }]}>SERVIÇOS:</Text>
+                <Text style={[styles.summaryBannerLabel, { color: accentColor }]}>SERVIÇOS ({selectedServices.length}):</Text>
                 <Text
                   style={[styles.summaryBannerValue, { color: isBarber ? '#FFFFFF' : '#111827' }]}
                   numberOfLines={1}
@@ -474,45 +362,120 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               </View>
 
               <View style={styles.summaryBannerRow}>
-                <Text style={[styles.summaryBannerLabel, { color: accentColor }]}>PROFISSIONAL:</Text>
-                <Text style={[styles.summaryBannerValue, { color: isBarber ? '#FFFFFF' : '#111827' }]}>
-                  {isNoPreference
-                    ? 'Sem preferência (Qualquer profissional disponível)'
-                    : selectedStaff?.name || 'Profissional da equipa'}
-                </Text>
-              </View>
-
-              <View style={styles.summaryBannerRow}>
                 <Text style={[styles.summaryBannerLabel, { color: accentColor }]}>TOTAL:</Text>
                 <Text style={[styles.summaryBannerValue, { color: isBarber ? '#FFFFFF' : '#111827' }]}>
-                  {totalPrice.toFixed(2)} € ({totalDuration} min)
+                  {totalPrice.toFixed(2)} € • {totalDuration} min acumulados
                 </Text>
               </View>
             </View>
 
-            {/* TimeSlotPicker */}
-            <TimeSlotPicker
-              branch={activeBranch}
-              selectedDate={selectedDate}
-              onSelectDate={d => setSelectedDate(d)}
-              selectedTimeSlot={selectedTimeSlot}
-              onSelectTimeSlot={ts => setSelectedTimeSlot(ts)}
-              staffMember={isNoPreference ? null : selectedStaff}
-              isNoPreference={isNoPreference}
-              branchStaff={branchStaff}
-              appointments={appointments}
-            />
+            {/* Opção 1: Sem preferência */}
+            <View style={styles.staffItemContainer}>
+              <StaffCard
+                isNoPreference={true}
+                branch={activeBranch}
+                isSelected={isNoPreference}
+                onSelect={() => {
+                  setIsNoPreference(true);
+                  setSelectedStaff(null);
+                }}
+              />
 
-            {/* Checkout CTA Button */}
-            <TouchableOpacity
-              style={[styles.proceedBtn, { backgroundColor: accentColor }]}
-              onPress={handleOpenCheckout}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.proceedBtnText}>
-                Finalizar Marcação • {selectedDate} às {selectedTimeSlot}
-              </Text>
-            </TouchableOpacity>
+              {/* Horário por baixo de "Sem preferência" quando selecionado */}
+              {isNoPreference && (
+                <View style={[styles.inlineScheduleBox, isBarber ? styles.inlineScheduleBoxBarber : styles.inlineScheduleBoxBeauty]}>
+                  <View style={styles.inlineScheduleHeader}>
+                    <Text style={[styles.inlineScheduleTitle, { color: accentColor }]}>
+                      HORÁRIOS DISPONÍVEIS • EQUIPA COMPLETA
+                    </Text>
+                    <Text style={[styles.inlineScheduleDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                      Vagas com pelo menos 1 profissional livre durante os {totalDuration} min acumulados
+                    </Text>
+                  </View>
+
+                  <TimeSlotPicker
+                    branch={activeBranch}
+                    selectedDate={selectedDate}
+                    onSelectDate={d => setSelectedDate(d)}
+                    selectedTimeSlot={selectedTimeSlot}
+                    onSelectTimeSlot={ts => setSelectedTimeSlot(ts)}
+                    staffMember={null}
+                    isNoPreference={true}
+                    branchStaff={branchStaff}
+                    appointments={appointments}
+                    durationMinutes={totalDuration}
+                  />
+
+                  {/* Proceed to checkout button */}
+                  <TouchableOpacity
+                    style={[styles.proceedBtn, { backgroundColor: accentColor }]}
+                    onPress={handleOpenCheckout}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.proceedBtnText}>
+                      Finalizar Marcação • {selectedDate} às {selectedTimeSlot} ({totalPrice.toFixed(2)} €)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Opção 2..N: Membros da equipa com horários integrados por baixo */}
+            {branchStaff.map(s => {
+              const isSelected = !isNoPreference && selectedStaff?.id === s.id;
+
+              return (
+                <View key={s.id} style={styles.staffItemContainer}>
+                  <StaffCard
+                    staff={s}
+                    branch={activeBranch}
+                    isSelected={isSelected}
+                    onSelect={() => {
+                      setSelectedStaff(s);
+                      setIsNoPreference(false);
+                    }}
+                  />
+
+                  {/* Horário do funcionário logo por baixo do seu cartão quando selecionado */}
+                  {isSelected && (
+                    <View style={[styles.inlineScheduleBox, isBarber ? styles.inlineScheduleBoxBarber : styles.inlineScheduleBoxBeauty]}>
+                      <View style={styles.inlineScheduleHeader}>
+                        <Text style={[styles.inlineScheduleTitle, { color: accentColor }]}>
+                          HORÁRIOS DISPONÍVEIS DE {s.name.toUpperCase()}
+                        </Text>
+                        <Text style={[styles.inlineScheduleDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                          Vagas livres e sem sobreposição com os seus {totalDuration} min de serviços
+                        </Text>
+                      </View>
+
+                      <TimeSlotPicker
+                        branch={activeBranch}
+                        selectedDate={selectedDate}
+                        onSelectDate={d => setSelectedDate(d)}
+                        selectedTimeSlot={selectedTimeSlot}
+                        onSelectTimeSlot={ts => setSelectedTimeSlot(ts)}
+                        staffMember={s}
+                        isNoPreference={false}
+                        branchStaff={branchStaff}
+                        appointments={appointments}
+                        durationMinutes={totalDuration}
+                      />
+
+                      {/* Proceed to checkout button */}
+                      <TouchableOpacity
+                        style={[styles.proceedBtn, { backgroundColor: accentColor }]}
+                        onPress={handleOpenCheckout}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.proceedBtnText}>
+                          Finalizar Marcação com {s.name} • {selectedDate} às {selectedTimeSlot} ({totalPrice.toFixed(2)} €)
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -579,7 +542,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   stepTabText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
@@ -602,10 +565,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 17,
   },
-  backStepText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
   clearText: {
     color: '#EF4444',
     fontSize: 12,
@@ -622,124 +581,6 @@ const styles = StyleSheet.create({
   summaryPillText: {
     fontSize: 13,
     fontWeight: '700',
-  },
-  /* Accordion / Extras Tray */
-  extrasAccordion: {
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  extrasAccordionBarber: {
-    backgroundColor: '#18181E',
-    borderColor: '#3F3F46',
-  },
-  extrasAccordionBeauty: {
-    backgroundColor: '#FAF7F0',
-    borderColor: '#E6D7B8',
-  },
-  extrasAccordionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  extrasHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  extrasHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  extrasHeaderSub: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 1,
-  },
-  extrasHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  extrasBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginRight: 8,
-  },
-  extrasBadgeText: {
-    color: '#111',
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  extrasChevron: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  extrasDropdownBody: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    padding: 12,
-  },
-  extrasInfoHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 10,
-    fontStyle: 'italic',
-  },
-  extraRowItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    marginBottom: 8,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  extraRowInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  extraRowName: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  extraRowDesc: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  extraRowDuration: {
-    fontSize: 10,
-    color: '#71717A',
-    marginTop: 4,
-  },
-  extraRowAction: {
-    alignItems: 'flex-end',
-  },
-  extraRowPrice: {
-    fontSize: 13,
-    fontWeight: '900',
-    marginBottom: 4,
-  },
-  extraCheckCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: '#71717A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  extraCheckText: {
-    fontSize: 12,
-    fontWeight: '900',
   },
   categoryScroll: {
     marginBottom: 12,
@@ -767,7 +608,7 @@ const styles = StyleSheet.create({
   bookingSummaryBanner: {
     padding: 12,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 14,
     borderWidth: 1,
   },
   summaryBannerBarber: {
@@ -796,10 +637,44 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginLeft: 10,
   },
-  proceedBtn: {
-    marginTop: 20,
-    paddingVertical: 16,
+  /* Staff Item & Inline Schedule Box */
+  staffItemContainer: {
+    marginBottom: 12,
+  },
+  inlineScheduleBox: {
+    marginTop: 8,
     borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  inlineScheduleBoxBarber: {
+    backgroundColor: '#16161D',
+    borderColor: '#2E2E3C',
+  },
+  inlineScheduleBoxBeauty: {
+    backgroundColor: '#FAF5EE',
+    borderColor: '#E6D7B8',
+  },
+  inlineScheduleHeader: {
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(128,128,128,0.15)',
+    paddingBottom: 8,
+  },
+  inlineScheduleTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  inlineScheduleDesc: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  proceedBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -809,7 +684,7 @@ const styles = StyleSheet.create({
   },
   proceedBtnText: {
     color: '#111827',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '900',
   },
 });
