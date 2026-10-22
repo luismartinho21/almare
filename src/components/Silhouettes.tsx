@@ -9,8 +9,8 @@ interface SilhouetteProps {
 }
 
 /**
- * Silhueta artística feminina (Beauty) — Perfil de mulher elegante e suave
- * No fundo branco da página inicial, surge subentendida em preto sutil
+ * Silhueta artística feminina (Beauty) — Perfil elegante com CABELO COMPRIDO
+ * Muito parecida de perfil com o homem, virada para o centro, com longas madeixas fluidas.
  */
 export const WomanSilhouette: React.FC<SilhouetteProps> = ({
   color = '#000000',
@@ -20,7 +20,7 @@ export const WomanSilhouette: React.FC<SilhouetteProps> = ({
   return (
     <View style={[styles.container, style]} pointerEvents="none">
       <Svg
-        viewBox="0 0 400 650"
+        viewBox="0 0 400 520"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
@@ -28,76 +28,69 @@ export const WomanSilhouette: React.FC<SilhouetteProps> = ({
         <Defs>
           <LinearGradient id="womanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <Stop offset="0%" stopColor={color} stopOpacity={opacity * 1.5} />
-            <Stop offset="100%" stopColor={color} stopOpacity={opacity * 0.6} />
+            <Stop offset="100%" stopColor={color} stopOpacity={opacity * 0.7} />
           </LinearGradient>
         </Defs>
 
         <G fill="url(#womanGrad)">
-          {/* Perfil e silhueta do rosto feminino, lábios delicados e pescoço gracioso */}
+          {/* Perfil facial delicado + Pescoço e Base */}
           <Path
             d="
-              M 150 90
-              C 195 90 230 115 245 150
-              C 252 165 248 180 236 195
-              C 230 202 232 208 244 218
-              C 252 225 254 232 246 237
-              C 236 242 230 246 233 254
-              C 239 261 236 268 228 271
-              C 220 273 223 282 230 288
-              C 228 296 220 304 210 307
-              C 198 310 186 320 182 334
-              C 175 356 180 385 192 418
-              C 206 454 230 490 262 528
-              C 290 560 325 585 365 600
-              L 30 600
-              C 42 555 58 510 80 468
-              C 102 425 122 382 132 340
-              C 137 312 131 285 120 258
-              C 108 230 96 198 102 160
-              C 111 116 130 90 150 90
+              M 195 140
+              C 208 152 218 168 225 185
+              C 222 192 225 198 232 208
+              C 237 215 240 220 240 225
+              C 232 230 225 233 224 236
+              C 223 242 226 246 228 248
+              C 233 251 235 253 235 254
+              C 228 256 226 257 225 258
+              C 226 263 230 266 232 268
+              C 226 272 223 275 222 278
+              C 223 285 226 290 228 295
+              C 220 300 214 303 210 305
+              C 202 318 206 338 215 365
+              C 226 398 245 430 275 460
+              C 295 480 325 500 360 515
+              L 40 515
+              C 35 480 30 430 35 375
+              C 42 315 55 255 75 200
+              C 95 150 135 110 175 105
+              C 185 115 192 128 195 140
               Z
             "
           />
 
-          {/* Cabelo fluido, ondas elegantes e textura estética feminina */}
+          {/* Cabelo Comprido Fluido descendo pelas costas e ombro */}
           <Path
             d="
-              M 145 75
-              C 190 75 235 102 255 140
-              C 268 165 270 195 262 220
-              C 254 198 242 180 228 165
-              C 205 140 178 126 145 126
-              C 112 126 85 140 68 165
-              C 55 188 52 215 55 242
-              C 60 285 78 328 88 370
-              C 96 408 98 450 86 492
-              C 76 525 60 558 38 590
-              L 15 590
-              C 38 550 58 510 68 468
-              C 78 420 75 378 64 335
-              C 52 292 42 250 38 208
-              C 34 160 52 118 85 98
-              C 103 87 125 75 145 75
+              M 175 105
+              C 130 110 88 150 68 205
+              C 48 260 38 325 40 390
+              C 42 435 50 480 65 515
+              L 40 515
+              C 25 475 18 430 16 385
+              C 14 320 25 252 48 195
+              C 70 138 115 95 165 90
+              C 180 88 195 92 208 100
+              C 196 100 184 102 175 105
               Z
             "
           />
 
-          {/* Ondulação suave de madeixas ao longo da silhueta */}
+          {/* Madeixas compridas femininas com textura e ondulação */}
           <Path
             d="
-              M 175 160
-              C 205 165 230 185 240 210
-              C 230 210 215 200 200 190
-              C 185 180 170 175 155 175
-              C 135 175 120 185 113 200
-              C 107 212 105 228 107 245
-              C 110 275 120 305 125 335
-              C 130 365 127 395 120 425
-              L 110 422
-              C 117 395 119 365 115 335
-              C 110 305 100 275 97 245
-              C 95 225 97 205 105 190
-              C 115 170 140 158 175 160
+              M 195 140
+              C 180 148 165 165 155 190
+              C 142 220 138 258 142 298
+              C 146 338 158 378 172 418
+              C 182 445 195 472 210 500
+              C 215 508 218 515 220 515
+              L 205 515
+              C 195 485 180 455 168 425
+              C 152 385 138 342 132 298
+              C 126 252 130 210 145 175
+              C 158 145 178 135 195 140
               Z
             "
           />
@@ -108,8 +101,8 @@ export const WomanSilhouette: React.FC<SilhouetteProps> = ({
 };
 
 /**
- * Silhueta artística masculina (Barber) — Perfil de homem com barba estilizada e corte moderno
- * No fundo preto da página inicial, surge subentendido em branco sutil
+ * Silhueta artística masculina (Barber) — Perfil elegante com CORTE CURTO
+ * Perfil simétrico e harmónico com a mulher, virado para o centro, com corte curto limpo e nuca visível.
  */
 export const ManSilhouette: React.FC<SilhouetteProps> = ({
   color = '#FFFFFF',
@@ -119,7 +112,7 @@ export const ManSilhouette: React.FC<SilhouetteProps> = ({
   return (
     <View style={[styles.container, style]} pointerEvents="none">
       <Svg
-        viewBox="0 0 400 650"
+        viewBox="0 0 400 520"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
@@ -127,76 +120,66 @@ export const ManSilhouette: React.FC<SilhouetteProps> = ({
         <Defs>
           <LinearGradient id="manGrad" x1="100%" y1="0%" x2="0%" y2="100%">
             <Stop offset="0%" stopColor={color} stopOpacity={opacity * 1.5} />
-            <Stop offset="100%" stopColor={color} stopOpacity={opacity * 0.6} />
+            <Stop offset="100%" stopColor={color} stopOpacity={opacity * 0.7} />
           </LinearGradient>
         </Defs>
 
         <G fill="url(#manGrad)">
-          {/* Perfil masculino, barba esculpida e linha do maxilar marcante */}
+          {/* Perfil facial harmónico espelhado + Pescoço masculino e Ombro */}
           <Path
             d="
-              M 250 90
-              C 205 90 170 115 155 150
-              C 148 165 152 180 164 195
-              C 170 202 168 208 156 218
-              C 148 225 146 232 154 237
-              C 164 242 170 246 167 254
-              C 161 261 164 268 172 271
-              C 180 273 177 282 170 288
-              C 172 296 180 304 190 307
-              C 202 310 214 320 218 334
-              C 225 356 220 385 208 418
-              C 194 454 170 490 138 528
-              C 110 560 75 585 35 600
-              L 370 600
-              C 358 555 342 510 320 468
-              C 298 425 278 382 268 340
-              C 263 312 269 285 280 258
-              C 292 230 304 198 298 160
-              C 289 116 270 90 250 90
+              M 205 140
+              C 192 152 182 168 175 185
+              C 178 192 175 198 168 208
+              C 163 215 160 220 160 225
+              C 168 230 175 233 176 236
+              C 177 242 174 246 172 248
+              C 167 251 165 253 165 254
+              C 172 256 174 257 175 258
+              C 174 263 170 266 168 268
+              C 174 272 177 275 178 278
+              C 177 285 174 290 172 295
+              C 180 300 186 303 190 305
+              C 198 318 194 338 185 365
+              C 174 398 155 430 125 460
+              C 105 480 75 500 40 515
+              L 360 515
+              C 355 470 345 425 330 380
+              C 318 340 305 305 295 275
+              C 290 260 288 245 288 230
+              C 288 205 295 180 305 160
+              C 300 140 285 120 265 110
+              C 245 102 225 108 210 118
+              C 206 125 204 132 205 140
               Z
             "
           />
 
-          {/* Topete quiff/fade de barbearia e definição do contorno da cabeça */}
+          {/* Corte Curto Masculino (Corte curto, degradé limpo, nuca e ombros livres de cabelo comprido) */}
           <Path
             d="
-              M 255 75
-              C 210 75 165 102 145 140
-              C 132 165 130 195 138 220
-              C 146 198 158 180 172 165
-              C 195 140 222 126 255 126
-              C 288 126 315 140 332 165
-              C 345 188 348 215 345 242
-              C 340 285 322 328 312 370
-              C 304 408 302 450 314 492
-              C 324 525 340 558 362 590
-              L 385 590
-              C 362 550 342 510 332 468
-              C 322 420 325 378 336 335
-              C 348 292 358 250 362 208
-              C 366 160 348 118 315 98
-              C 297 87 275 75 255 75
-              Z
-            "
-          />
-
-          {/* Linha de corte fade / definição de barba de barbearia */}
-          <Path
-            d="
-              M 225 160
-              C 195 165 170 185 160 210
-              C 170 210 185 200 200 190
-              C 215 180 230 175 245 175
-              C 265 175 280 185 287 200
-              C 293 212 295 228 293 245
-              C 290 275 280 305 275 335
-              C 270 365 273 395 280 425
-              L 290 422
-              C 283 395 281 365 285 335
-              C 290 305 300 275 303 245
-              C 305 225 303 205 295 190
-              C 285 170 260 158 225 160
+              M 210 118
+              C 225 108 245 102 265 110
+              C 285 120 300 140 305 160
+              C 310 170 312 182 312 195
+              C 305 190 298 188 290 188
+              C 275 188 262 195 252 208
+              C 245 218 240 230 240 245
+              C 240 252 242 260 245 268
+              C 238 262 230 258 220 258
+              C 205 258 195 268 190 280
+              L 188 275
+              C 192 260 202 250 215 250
+              C 225 250 232 255 238 260
+              C 235 248 238 235 246 224
+              C 255 212 268 205 282 205
+              C 292 205 300 208 306 215
+              C 305 200 300 185 292 175
+              C 282 160 268 152 250 152
+              C 232 152 218 160 208 172
+              L 205 168
+              C 205 155 206 145 208 135
+              C 208 128 209 122 210 118
               Z
             "
           />
