@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Service, StaffMember, Appointment } from '../types';
 import { useApp } from '../context/AppContext';
@@ -57,7 +57,13 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   }, [staff, activeBranch]);
 
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [isNoPreference, setIsNoPreference] = useState<boolean>(true);
+  const [isNoPreference, setIsNoPreference] = useState<boolean>(false);
+
+  useEffect(() => {
+    setSelectedServices([]);
+    setSelectedStaff(null);
+    setIsNoPreference(false);
+  }, [activeBranch]);
 
   // Toggle service selection
   const handleToggleService = (service: Service) => {
@@ -114,6 +120,10 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const handleOpenCheckout = () => {
     if (selectedServices.length === 0) {
       alert('Por favor, selecione pelo menos um serviço.');
+      return;
+    }
+    if (!selectedStaff && !isNoPreference) {
+      alert('Por favor, selecione um profissional para consultar e confirmar o horário.');
       return;
     }
     setBookingModalVisible(true);
@@ -375,8 +385,12 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
               branch={activeBranch}
               isSelected={isNoPreference}
               onSelect={() => {
-                setIsNoPreference(true);
-                setSelectedStaff(null);
+                if (isNoPreference) {
+                  setIsNoPreference(false);
+                } else {
+                  setIsNoPreference(true);
+                  setSelectedStaff(null);
+                }
               }}
               selectedScheduleLabel={isNoPreference ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
               scheduleNode={
@@ -419,8 +433,12 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   branch={activeBranch}
                   isSelected={isSelected}
                   onSelect={() => {
-                    setSelectedStaff(s);
-                    setIsNoPreference(false);
+                    if (isSelected) {
+                      setSelectedStaff(null);
+                    } else {
+                      setSelectedStaff(s);
+                      setIsNoPreference(false);
+                    }
                   }}
                   selectedScheduleLabel={isSelected ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
                   scheduleNode={
@@ -478,6 +496,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
           setConfirmedBooking(null);
           setCurrentStep(1);
           setSelectedServices([]);
+          setSelectedStaff(null);
+          setIsNoPreference(false);
           onBackToHome();
         }}
       />

@@ -77,6 +77,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
     outputRange: [1, 0.7, 0],
   });
 
+  // Fundo bege de Beauty ao abrir/rodar a folha
+  const beautyBgFade = beautyBookAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
   // BARBER INTERPOLATIONS (virar para dentro)
   const barberRotateY = barberBookAnim.interpolate({
     inputRange: [0, 1],
@@ -97,13 +103,33 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
     <View style={styles.homeContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#0D0D11" />
 
+      {/* Camada de fundo interior do livro: lado esquerdo bege (#FAF7F2), lado direito escuro (#0D0D11) */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={styles.underlayRow}>
+          <View style={styles.beautyUnderlay} />
+          <View style={styles.barberUnderlay} />
+        </View>
+      </View>
+
+      {/* Ao rodar a mulher, o fundo global transita suavemente para o tom bege (#FAF7F2) */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: '#FAF7F2',
+            opacity: beautyBgFade,
+          },
+        ]}
+        pointerEvents="none"
+      />
+
       <Animated.View style={[styles.cardsRow, { opacity: buttonsFadeAnim }]}>
-        {/* BEAUTY — ESQUERDA (Branco e Dourado) */}
+        {/* BEAUTY — ESQUERDA (Branco e Dourado com interior Bege) */}
         <Animated.View
           style={[
             styles.cardWrapper,
             {
-              backgroundColor: '#ECECF0',
+              backgroundColor: '#FAF7F2',
               opacity: beautyOpacity,
               transform: [
                 { perspective: 1000 },
@@ -175,6 +201,18 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
 
 const styles = StyleSheet.create({
   homeContainer: {
+    flex: 1,
+    backgroundColor: '#0D0D11',
+  },
+  underlayRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  beautyUnderlay: {
+    flex: 1,
+    backgroundColor: '#FAF7F2',
+  },
+  barberUnderlay: {
     flex: 1,
     backgroundColor: '#0D0D11',
   },
