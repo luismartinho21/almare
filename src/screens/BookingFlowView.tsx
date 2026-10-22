@@ -8,7 +8,12 @@ import { StaffCard } from '../components/StaffCard';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { BookingModal } from '../components/BookingModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
-import { getFreeStaffForInterval } from '../utils/scheduleHelper';
+import {
+  getFreeStaffForInterval,
+  isStaffAvailableForInterval,
+  isSalonOpenDay,
+  ALL_WORKING_SLOTS,
+} from '../utils/scheduleHelper';
 
 interface BookingFlowViewProps {
   onBackToHome: () => void;
@@ -63,6 +68,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     setSelectedServices([]);
     setSelectedStaff(null);
     setIsNoPreference(false);
+    setSelectedTimeSlot('');
   }, [activeBranch]);
 
   // Toggle service selection
@@ -91,7 +97,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   // Dates & Time
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('11:00');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
 
   // Modals
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
@@ -101,6 +107,24 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     if (selectedCategory === 'TODOS') return regularServices;
     return regularServices.filter(s => s.category === selectedCategory);
   }, [regularServices, selectedCategory]);
+
+  // Check if a specific slot is available for a staff member or whole team
+  const checkSlotAvailability = (targetStaff: StaffMember | null, noPref: boolean, slot: string): boolean => {
+    if (!isSalonOpenDay(selectedDate) || !slot) return false;
+    if (noPref) {
+      return getFreeStaffForInterval(branchStaff, slot, totalDuration, selectedDate, appointments).length > 0;
+    }
+    if (targetStaff) {
+      return isStaffAvailableForInterval(targetStaff, slot, totalDuration, selectedDate, appointments);
+    }
+    return false;
+  };
+
+  // Check if a staff member or team has AT LEAST ONE available slot on selectedDate
+  const hasAnyAvailableSlot = (targetStaff: StaffMember | null, noPref: boolean): boolean => {
+    if (!isSalonOpenDay(selectedDate)) return false;
+    return ALL_WORKING_SLOTS.some(slot => checkSlotAvailability(targetStaff, noPref, slot));
+  };
 
   // Determine effective staff for checkout based on accumulated duration
   const getEffectiveStaff = (): StaffMember => {
@@ -117,13 +141,28 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     return freeList[0] || branchStaff[0];
   };
 
-  const handleOpenCheckout = () => {
+  const handleOpenCheckout = (staffTarget?: StaffMember | null, noPref?: boolean) => {
     if (selectedServices.length === 0) {
       alert('Por favor, selecione pelo menos um serviço.');
       return;
     }
-    if (!selectedStaff && !isNoPreference) {
+    const checkNoPref = noPref ?? isNoPreference;
+    const checkStaff = staffTarget ?? selectedStaff;
+    if (!checkStaff && !checkNoPref) {
       alert('Por favor, selecione um profissional para consultar e confirmar o horário.');
+      return;
+    }
+    if (!isSalonOpenDay(selectedDate)) {
+      alert('O salão encontra-se encerrado na data selecionada. Por favor escolha um dia de Terça a Sábado.');
+      return;
+    }
+    if (!selectedTimeSlot) {
+      alert('Por favor, selecione uma vaga de horário disponível.');
+      return;
+    }
+    const isFree = checkSlotAvailability(checkStaff, checkNoPref, selectedTimeSlot);
+    if (!isFree) {
+      alert('O horário pretendido está indisponível ou já se encontra ocupado. Por favor escolha outra vaga.');
       return;
     }
     setBookingModalVisible(true);
@@ -132,6 +171,17 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const handleConfirmBooking = async (clientName: string, clientPhone: string, notes?: string) => {
     const effectiveStaff = getEffectiveStaff();
     if (selectedServices.length === 0 || !effectiveStaff) return;
+
+    if (!isSalonOpenDay(selectedDate) || !selectedTimeSlot) {
+      alert('Por favor selecione uma data e horário válidos.');
+      return;
+    }
+
+    const isFree = checkSlotAvailability(effectiveStaff, isNoPreference, selectedTimeSlot);
+    if (!isFree) {
+      alert('A vaga selecionada já se encontra ocupada ou indisponível. Por favor escolha outro horário.');
+      return;
+    }
 
     const bookingNotes = isNoPreference
       ? `${notes ? notes + ' | ' : ''}(Sem preferência de profissional)`
@@ -380,51 +430,89 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
             </View>
 
             {/* Opção 1: Sem preferência (Abre o horário no próprio cartão, como os extras) */}
-            <StaffCard
-              isNoPreference={true}
-              branch={activeBranch}
-              isSelected={isNoPreference}
-              onSelect={() => {
-                if (isNoPreference) {
-                  setIsNoPreference(false);
-                } else {
-                  setIsNoPreference(true);
-                  setSelectedStaff(null);
-                }
-              }}
-              selectedScheduleLabel={isNoPreference ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
-              scheduleNode={
-                <View>
-                  <TimeSlotPicker
-                    branch={activeBranch}
-                    selectedDate={selectedDate}
-                    onSelectDate={d => setSelectedDate(d)}
-                    selectedTimeSlot={selectedTimeSlot}
-                    onSelectTimeSlot={ts => setSelectedTimeSlot(ts)}
-                    staffMember={null}
-                    isNoPreference={true}
-                    branchStaff={branchStaff}
-                    appointments={appointments}
-                    durationMinutes={totalDuration}
-                  />
+            {(() => {
+              const isSlotAvailable = checkSlotAvailability(null, true, selectedTimeSlot);
+              const hasSlots = hasAnyAvailableSlot(null, true);
 
-                  {/* Proceed to checkout button */}
-                  <TouchableOpacity
-                    style={[styles.proceedBtn, { backgroundColor: accentColor }]}
-                    onPress={handleOpenCheckout}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.proceedBtnText}>
-                      Finalizar Marcação • {selectedDate} às {selectedTimeSlot} ({totalPrice.toFixed(2)} €)
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              }
-            />
+              return (
+                <StaffCard
+                  isNoPreference={true}
+                  branch={activeBranch}
+                  isSelected={isNoPreference}
+                  onSelect={() => {
+                    if (isNoPreference) {
+                      setIsNoPreference(false);
+                      setSelectedTimeSlot('');
+                    } else {
+                      setIsNoPreference(true);
+                      setSelectedStaff(null);
+                      setSelectedTimeSlot('');
+                    }
+                  }}
+                  selectedScheduleLabel={isNoPreference && isSlotAvailable ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
+                  scheduleNode={
+                    <View>
+                      <TimeSlotPicker
+                        branch={activeBranch}
+                        selectedDate={selectedDate}
+                        onSelectDate={d => {
+                          setSelectedDate(d);
+                          setSelectedTimeSlot('');
+                        }}
+                        selectedTimeSlot={selectedTimeSlot}
+                        onSelectTimeSlot={ts => setSelectedTimeSlot(ts)}
+                        staffMember={null}
+                        isNoPreference={true}
+                        branchStaff={branchStaff}
+                        appointments={appointments}
+                        durationMinutes={totalDuration}
+                      />
+
+                      {/* Proceed to checkout button */}
+                      <TouchableOpacity
+                        style={[
+                          styles.proceedBtn,
+                          {
+                            backgroundColor: isSlotAvailable ? accentColor : isBarber ? '#22222B' : '#E5E7EB',
+                            borderColor: isSlotAvailable ? accentColor : isBarber ? '#353545' : '#D1D5DB',
+                            borderWidth: 1,
+                            opacity: isSlotAvailable ? 1 : 0.65,
+                          },
+                        ]}
+                        disabled={!isSlotAvailable}
+                        onPress={() => handleOpenCheckout(null, true)}
+                        activeOpacity={0.8}
+                      >
+                        <Text
+                          style={[
+                            styles.proceedBtnText,
+                            {
+                              color: isSlotAvailable
+                                ? (isBarber ? '#111827' : '#FFFFFF')
+                                : (isBarber ? '#9CA3AF' : '#6B7280'),
+                            },
+                          ]}
+                        >
+                          {!isSalonOpenDay(selectedDate)
+                            ? 'Salão Encerrado nesta Data'
+                            : !hasSlots
+                            ? 'Agenda Completa • Sem Vagas Disponíveis'
+                            : !selectedTimeSlot
+                            ? 'Selecione uma Vaga Disponível Acima'
+                            : `Finalizar Marcação • ${selectedDate} às ${selectedTimeSlot} (${totalPrice.toFixed(2)} €)`}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  }
+                />
+              );
+            })()}
 
             {/* Opção 2..N: Membros da equipa (Abrem os horários no próprio cartão como os extras) */}
             {branchStaff.map(s => {
               const isSelected = !isNoPreference && selectedStaff?.id === s.id;
+              const isSlotAvailable = checkSlotAvailability(s, false, selectedTimeSlot);
+              const hasSlots = hasAnyAvailableSlot(s, false);
 
               return (
                 <StaffCard
@@ -435,18 +523,23 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   onSelect={() => {
                     if (isSelected) {
                       setSelectedStaff(null);
+                      setSelectedTimeSlot('');
                     } else {
                       setSelectedStaff(s);
                       setIsNoPreference(false);
+                      setSelectedTimeSlot('');
                     }
                   }}
-                  selectedScheduleLabel={isSelected ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
+                  selectedScheduleLabel={isSelected && isSlotAvailable ? `${selectedDate} às ${selectedTimeSlot}` : undefined}
                   scheduleNode={
                     <View>
                       <TimeSlotPicker
                         branch={activeBranch}
                         selectedDate={selectedDate}
-                        onSelectDate={d => setSelectedDate(d)}
+                        onSelectDate={d => {
+                          setSelectedDate(d);
+                          setSelectedTimeSlot('');
+                        }}
                         selectedTimeSlot={selectedTimeSlot}
                         onSelectTimeSlot={ts => setSelectedTimeSlot(ts)}
                         staffMember={s}
@@ -458,12 +551,36 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
 
                       {/* Proceed to checkout button */}
                       <TouchableOpacity
-                        style={[styles.proceedBtn, { backgroundColor: accentColor }]}
-                        onPress={handleOpenCheckout}
+                        style={[
+                          styles.proceedBtn,
+                          {
+                            backgroundColor: isSlotAvailable ? accentColor : isBarber ? '#22222B' : '#E5E7EB',
+                            borderColor: isSlotAvailable ? accentColor : isBarber ? '#353545' : '#D1D5DB',
+                            borderWidth: 1,
+                            opacity: isSlotAvailable ? 1 : 0.65,
+                          },
+                        ]}
+                        disabled={!isSlotAvailable}
+                        onPress={() => handleOpenCheckout(s, false)}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.proceedBtnText}>
-                          Finalizar Marcação com {s.name} • {selectedDate} às {selectedTimeSlot} ({totalPrice.toFixed(2)} €)
+                        <Text
+                          style={[
+                            styles.proceedBtnText,
+                            {
+                              color: isSlotAvailable
+                                ? (isBarber ? '#111827' : '#FFFFFF')
+                                : (isBarber ? '#9CA3AF' : '#6B7280'),
+                            },
+                          ]}
+                        >
+                          {!isSalonOpenDay(selectedDate)
+                            ? 'Salão Encerrado nesta Data'
+                            : !hasSlots
+                            ? 'Agenda Completa • Sem Vagas Disponíveis'
+                            : !selectedTimeSlot
+                            ? 'Selecione uma Vaga Disponível Acima'
+                            : `Finalizar Marcação com ${s.name} • ${selectedDate} às ${selectedTimeSlot} (${totalPrice.toFixed(2)} €)`}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -498,6 +615,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
           setSelectedServices([]);
           setSelectedStaff(null);
           setIsNoPreference(false);
+          setSelectedTimeSlot('');
           onBackToHome();
         }}
       />

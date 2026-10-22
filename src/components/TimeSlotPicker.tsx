@@ -91,15 +91,27 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     });
   }, [selectedDate, durationMinutes, staffMember, isNoPreference, branchStaff, appointments]);
 
-  // If selected slot is occupied, auto-pick first available
+  const availableSlots = useMemo(() => {
+    if (!isCurrentDateOpen) return [];
+    return ALL_WORKING_SLOTS.filter(slot => !occupiedSlots.has(slot));
+  }, [isCurrentDateOpen, occupiedSlots]);
+
+  const isAllOccupied = isCurrentDateOpen && availableSlots.length === 0;
+
+  // Se o salão estiver fechado ou todos os horários estiverem ocupados (agenda completa), limpa o slot.
+  // Caso contrário, se o slot atual for nulo/vazio ou estiver ocupado, seleciona a primeira vaga verdadeiramente livre.
   useEffect(() => {
-    if (occupiedSlots.has(selectedTimeSlot)) {
-      const firstFree = ALL_WORKING_SLOTS.find(slot => !occupiedSlots.has(slot));
-      if (firstFree) {
-        onSelectTimeSlot(firstFree);
+    if (!isCurrentDateOpen || availableSlots.length === 0) {
+      if (selectedTimeSlot !== '') {
+        onSelectTimeSlot('');
       }
+      return;
     }
-  }, [occupiedSlots, selectedDate, staffMember, isNoPreference]);
+
+    if (!selectedTimeSlot || occupiedSlots.has(selectedTimeSlot)) {
+      onSelectTimeSlot(availableSlots[0]);
+    }
+  }, [isCurrentDateOpen, availableSlots, occupiedSlots, selectedDate, staffMember, isNoPreference]);
 
   // Calculate ending time for the selected slot based on accumulated duration
   const slotEndTime = useMemo(() => {
@@ -126,7 +138,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         </View>
 
         <Text style={[styles.durationBannerSub, { color: isBarber ? '#D1D5DB' : '#4B5563' }]}>
-          {selectedTimeSlot ? (
+          {selectedTimeSlot && !occupiedSlots.has(selectedTimeSlot) ? (
             <>
               Horário selecionado:{' '}
               <Text style={{ fontWeight: '800', color: accentColor }}>
@@ -135,7 +147,18 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               ({durationMinutes} min contínuos de atendimento)
             </>
           ) : (
-            'Selecione uma vaga disponível abaixo'
+            <Text
+              style={{
+                color: isAllOccupied || !isCurrentDateOpen ? '#EF4444' : isBarber ? '#D1D5DB' : '#4B5563',
+                fontWeight: '700',
+              }}
+            >
+              {!isCurrentDateOpen
+                ? 'Salão encerrado nesta data'
+                : isAllOccupied
+                ? 'Agenda Completa • Sem vagas livres nesta data'
+                : `Selecione uma vaga disponível abaixo (${durationMinutes} min contínuos)`}
+            </Text>
           )}
         </Text>
       </View>
@@ -221,6 +244,27 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         </View>
       ) : (
         <>
+          {/* Aviso visual caso todos os horários do dia estejam ocupados (Agenda Completa) */}
+          {isAllOccupied && (
+            <View
+              style={[
+                styles.closedNoticeBox,
+                isBarber ? styles.closedBoxBarber : styles.closedBoxBeauty,
+                { borderColor: '#EF4444', marginBottom: 16, backgroundColor: isBarber ? '#2A1818' : '#FEF2F2' },
+              ]}
+            >
+              <Text style={[styles.closedNoticeTitle, { color: '#EF4444' }]}>
+                ⚠️ Agenda Completa nesta Data
+              </Text>
+              <Text style={[styles.closedNoticeSub, { color: isBarber ? '#FCA5A5' : '#991B1B' }]}>
+                {isNoPreference
+                  ? `Todos os profissionais da equipa estão ocupados ou sem vagas contínuas de ${durationMinutes} min nesta data.`
+                  : `${targetStaffName} não tem vagas livres para ${durationMinutes} min no dia selecionado.`}
+                {'\n\n'}Por favor, selecione outra data acima no calendário ou escolha outro profissional.
+              </Text>
+            </View>
+          )}
+
           {/* Section: Manhã (09:00 - 12:00) */}
           <View style={styles.shiftSection}>
             <View style={styles.shiftHeaderRow}>
