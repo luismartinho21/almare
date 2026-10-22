@@ -9,21 +9,48 @@ import {
   Linking,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { StaffMember } from '../types';
+import { StaffMember, Service } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 
-type GestorTab = 'appointments' | 'schedules';
+type GestorTab = 'appointments' | 'services' | 'schedules';
 
 export const GestorBarberView: React.FC = () => {
-  const { appointments, updateAppointmentStatus, staff, updateStaffWorkingHours, updateStaffMember } = useApp();
+  const {
+    appointments,
+    updateAppointmentStatus,
+    staff,
+    updateStaffMember,
+    services,
+    addService,
+    updateService,
+    deleteService,
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState<GestorTab>('appointments');
-  const [dateFilter, setDateFilter] = useState<'today' | 'all'>('today');
+  const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
+  const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>('ALL');
+
+  // Services management states
+  const [catFilter, setCatFilter] = useState<string>('TODOS');
+  const [serviceModalVisible, setServiceModalVisible] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [newServCat, setNewServCat] = useState('Cortes');
+  const [newServName, setNewServName] = useState('');
+  const [newServDesc, setNewServDesc] = useState('');
+  const [newServPrice, setNewServPrice] = useState('18');
+  const [newServDur, setNewServDur] = useState('30');
+  const [hasExtras, setHasExtras] = useState(false);
+  const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
+  const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
+  const [inlineExtraName, setInlineExtraName] = useState('');
+  const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
+  const [inlineExtraDur, setInlineExtraDur] = useState('10');
 
   // Edit Schedule Modal
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -38,37 +65,57 @@ export const GestorBarberView: React.FC = () => {
 
   const barberStaff = useMemo(() => staff.filter(s => s.branch === 'barber'), [staff]);
 
-  // Filter Barber appointments
+  const activeStaffMember = useMemo(
+    () => barberStaff.find(s => s.id === selectedStaffFilter),
+    [barberStaff, selectedStaffFilter]
+  );
+
+  // Filter Barber appointments by Branch, Date, Staff, and Search query
   const barberAppointments = useMemo(() => {
     return appointments.filter(app => {
       if (app.branch !== 'barber') return false;
+
+      // Filter by Date
       if (dateFilter === 'today' && app.date !== todayStr) return false;
+      if (dateFilter === 'custom' && app.date !== customDate) return false;
+      if (dateFilter === 'past' && app.date >= todayStr) return false;
+      if (dateFilter === 'future' && app.date <= todayStr) return false;
+      // 'all' passes through all dates
+
+      // Filter by Staff
       if (selectedStaffFilter !== 'ALL' && app.staffId !== selectedStaffFilter) return false;
+
+      // Search Query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchName = app.clientName.toLowerCase().includes(query);
         const matchPhone = app.clientPhone.includes(query);
         const matchService = app.serviceName.toLowerCase().includes(query);
-        return matchName || matchPhone || matchService;
+        const matchStaff = app.staffName.toLowerCase().includes(query);
+        return matchName || matchPhone || matchService || matchStaff;
       }
       return true;
     });
-  }, [appointments, dateFilter, todayStr, selectedStaffFilter, searchQuery]);
+  }, [appointments, dateFilter, todayStr, customDate, selectedStaffFilter, searchQuery]);
 
-  // Statistics
+  // Statistics dynamically calculated for the currently active filters
   const stats = useMemo(() => {
-    const todayApps = appointments.filter(a => a.branch === 'barber' && a.date === todayStr);
-    const confirmedCount = todayApps.filter(a => a.status === 'confirmed').length;
-    const totalRevenue = todayApps
+    const totalCount = barberAppointments.length;
+    const confirmedCount = barberAppointments.filter(a => a.status === 'confirmed').length;
+    const completedCount = barberAppointments.filter(a => a.status === 'completed').length;
+    const cancelledCount = barberAppointments.filter(a => a.status === 'cancelled').length;
+    const totalRevenue = barberAppointments
       .filter(a => a.status !== 'cancelled')
-      .reduce((acc, a) => acc + a.servicePrice, 0);
+      .reduce((acc, a) => acc + (a.servicePrice || 0), 0);
 
     return {
-      totalToday: todayApps.length,
-      confirmedToday: confirmedCount,
-      revenueToday: totalRevenue,
+      totalCount,
+      confirmedCount,
+      completedCount,
+      cancelledCount,
+      totalRevenue,
     };
-  }, [appointments, todayStr]);
+  }, [barberAppointments]);
 
   const handleOpenEditSchedule = (member: StaffMember) => {
     setEditingStaff(member);
@@ -124,6 +171,131 @@ export const GestorBarberView: React.FC = () => {
     }, 1200);
   };
 
+  // Barber services and extras
+  const barberServices = useMemo(() => {
+    return services.filter(s => s.branch === 'barber');
+  }, [services]);
+
+  const barberExtras = useMemo(() => {
+    return barberServices.filter(s => s.category.toLowerCase() === 'extras');
+  }, [barberServices]);
+
+  const filteredBarberServices = useMemo(() => {
+    if (catFilter === 'TODOS') return barberServices;
+    return barberServices.filter(s => s.category === catFilter);
+  }, [barberServices, catFilter]);
+
+  const barberCategories = useMemo(() => {
+    const defaultCats = ['Cortes', 'Barbas', 'Signature', 'Extras'];
+    const dynamicCats = Array.from(new Set(barberServices.map(s => s.category)));
+    const merged = Array.from(new Set([...defaultCats, ...dynamicCats]));
+    return ['TODOS', ...merged];
+  }, [barberServices]);
+
+  const handleToggleExtraId = (extraId: string) => {
+    setSelectedExtraIds(prev =>
+      prev.includes(extraId) ? prev.filter(id => id !== extraId) : [...prev, extraId]
+    );
+  };
+
+  const handleOpenCreateService = () => {
+    setEditingService(null);
+    setNewServCat('Cortes');
+    setNewServName('');
+    setNewServDesc('');
+    setNewServPrice('18');
+    setNewServDur('30');
+    setHasExtras(false);
+    setSelectedExtraIds([]);
+    setShowInlineNewExtra(false);
+    setServiceModalVisible(true);
+  };
+
+  const handleOpenEditService = (service: Service) => {
+    setEditingService(service);
+    setNewServCat(service.category);
+    setNewServName(service.name);
+    setNewServDesc(service.description || '');
+    setNewServPrice(String(service.price));
+    setNewServDur(String(service.durationMinutes));
+    setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
+    setSelectedExtraIds(service.compatibleExtraIds || []);
+    setShowInlineNewExtra(false);
+    setServiceModalVisible(true);
+  };
+
+  const handleCreateInlineExtra = async () => {
+    if (!inlineExtraName.trim()) {
+      Alert.alert('Atenção', 'Introduza o nome do extra.');
+      return;
+    }
+    const created = await addService({
+      branch: 'barber',
+      category: 'Extras',
+      name: inlineExtraName.trim(),
+      description: 'Extra opcional para barbearia.',
+      price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
+      durationMinutes: parseInt(inlineExtraDur, 10) || 10,
+      iconName: '',
+    });
+    setSelectedExtraIds(prev => [...prev, created.id]);
+    setInlineExtraName('');
+    setShowInlineNewExtra(false);
+  };
+
+  const handleSaveService = async () => {
+    if (!newServName.trim()) {
+      Alert.alert('Atenção', 'Introduza o nome do serviço.');
+      return;
+    }
+
+    const priceNum = parseFloat(newServPrice.replace(',', '.')) || 0;
+    const durNum = parseInt(newServDur, 10) || 15;
+
+    if (editingService) {
+      await updateService({
+        ...editingService,
+        name: newServName.trim(),
+        category: newServCat.trim() || 'Cortes',
+        description: newServDesc.trim(),
+        price: priceNum,
+        durationMinutes: durNum,
+        compatibleExtraIds: hasExtras ? selectedExtraIds : [],
+      });
+    } else {
+      await addService({
+        branch: 'barber',
+        category: newServCat.trim() || 'Cortes',
+        name: newServName.trim(),
+        description: newServDesc.trim() || 'Serviço de excelência Almare Barber.',
+        price: priceNum,
+        durationMinutes: durNum,
+        iconName: '',
+        compatibleExtraIds: hasExtras ? selectedExtraIds : [],
+      });
+    }
+
+    setServiceModalVisible(false);
+    setEditingService(null);
+  };
+
+  const handleDeleteService = (service: Service) => {
+    Alert.alert(
+      'Eliminar Serviço',
+      `Tem a certeza de que deseja eliminar o serviço "${service.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteService(service.id);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Dashboard Top Header */}
@@ -134,7 +306,7 @@ export const GestorBarberView: React.FC = () => {
         </View>
       </View>
 
-      {/* Tabs: Agenda & Marcações | Horários da Equipa */}
+      {/* Tabs: Agenda & Marcações | Serviços & Extras | Horários da Equipa */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'appointments' && styles.tabBtnActive]}
@@ -146,11 +318,20 @@ export const GestorBarberView: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'services' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('services')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'services' && styles.tabBtnTextActive]}>
+            Serviços & Extras ({barberServices.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'schedules' && styles.tabBtnActive]}
           onPress={() => setActiveTab('schedules')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'schedules' && styles.tabBtnTextActive]}>
-            Definir Horários da Equipa ({barberStaff.length})
+            Horários ({barberStaff.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -164,44 +345,162 @@ export const GestorBarberView: React.FC = () => {
             {/* KPI Stat Cards */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{stats.totalToday}</Text>
-                <Text style={styles.statLabel}>Marcações Hoje</Text>
+                <Text style={styles.statNumber}>{stats.totalCount}</Text>
+                <Text style={styles.statLabel}>
+                  {dateFilter === 'today' ? 'Marcações Hoje' : 'Total no Filtro'}
+                </Text>
               </View>
 
               <View style={styles.statCard}>
                 <Text style={[styles.statNumber, { color: Theme.colors.barber.accent }]}>
-                  {stats.revenueToday.toFixed(0)} €
+                  {stats.totalRevenue.toFixed(0)} €
                 </Text>
-                <Text style={styles.statLabel}>Faturamento Estimado</Text>
+                <Text style={styles.statLabel}>Faturamento</Text>
               </View>
 
               <View style={styles.statCard}>
-                <Text style={[styles.statNumber, { color: '#10B981' }]}>{stats.confirmedToday}</Text>
-                <Text style={styles.statLabel}>Vagas Confirmadas</Text>
+                <Text style={[styles.statNumber, { color: '#10B981' }]}>
+                  {stats.completedCount > 0 ? stats.completedCount : stats.confirmedCount}
+                </Text>
+                <Text style={styles.statLabel}>
+                  {stats.completedCount > 0 ? 'Concluídos' : 'Confirmados'}
+                </Text>
               </View>
             </View>
 
+            {/* Individual Staff Summary Card (when filtering by a specific professional) */}
+            {activeStaffMember && (
+              <View style={styles.staffSummaryCard}>
+                <View style={styles.staffSummaryHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.staffSummaryTitle}>
+                      Produção: {activeStaffMember.name}
+                    </Text>
+                    <Text style={styles.staffSummarySub}>
+                      {activeStaffMember.roleTitle} •{' '}
+                      {dateFilter === 'today'
+                        ? `Hoje (${todayStr})`
+                        : dateFilter === 'custom'
+                        ? `Data: ${customDate}`
+                        : dateFilter === 'past'
+                        ? 'Marcações Passadas'
+                        : dateFilter === 'future'
+                        ? 'Próximas Marcações'
+                        : 'Histórico Completo'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.clearStaffBtn}
+                    onPress={() => setSelectedStaffFilter('ALL')}
+                  >
+                    <Text style={styles.clearStaffBtnText}>Ver Todos</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.staffSummaryGrid}>
+                  <View style={styles.staffSummaryCol}>
+                    <Text style={styles.staffSummaryNumber}>{stats.totalCount}</Text>
+                    <Text style={styles.staffSummaryLabel}>Marcações</Text>
+                  </View>
+                  <View style={styles.staffSummaryCol}>
+                    <Text style={[styles.staffSummaryNumber, { color: '#10B981' }]}>
+                      {stats.completedCount}
+                    </Text>
+                    <Text style={styles.staffSummaryLabel}>Concluídos</Text>
+                  </View>
+                  <View style={styles.staffSummaryCol}>
+                    <Text style={[styles.staffSummaryNumber, { color: Theme.colors.barber.accent }]}>
+                      {stats.totalRevenue.toFixed(2)} €
+                    </Text>
+                    <Text style={styles.staffSummaryLabel}>Total Faturado</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* Filter Toolbar */}
             <View style={styles.toolbar}>
-              <View style={styles.dateToggleRow}>
+              {/* Date Filters Pills */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateFilterScroll}>
                 <TouchableOpacity
-                  style={[styles.toggleBtn, dateFilter === 'today' && styles.toggleBtnActive]}
+                  style={[styles.dateFilterPill, dateFilter === 'today' && styles.dateFilterPillActive]}
                   onPress={() => setDateFilter('today')}
                 >
-                  <Text style={[styles.toggleBtnText, dateFilter === 'today' && styles.toggleBtnTextActive]}>
+                  <Text style={[styles.dateFilterPillText, dateFilter === 'today' && styles.dateFilterPillTextActive]}>
                     Hoje ({todayStr})
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.toggleBtn, dateFilter === 'all' && styles.toggleBtnActive]}
-                  onPress={() => setDateFilter('all')}
+                  style={[styles.dateFilterPill, dateFilter === 'custom' && styles.dateFilterPillActive]}
+                  onPress={() => setDateFilter('custom')}
                 >
-                  <Text style={[styles.toggleBtnText, dateFilter === 'all' && styles.toggleBtnTextActive]}>
-                    Todas as Datas
+                  <Text style={[styles.dateFilterPillText, dateFilter === 'custom' && styles.dateFilterPillTextActive]}>
+                    Por Data {dateFilter === 'custom' ? `(${customDate})` : ''}
                   </Text>
                 </TouchableOpacity>
-              </View>
+
+                <TouchableOpacity
+                  style={[styles.dateFilterPill, dateFilter === 'past' && styles.dateFilterPillActive]}
+                  onPress={() => setDateFilter('past')}
+                >
+                  <Text style={[styles.dateFilterPillText, dateFilter === 'past' && styles.dateFilterPillTextActive]}>
+                    Passadas / Feitas
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.dateFilterPill, dateFilter === 'future' && styles.dateFilterPillActive]}
+                  onPress={() => setDateFilter('future')}
+                >
+                  <Text style={[styles.dateFilterPillText, dateFilter === 'future' && styles.dateFilterPillTextActive]}>
+                    Futuras
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.dateFilterPill, dateFilter === 'all' && styles.dateFilterPillActive]}
+                  onPress={() => setDateFilter('all')}
+                >
+                  <Text style={[styles.dateFilterPillText, dateFilter === 'all' && styles.dateFilterPillTextActive]}>
+                    Histórico Completo
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+
+              {/* Day Navigator (when specific date filter is selected) */}
+              {dateFilter === 'custom' && (
+                <View style={styles.customDateNavRow}>
+                  <TouchableOpacity
+                    style={styles.customDateNavBtn}
+                    onPress={() => {
+                      const d = new Date(customDate);
+                      d.setDate(d.getDate() - 1);
+                      setCustomDate(d.toISOString().split('T')[0]);
+                    }}
+                  >
+                    <Text style={styles.customDateNavBtnText}>◀ Dia Anterior</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.customDateCenterBox}>
+                    <Text style={styles.customDateCenterText}>{customDate}</Text>
+                    {customDate === todayStr && (
+                      <Text style={styles.customDateTodayBadge}>Hoje</Text>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.customDateNavBtn}
+                    onPress={() => {
+                      const d = new Date(customDate);
+                      d.setDate(d.getDate() + 1);
+                      setCustomDate(d.toISOString().split('T')[0]);
+                    }}
+                  >
+                    <Text style={styles.customDateNavBtnText}>Dia Seguinte ▶</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Staff Filter */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.staffFilterScroll}>
@@ -301,7 +600,7 @@ export const GestorBarberView: React.FC = () => {
                     <Text style={styles.priceDuration}>
                       {app.servicePrice.toFixed(2)} € • {app.serviceDuration} min • Data: {app.date}
                     </Text>
-                    {app.notes ? <Text style={styles.notesText}>Nota: "{app.notes}"</Text> : null}
+                    {app.notes ? <Text style={styles.notesText}>Nota: &quot;{app.notes}&quot;</Text> : null}
                   </View>
 
                   {/* Action Buttons */}
@@ -343,7 +642,100 @@ export const GestorBarberView: React.FC = () => {
         )}
 
         {/* ============================================================ */}
-        {/* TAB 2: DEFINIR HORÁRIOS DA EQUIPA */}
+        {/* TAB 2: SERVIÇOS & EXTRAS (BARBER) */}
+        {/* ============================================================ */}
+        {activeTab === 'services' && (
+          <View>
+            <View style={styles.servicesHeaderRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.sectionTitle}>Serviços e Extras Barber</Text>
+                <Text style={styles.sectionSub}>Adicione e edite os serviços do catálogo e respetivos extras</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.addServiceTopBtn}
+                onPress={handleOpenCreateService}
+              >
+                <Text style={styles.addServiceTopBtnText}>+ Novo Serviço</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Category Filter */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+              {barberCategories.map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.catFilterPill, catFilter === cat && styles.catFilterPillActive]}
+                  onPress={() => setCatFilter(cat)}
+                >
+                  <Text style={[styles.catFilterPillText, catFilter === cat && styles.catFilterPillTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {filteredBarberServices.map(item => {
+              const compatibleExtras = item.compatibleExtraIds && item.compatibleExtraIds.length > 0
+                ? barberExtras.filter(e => item.compatibleExtraIds!.includes(e.id))
+                : [];
+              const isExtraItem = item.category.toLowerCase() === 'extras';
+
+              return (
+                <View key={item.id} style={styles.serviceManageCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.serviceManageName}>{item.name}</Text>
+                    <Text style={styles.serviceManageSub}>
+                      {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
+                    </Text>
+                    {item.description ? (
+                      <Text style={styles.serviceManageDesc}>{item.description}</Text>
+                    ) : null}
+
+                    {compatibleExtras.length > 0 ? (
+                      <View style={styles.serviceAttachedExtrasBox}>
+                        <Text style={styles.serviceAttachedExtrasTitle}>
+                          Extras compatíveis no drop-down ({compatibleExtras.length}):
+                        </Text>
+                        {compatibleExtras.map(ex => (
+                          <Text key={ex.id} style={styles.serviceAttachedExtraItem}>
+                            • {ex.name} (+{ex.price.toFixed(2)} €)
+                          </Text>
+                        ))}
+                      </View>
+                    ) : !isExtraItem ? (
+                      <Text style={styles.serviceNoExtrasText}>
+                        Sem extras associados (serviço simples)
+                      </Text>
+                    ) : (
+                      <View style={styles.extraTagBadge}>
+                        <Text style={styles.extraTagBadgeText}>Item de Extra</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.serviceActionsCol}>
+                    <TouchableOpacity
+                      style={styles.editServiceBtn}
+                      onPress={() => handleOpenEditService(item)}
+                    >
+                      <Text style={styles.editServiceBtnText}>Editar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.deleteServiceBtn}
+                      onPress={() => handleDeleteService(item)}
+                    >
+                      <Text style={styles.deleteServiceBtnText}>Eliminar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 3: DEFINIR HORÁRIOS DA EQUIPA */}
         {/* ============================================================ */}
         {activeTab === 'schedules' && (
           <View>
@@ -510,6 +902,252 @@ export const GestorBarberView: React.FC = () => {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal: Adicionar / Editar Serviço Barber */}
+      <Modal visible={serviceModalVisible} transparent animationType="slide" onRequestClose={() => setServiceModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setServiceModalVisible(false)}>
+          <Pressable style={[styles.modalBody, { maxHeight: '90%' }]} onPress={e => e.stopPropagation()}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>
+                {editingService ? 'Editar Serviço Barber' : 'Novo Serviço Barber'}
+              </Text>
+              <Text style={styles.modalSub}>
+                {editingService
+                  ? 'Modifique os detalhes, preço ou extras compatíveis deste serviço.'
+                  : 'Configure um novo serviço para ficar disponível nas marcações online.'}
+              </Text>
+
+              {/* Nome do Serviço */}
+              <View style={styles.serviceFieldGroup}>
+                <Text style={styles.serviceFieldLabel}>Nome do Serviço *</Text>
+                <TextInput
+                  style={styles.serviceInput}
+                  value={newServName}
+                  onChangeText={setNewServName}
+                  placeholder="Ex: Corte Degradê Almare"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* Categoria */}
+              <View style={styles.serviceFieldGroup}>
+                <Text style={styles.serviceFieldLabel}>Categoria</Text>
+                <View style={styles.categoryPillRow}>
+                  {['Cortes', 'Barbas', 'Signature', 'Extras'].map(cat => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.categorySelectPill, newServCat === cat && styles.categorySelectPillActive]}
+                      onPress={() => setNewServCat(cat)}
+                    >
+                      <Text
+                        style={[
+                          styles.categorySelectPillText,
+                          newServCat === cat && styles.categorySelectPillTextActive,
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[styles.serviceInput, { marginTop: 6 }]}
+                  value={newServCat}
+                  onChangeText={setNewServCat}
+                  placeholder="Ou escreva outra categoria..."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* Preço e Duração */}
+              <View style={styles.formGrid}>
+                <View style={styles.formCol}>
+                  <Text style={styles.serviceFieldLabel}>Preço (€) *</Text>
+                  <TextInput
+                    style={styles.serviceInput}
+                    value={newServPrice}
+                    onChangeText={setNewServPrice}
+                    keyboardType="numeric"
+                    placeholder="18"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+
+                <View style={styles.formCol}>
+                  <Text style={styles.serviceFieldLabel}>Duração (min) *</Text>
+                  <TextInput
+                    style={styles.serviceInput}
+                    value={newServDur}
+                    onChangeText={setNewServDur}
+                    keyboardType="numeric"
+                    placeholder="30"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+              </View>
+
+              {/* Descrição */}
+              <View style={styles.serviceFieldGroup}>
+                <Text style={styles.serviceFieldLabel}>Descrição Curta</Text>
+                <TextInput
+                  style={[styles.serviceInput, { height: 60, textAlignVertical: 'top' }]}
+                  value={newServDesc}
+                  onChangeText={setNewServDesc}
+                  multiline
+                  placeholder="Detalhes ou produtos incluídos no serviço..."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* Extras Compatíveis (Apenas para serviços que não são já 'Extras') */}
+              {newServCat.toLowerCase() !== 'extras' && (
+                <View style={styles.extrasSectionContainer}>
+                  <Text style={styles.serviceFieldLabel}>
+                    Inclui Extras Opcionais no Drop-down?
+                  </Text>
+                  <Text style={styles.extrasSectionNotice}>
+                    Se ativado, ao clicar neste serviço na marcação online, abre-se uma aba com extras rápidos que somam valor e tempo.
+                  </Text>
+
+                  <View style={styles.toggleRow}>
+                    <TouchableOpacity
+                      style={[styles.toggleBtn, !hasExtras && styles.toggleBtnActive]}
+                      onPress={() => setHasExtras(false)}
+                    >
+                      <Text style={[styles.toggleBtnText, !hasExtras && styles.toggleBtnTextActive]}>
+                        Não (Simples)
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.toggleBtn, hasExtras && styles.toggleBtnActive]}
+                      onPress={() => setHasExtras(true)}
+                    >
+                      <Text style={[styles.toggleBtnText, hasExtras && styles.toggleBtnTextActive]}>
+                        Sim (Com Extras)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {hasExtras && (
+                    <View style={styles.extrasConfigBox}>
+                      <Text style={styles.extrasSubTitle}>
+                        Selecione os extras compatíveis:
+                      </Text>
+
+                      {barberExtras.length === 0 ? (
+                        <Text style={styles.noExtrasNotice}>
+                          Não tem itens na categoria &quot;Extras&quot;. Pode criar um agora mesmo abaixo:
+                        </Text>
+                      ) : (
+                        barberExtras.map(extra => {
+                          const isChecked = selectedExtraIds.includes(extra.id);
+                          return (
+                            <TouchableOpacity
+                              key={extra.id}
+                              style={[
+                                styles.extraCheckRow,
+                                isChecked && styles.extraCheckRowChecked,
+                              ]}
+                              onPress={() => handleToggleExtraId(extra.id)}
+                            >
+                              <View style={[styles.checkboxBox, isChecked && styles.checkboxBoxChecked]}>
+                                {isChecked && <Text style={styles.checkboxCheck}>✓</Text>}
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.extraCheckName}>{extra.name}</Text>
+                                <Text style={styles.extraCheckDetails}>
+                                  +{extra.price.toFixed(2)} € • +{extra.durationMinutes} min
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+
+                      {/* Criar Extra inline */}
+                      {!showInlineNewExtra ? (
+                        <TouchableOpacity
+                          style={styles.addInlineExtraBtn}
+                          onPress={() => setShowInlineNewExtra(true)}
+                        >
+                          <Text style={styles.addInlineExtraBtnText}>+ Criar Novo Extra Aqui</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.inlineCreateBox}>
+                          <Text style={styles.inlineCreateTitle}>Novo Item Extra:</Text>
+                          <TextInput
+                            style={styles.serviceInput}
+                            placeholder="Nome do Extra (Ex: Lavagem Especial)"
+                            placeholderTextColor="#71717A"
+                            value={inlineExtraName}
+                            onChangeText={setInlineExtraName}
+                          />
+                          <View style={[styles.formGrid, { marginTop: 6 }]}>
+                            <View style={styles.formCol}>
+                              <Text style={styles.modalFieldLabelMini}>Preço (€)</Text>
+                              <TextInput
+                                style={styles.serviceInput}
+                                placeholder="5"
+                                placeholderTextColor="#71717A"
+                                keyboardType="numeric"
+                                value={inlineExtraPrice}
+                                onChangeText={setInlineExtraPrice}
+                              />
+                            </View>
+                            <View style={styles.formCol}>
+                              <Text style={styles.modalFieldLabelMini}>Minutos</Text>
+                              <TextInput
+                                style={styles.serviceInput}
+                                placeholder="10"
+                                placeholderTextColor="#71717A"
+                                keyboardType="numeric"
+                                value={inlineExtraDur}
+                                onChangeText={setInlineExtraDur}
+                              />
+                            </View>
+                          </View>
+                          <View style={styles.inlineActionRow}>
+                            <TouchableOpacity
+                              style={styles.inlineConfirmBtn}
+                              onPress={handleCreateInlineExtra}
+                            >
+                              <Text style={styles.inlineConfirmBtnText}>Adicionar Extra</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.inlineCancelBtn}
+                              onPress={() => setShowInlineNewExtra(false)}
+                            >
+                              <Text style={styles.inlineCancelBtnText}>Cancelar</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Botões do Modal */}
+              <TouchableOpacity style={styles.saveScheduleBtn} onPress={handleSaveService}>
+                <Text style={styles.saveScheduleBtnText}>
+                  {editingService ? 'Guardar Alterações' : 'Criar Serviço'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelModalBtn}
+                onPress={() => {
+                  setServiceModalVisible(false);
+                  setEditingService(null);
+                }}
+              >
+                <Text style={styles.cancelModalBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -596,19 +1234,145 @@ const styles = StyleSheet.create({
   toolbar: {
     marginBottom: 16,
   },
-  dateToggleRow: {
+  staffSummaryCard: {
+    backgroundColor: '#16161D',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.4)',
+  },
+  staffSummaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  staffSummaryTitle: {
+    color: '#F4F4F5',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  staffSummarySub: {
+    color: Theme.colors.barber.accent,
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  clearStaffBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  clearStaffBtnText: {
+    color: '#D4D4D8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  staffSummaryGrid: {
+    flexDirection: 'row',
+    backgroundColor: '#101015',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: '#24242C',
+  },
+  staffSummaryCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  staffSummaryNumber: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  staffSummaryLabel: {
+    fontSize: 10,
+    color: '#A1A1AA',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  dateFilterScroll: {
     flexDirection: 'row',
     marginBottom: 10,
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    backgroundColor: '#18181C',
+  dateFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#18181C',
     marginRight: 6,
     borderWidth: 1,
     borderColor: '#27272A',
+  },
+  dateFilterPillActive: {
+    backgroundColor: Theme.colors.barber.accent,
+    borderColor: Theme.colors.barber.accent,
+  },
+  dateFilterPillText: {
+    color: '#A1A1AA',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dateFilterPillTextActive: {
+    color: '#0D0D11',
+    fontWeight: '900',
+  },
+  customDateNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181C',
+    padding: 8,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  customDateNavBtn: {
+    backgroundColor: '#24242C',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  customDateNavBtnText: {
+    color: '#E4E4E7',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  customDateCenterBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  customDateCenterText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  customDateTodayBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    color: '#10B981',
+    fontSize: 9,
+    fontWeight: '900',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#30303D',
+    backgroundColor: '#1E1E26',
+    marginHorizontal: 4,
   },
   toggleBtnActive: {
     backgroundColor: Theme.colors.barber.accent,
@@ -662,7 +1426,12 @@ const styles = StyleSheet.create({
     color: '#F4F4F5',
     fontSize: 15,
     fontWeight: '800',
-    marginBottom: 10,
+    marginBottom: 4,
+  },
+  sectionSub: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    marginBottom: 12,
   },
   emptyState: {
     padding: 30,
@@ -986,5 +1755,330 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  // Services & Extras Styles
+  servicesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  addServiceTopBtn: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  addServiceTopBtnText: {
+    color: '#111827',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  catFilterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#1E1E24',
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#2F2F38',
+  },
+  catFilterPillActive: {
+    backgroundColor: '#D4AF37',
+    borderColor: '#D4AF37',
+  },
+  catFilterPillText: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  catFilterPillTextActive: {
+    color: '#111827',
+  },
+  serviceManageCard: {
+    backgroundColor: '#18181C',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  serviceManageName: {
+    color: '#F4F4F5',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  serviceManageSub: {
+    color: '#D4AF37',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  serviceManageDesc: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  serviceAttachedExtrasBox: {
+    marginTop: 8,
+    backgroundColor: '#202026',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#2E2E38',
+  },
+  serviceAttachedExtrasTitle: {
+    color: '#D4AF37',
+    fontSize: 10,
+    fontWeight: '800',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  serviceAttachedExtraItem: {
+    color: '#E5E7EB',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  serviceNoExtrasText: {
+    color: '#71717A',
+    fontSize: 10,
+    fontStyle: 'italic',
+    marginTop: 6,
+  },
+  extraTagBadge: {
+    backgroundColor: '#2E2A1E',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#78601C',
+  },
+  extraTagBadgeText: {
+    color: '#FDE68A',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  serviceActionsCol: {
+    marginLeft: 10,
+    gap: 6,
+    alignItems: 'flex-end',
+  },
+  editServiceBtn: {
+    backgroundColor: '#272730',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  editServiceBtnText: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  deleteServiceBtn: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  deleteServiceBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  serviceFieldGroup: {
+    marginBottom: 12,
+  },
+  serviceFieldLabel: {
+    color: '#E5E7EB',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  serviceInput: {
+    backgroundColor: '#24242A',
+    borderColor: '#383842',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#FFF',
+    fontSize: 13,
+  },
+  categoryPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
+  categorySelectPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: '#202026',
+    borderWidth: 1,
+    borderColor: '#32323D',
+  },
+  categorySelectPillActive: {
+    backgroundColor: '#D4AF37',
+    borderColor: '#D4AF37',
+  },
+  categorySelectPillText: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  categorySelectPillTextActive: {
+    color: '#111827',
+  },
+  extrasSectionContainer: {
+    backgroundColor: '#1E1E24',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2F2F3A',
+    marginBottom: 14,
+  },
+  extrasSectionNotice: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 8,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 10,
+  },
+  extrasConfigBox: {
+    backgroundColor: '#15151A',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#282833',
+  },
+  extrasSubTitle: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  noExtrasNotice: {
+    color: '#71717A',
+    fontSize: 11,
+    marginBottom: 8,
+  },
+  extraCheckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginBottom: 4,
+    backgroundColor: '#202026',
+  },
+  extraCheckRowChecked: {
+    backgroundColor: '#2C2A1E',
+    borderWidth: 1,
+    borderColor: '#63521D',
+  },
+  checkboxBox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#71717A',
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxBoxChecked: {
+    backgroundColor: '#D4AF37',
+    borderColor: '#D4AF37',
+  },
+  checkboxCheck: {
+    color: '#111827',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  extraCheckName: {
+    color: '#F4F4F5',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  extraCheckDetails: {
+    color: '#9CA3AF',
+    fontSize: 10,
+  },
+  addInlineExtraBtn: {
+    backgroundColor: '#24242A',
+    paddingVertical: 7,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#383844',
+  },
+  addInlineExtraBtnText: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  inlineCreateBox: {
+    marginTop: 8,
+    backgroundColor: '#202026',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#32323E',
+  },
+  inlineCreateTitle: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  modalFieldLabelMini: {
+    color: '#9CA3AF',
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  inlineActionRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  inlineConfirmBtn: {
+    flex: 1,
+    backgroundColor: '#D4AF37',
+    paddingVertical: 7,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  inlineConfirmBtnText: {
+    color: '#111827',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  inlineCancelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  inlineCancelBtnText: {
+    color: '#9CA3AF',
+    fontSize: 11,
   },
 });

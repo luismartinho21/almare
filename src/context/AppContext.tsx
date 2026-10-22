@@ -62,6 +62,7 @@ interface AppContextType {
   addStaffMember: (newStaff: Omit<StaffMember, 'id'>) => Promise<void>;
   deleteStaffMember: (id: string) => Promise<void>;
   addService: (newService: Omit<Service, 'id'>) => Promise<Service>;
+  updateService: (updatedService: Service) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
   updateConfig: (newConfig: BusinessConfig) => Promise<void>;
   refreshData: () => Promise<void>;
@@ -199,6 +200,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return created;
   };
 
+  const updateService = async (updatedService: Service) => {
+    const updated = services.map(s => (s.id === updatedService.id ? updatedService : s));
+    await saveServices(updated);
+    setServices(updated);
+  };
+
   const deleteService = async (id: string) => {
     const updated = services.filter(s => s.id !== id);
     await saveServices(updated);
@@ -254,6 +261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeNotification,
         dismissNotification,
         addService,
+        updateService,
         deleteService,
         updateStaffWorkingHours,
         updateStaffMember,
