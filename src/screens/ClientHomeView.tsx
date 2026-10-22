@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   Animated,
@@ -11,7 +12,6 @@ import {
 } from 'react-native';
 import { SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
-import { WomanSilhouette, ManSilhouette } from '../components/Silhouettes';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
@@ -98,7 +98,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
       <StatusBar barStyle="light-content" backgroundColor="#0D0D11" />
 
       <Animated.View style={[styles.cardsRow, { opacity: buttonsFadeAnim }]}>
-        {/* BEAUTY — ESQUERDA (Branco com silhueta feminina subentendida a preto) */}
+        {/* BEAUTY — ESQUERDA (Branco e Dourado) */}
         <Animated.View
           style={[
             styles.cardWrapper,
@@ -118,9 +118,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
             onPress={handleBeautyPress}
             activeOpacity={0.85}
           >
-            {/* Silhueta feminina sutil em preto no fundo branco */}
-            <WomanSilhouette color="#000000" opacity={0.09} />
-
+            {/* Silhueta subentendida da mulher a preto de vestido de frente */}
+            <Image
+              source={require('../../assets/woman_silhouette.png')}
+              style={styles.womanSilhouette}
+              resizeMode="contain"
+            />
             <View style={styles.cardContent}>
               <Text style={styles.beautyTitle}>ALMARE</Text>
               <Text style={styles.beautySubtitle}>BEAUTY</Text>
@@ -132,7 +135,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
         {/* Lombada central dourada do livro */}
         <View style={styles.spineDivider} />
 
-        {/* BARBER — DIREITA (Preto com silhueta masculina subentendida a branco) */}
+        {/* BARBER — DIREITA (Preto e Dourado) */}
         <Animated.View
           style={[
             styles.cardWrapper,
@@ -152,9 +155,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
             onPress={handleBarberPress}
             activeOpacity={0.85}
           >
-            {/* Silhueta masculina sutil em branco no fundo preto */}
-            <ManSilhouette color="#FFFFFF" opacity={0.14} />
-
+            {/* Silhueta subentendida do homem a branco de frente */}
+            <Image
+              source={require('../../assets/man_silhouette.png')}
+              style={styles.manSilhouette}
+              resizeMode="contain"
+            />
             <View style={styles.cardContent}>
               <Text style={styles.barberTitle}>ALMARE</Text>
               <Text style={styles.barberSubtitle}>BARBER</Text>
@@ -190,6 +196,14 @@ const styles = StyleSheet.create({
     borderRightColor: '#E2E8F0',
     position: 'relative',
     overflow: 'hidden',
+  },
+  womanSilhouette: {
+    position: 'absolute',
+    bottom: '4%',
+    width: '92%',
+    height: '80%',
+    opacity: 0.17, // Subentendido - subtil, elegante e sem atrapalhar o texto
+    alignSelf: 'center',
   },
   cardContent: {
     alignItems: 'center',
@@ -233,6 +247,14 @@ const styles = StyleSheet.create({
     borderLeftColor: '#272733',
     position: 'relative',
     overflow: 'hidden',
+  },
+  manSilhouette: {
+    position: 'absolute',
+    bottom: '4%',
+    width: '92%',
+    height: '80%',
+    opacity: 0.18, // Subentendido a branco sobre o fundo escuro
+    alignSelf: 'center',
   },
   barberTitle: {
     color: '#D4AF37',
