@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appointment, Service, StaffMember, ClientHistoryNote, BusinessConfig } from '../types';
-import { INITIAL_APPOINTMENTS, INITIAL_SERVICES, INITIAL_STAFF, INITIAL_BUSINESS_CONFIG } from '../constants/mockData';
+import { INITIAL_APPOINTMENTS, INITIAL_SERVICES, INITIAL_STAFF, INITIAL_BUSINESS_CONFIG, INITIAL_ROLE_PINS } from '../constants/mockData';
 
 const KEYS = {
   APPOINTMENTS: '@almare_appointments',
@@ -186,7 +186,15 @@ export const loadBusinessConfig = async (): Promise<BusinessConfig> => {
     return INITIAL_BUSINESS_CONFIG;
   }
   try {
-    return JSON.parse(json);
+    const parsed = JSON.parse(json);
+    return {
+      ...INITIAL_BUSINESS_CONFIG,
+      ...parsed,
+      pins: {
+        ...INITIAL_ROLE_PINS,
+        ...(parsed.pins || {}),
+      },
+    };
   } catch (e) {
     return INITIAL_BUSINESS_CONFIG;
   }

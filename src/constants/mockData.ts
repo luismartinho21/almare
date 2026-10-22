@@ -1,4 +1,11 @@
-import { Service, StaffMember, Appointment, BusinessConfig } from '../types';
+import { Service, StaffMember, Appointment, BusinessConfig, RolePinsConfig } from '../types';
+
+export const INITIAL_ROLE_PINS: RolePinsConfig = {
+  adminPin: '9999',
+  gestorBarberPin: '1111',
+  gestorBeautyPin: '2222',
+  staffPin: '3333',
+};
 
 export const INITIAL_BUSINESS_CONFIG: BusinessConfig = {
   barberShopName: 'Almare Barber - Para Eles',
@@ -12,6 +19,7 @@ export const INITIAL_BUSINESS_CONFIG: BusinessConfig = {
   beautyOpenDays: 'Terça a Sábado: 09:00 - 12:00 e 14:00 - 19:00',
 
   slotIntervalMinutes: 30,
+  pins: INITIAL_ROLE_PINS,
 };
 
 export const INITIAL_SERVICES: Service[] = [

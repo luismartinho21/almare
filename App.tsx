@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar } fro
 import { AppProvider, useApp } from './src/context/AppContext';
 import { Header } from './src/components/Header';
 import { RoleSelectorModal } from './src/components/RoleSelectorModal';
+import { PinAccessModal } from './src/components/PinAccessModal';
 import { ClientHomeView } from './src/screens/ClientHomeView';
 import { BookingFlowView } from './src/screens/BookingFlowView';
 import { GestorBarberView } from './src/screens/GestorBarberView';
@@ -15,6 +16,7 @@ import { SplashScreen } from './src/components/SplashScreen';
 function MainScreen() {
   const { role, setRole, activeBranch, setActiveBranch, activeNotification, dismissNotification } = useApp();
   const [roleModalVisible, setRoleModalVisible] = useState(false);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
   const [inBookingFlow, setInBookingFlow] = useState(false);
 
   const handleSelectBranch = (branch: SalonBranch) => {
@@ -37,7 +39,12 @@ function MainScreen() {
         if (inBookingFlow) {
           return <BookingFlowView onBackToHome={handleBackToHome} />;
         }
-        return <ClientHomeView onSelectBranch={handleSelectBranch} />;
+        return (
+          <ClientHomeView
+            onSelectBranch={handleSelectBranch}
+            onOpenPinModal={() => setPinModalVisible(true)}
+          />
+        );
 
       case 'gestor_barber':
         return <GestorBarberView />;
@@ -52,7 +59,12 @@ function MainScreen() {
         return <AdminConfigView />;
 
       default:
-        return <ClientHomeView onSelectBranch={handleSelectBranch} />;
+        return (
+          <ClientHomeView
+            onSelectBranch={handleSelectBranch}
+            onOpenPinModal={() => setPinModalVisible(true)}
+          />
+        );
     }
   };
 
@@ -90,12 +102,18 @@ function MainScreen() {
 
       {(role !== 'client' || inBookingFlow) && (
         <Header
+          onOpenPinModal={() => setPinModalVisible(true)}
           onOpenRoleModal={() => setRoleModalVisible(true)}
           onGoHome={handleGoHome}
         />
       )}
 
       <View style={styles.mainBody}>{renderContent()}</View>
+
+      <PinAccessModal
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+      />
 
       <RoleSelectorModal
         visible={roleModalVisible}

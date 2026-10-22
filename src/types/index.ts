@@ -68,6 +68,13 @@ export interface ClientHistoryNote {
   createdAt: string;
 }
 
+export interface RolePinsConfig {
+  adminPin: string;         // Default: '9999'
+  gestorBarberPin: string;  // Default: '1111'
+  gestorBeautyPin: string;  // Default: '2222'
+  staffPin: string;         // Default: '3333'
+}
+
 export interface BusinessConfig {
   barberShopName: string;
   barberAddress: string;
@@ -78,4 +85,5 @@ export interface BusinessConfig {
   beautyPhone: string;
   beautyOpenDays: string;
   slotIntervalMinutes: number;
+  pins: RolePinsConfig;
 }

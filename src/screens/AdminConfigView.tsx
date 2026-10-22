@@ -38,6 +38,12 @@ export const AdminConfigView: React.FC = () => {
   const [beautyPhone, setBeautyPhone] = useState(config.beautyPhone);
   const [beautyHours, setBeautyHours] = useState(config.beautyOpenDays);
 
+  // Security & Access PINs
+  const [adminPin, setAdminPin] = useState(config.pins?.adminPin || '9999');
+  const [barberPin, setBarberPin] = useState(config.pins?.gestorBarberPin || '1111');
+  const [beautyPin, setBeautyPin] = useState(config.pins?.gestorBeautyPin || '2222');
+  const [staffPin, setStaffPin] = useState(config.pins?.staffPin || '3333');
+
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Services Tab Filter
@@ -125,6 +131,12 @@ export const AdminConfigView: React.FC = () => {
       beautyAddress: beautyAddr,
       beautyPhone,
       beautyOpenDays: beautyHours,
+      pins: {
+        adminPin: adminPin.trim() || '9999',
+        gestorBarberPin: barberPin.trim() || '1111',
+        gestorBeautyPin: beautyPin.trim() || '2222',
+        staffPin: staffPin.trim() || '3333',
+      },
     });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -269,6 +281,68 @@ export const AdminConfigView: React.FC = () => {
               <View style={styles.fieldGroup}>
                 <Text style={styles.label}>Horário de Funcionamento</Text>
                 <TextInput style={styles.input} value={beautyHours} onChangeText={setBeautyHours} />
+              </View>
+            </View>
+
+            {/* Security & Access PINs */}
+            <View style={styles.sectionCard}>
+              <Text style={[styles.sectionTitle, { color: '#E2B755' }]}>
+                Segurança & Códigos de Acesso (PINs)
+              </Text>
+              <Text style={styles.sectionSub}>
+                Estes códigos de 4 dígitos protegem os portais de gestão e staff. Para abrir o teclado de PIN na app, basta manter premido o logotipo ALMARE durante 1.2 segundos.
+              </Text>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>PIN Administrador (Acesso Total)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={adminPin}
+                  onChangeText={setAdminPin}
+                  maxLength={4}
+                  keyboardType="numeric"
+                  placeholder="9999"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>PIN Gestor Barber</Text>
+                <TextInput
+                  style={styles.input}
+                  value={barberPin}
+                  onChangeText={setBarberPin}
+                  maxLength={4}
+                  keyboardType="numeric"
+                  placeholder="1111"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>PIN Gestor Beauty</Text>
+                <TextInput
+                  style={styles.input}
+                  value={beautyPin}
+                  onChangeText={setBeautyPin}
+                  maxLength={4}
+                  keyboardType="numeric"
+                  placeholder="2222"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>PIN Staff / Colaborador</Text>
+                <TextInput
+                  style={styles.input}
+                  value={staffPin}
+                  onChangeText={setStaffPin}
+                  maxLength={4}
+                  keyboardType="numeric"
+                  placeholder="3333"
+                  placeholderTextColor="#71717A"
+                />
               </View>
             </View>
 
@@ -798,6 +872,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 12,
+  },
+  sectionSub: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginBottom: 14,
+    lineHeight: 18,
   },
   fieldGroup: {
     marginBottom: 12,

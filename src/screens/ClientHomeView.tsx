@@ -15,12 +15,13 @@ import { Theme } from '../constants/theme';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
+  onOpenPinModal?: () => void;
 }
 
 const { width } = Dimensions.get('window');
 const halfWidth = width / 2;
 
-export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }) => {
+export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, onOpenPinModal }) => {
   // Fade in de entrada dos 2 botões
   const buttonsFadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -142,6 +143,8 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
           <TouchableOpacity
             style={styles.beautyCard}
             onPress={handleBeautyPress}
+            onLongPress={onOpenPinModal}
+            delayLongPress={1200}
             activeOpacity={0.85}
           >
             {/* Silhueta subentendida da mulher a preto de vestido de frente */}
@@ -179,6 +182,8 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch }
           <TouchableOpacity
             style={styles.barberCard}
             onPress={handleBarberPress}
+            onLongPress={onOpenPinModal}
+            delayLongPress={1200}
             activeOpacity={0.85}
           >
             {/* Silhueta subentendida do homem a branco de frente */}

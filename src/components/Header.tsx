@@ -4,11 +4,12 @@ import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
 
 interface HeaderProps {
-  onOpenRoleModal: () => void;
+  onOpenRoleModal?: () => void;
+  onOpenPinModal?: () => void;
   onGoHome?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onOpenPinModal, onGoHome }) => {
   const { role, activeBranch } = useApp();
 
   const getRoleLabel = () => {
@@ -16,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
       case 'client': return 'Cliente';
       case 'gestor_barber': return 'Gestor Barber';
       case 'gestor_beauty': return 'Gestor Beauty';
-      case 'staff': return 'Staff / Funcionário';
+      case 'staff': return 'Staff';
       case 'admin': return 'Admin';
       default: return 'Perfil';
     }
@@ -27,8 +28,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
   return (
     <View style={[styles.container, isBarber ? styles.barberBg : styles.beautyBg]}>
       <View style={styles.topRow}>
-        {/* Texto do logo — clicável para ir ao Home */}
-        <TouchableOpacity style={styles.logoBtn} onPress={onGoHome} activeOpacity={0.8}>
+        {/* Texto do logo — Toque rápido volta ao Home. Toque mantido (1.2s) abre o PIN de Acesso restrito */}
+        <TouchableOpacity
+          style={styles.logoBtn}
+          onPress={onGoHome}
+          onLongPress={onOpenPinModal}
+          delayLongPress={1200}
+          activeOpacity={0.8}
+        >
           <View style={styles.logoTextContainer}>
             <Text style={[styles.logoTitle, { color: isBarber ? Theme.colors.brandSecondary : '#B8860B' }]}>
               ALMARE
@@ -39,22 +46,40 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onGoHome }) => 
           </View>
         </TouchableOpacity>
 
-        {/* Role Badge Button */}
-        <TouchableOpacity
-          style={[
-            styles.roleBadge,
-            {
-              backgroundColor: isBarber ? 'rgba(212, 175, 55, 0.18)' : '#F2ECE1',
-              borderColor: isBarber ? Theme.colors.brandSecondary : '#D4AF37',
-            },
-          ]}
-          onPress={onOpenRoleModal}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.roleBadgeText, { color: isBarber ? Theme.colors.brandSecondary : '#996515' }]}>
-            {getRoleLabel()}
-          </Text>
-        </TouchableOpacity>
+        {/* Os botões de Staff/Gestor só aparecem se o utilizador já estiver autenticado (NÃO para clientes) */}
+        {role !== 'client' ? (
+          <View style={styles.roleActionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.roleBadge,
+                {
+                  backgroundColor: isBarber ? 'rgba(212, 175, 55, 0.18)' : '#F2ECE1',
+                  borderColor: isBarber ? Theme.colors.brandSecondary : '#D4AF37',
+                },
+              ]}
+              onPress={onOpenRoleModal}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.roleBadgeText, { color: isBarber ? Theme.colors.brandSecondary : '#996515' }]}>
+                {getRoleLabel()}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.logoutBtn,
+                {
+                  backgroundColor: isBarber ? '#281717' : '#FDE8E8',
+                  borderColor: isBarber ? '#EF4444' : '#F87171',
+                },
+              ]}
+              onPress={onGoHome}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.logoutBtnText}>Sair ✕</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -98,14 +123,30 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: -2,
   },
+  roleActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   roleBadge: {
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 18,
   },
   roleBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  logoutBtn: {
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 18,
+  },
+  logoutBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EF4444',
   },
 });
