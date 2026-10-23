@@ -37,7 +37,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   useEffect(() => {
     Animated.timing(enterFadeAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 700,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();

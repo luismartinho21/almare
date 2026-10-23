@@ -18,34 +18,34 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
     // 2) Fica um breve instante no centro
     // 3) SAÍDA: O logo vem o MÁXIMO PARA FORA (expande gigante até scale 8.5, ultrapassando totalmente os limites do ecrã)
     Animated.sequence([
-      // FASE 1: Entrada do logo aproximando-se com fade in elegante (1300ms)
+      // FASE 1: Entrada do logo aproximando-se com fade in elegante (1600ms)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 1200,
+          duration: 1400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
           toValue: 1.15,
-          duration: 1400,
+          duration: 1600,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
-      // FASE 2: Breve instante no centro para apreciação da marca (450ms)
-      Animated.delay(450),
-      // FASE 3: SAÍDA DA IMAGEM INICIAL -> VEM O MÁXIMO PARA FORA (expansão suave e serena em direção ao ecrã)
+      // FASE 2: Breve instante no centro para apreciação da marca (500ms)
+      Animated.delay(500),
+      // FASE 3: SAÍDA DA IMAGEM INICIAL -> VEM O MÁXIMO PARA FORA (expansão super fluida, lenta e serena contra o ecrã)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 1350,
+          duration: 1850,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
           toValue: 8.5, // Vem o máximo para fora ultrapassando todos os limites do ecrã
-          duration: 1400,
+          duration: 1900,
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),

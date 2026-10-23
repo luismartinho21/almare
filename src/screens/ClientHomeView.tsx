@@ -32,17 +32,17 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
   useEffect(() => {
     Animated.timing(buttonsFadeAnim, {
       toValue: 1,
-      duration: 1000,
+      duration: 1100,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [buttonsFadeAnim]);
 
-  // BEAUTY (Esquerda): Roda PARA DENTRO de forma suave e serena
+  // BEAUTY (Esquerda): Roda PARA DENTRO de forma super lenta, suave e serena
   const handleBeautyPress = () => {
     Animated.timing(beautyBookAnim, {
       toValue: 1,
-      duration: 1350,
+      duration: 1850,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
@@ -50,11 +50,11 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BARBER (Direita): Roda PARA DENTRO de forma suave e serena
+  // BARBER (Direita): Roda PARA DENTRO de forma super lenta, suave e serena
   const handleBarberPress = () => {
     Animated.timing(barberBookAnim, {
       toValue: 1,
-      duration: 1350,
+      duration: 1850,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
@@ -147,16 +147,19 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             delayLongPress={1200}
             activeOpacity={0.85}
           >
-            {/* Silhueta subentendida da mulher a preto de vestido de frente */}
-            <Image
-              source={require('../../assets/woman_silhouette.png')}
-              style={styles.womanSilhouette}
-              resizeMode="contain"
-            />
             <View style={styles.cardContent}>
               <Text style={styles.beautyTitle}>ALMARE</Text>
-              <Text style={styles.beautySubtitle}>BEAUTY</Text>
+              <Text style={styles.beautySubtitle}>ESTÉTICA</Text>
               <View style={styles.beautyLine} />
+
+              {/* Rosto feminino por baixo de estética */}
+              <View style={styles.faceWrapper}>
+                <Image
+                  source={require('../../assets/woman_face.png')}
+                  style={styles.womanFace}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -186,16 +189,19 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             delayLongPress={1200}
             activeOpacity={0.85}
           >
-            {/* Silhueta subentendida do homem a branco de frente */}
-            <Image
-              source={require('../../assets/man_silhouette.png')}
-              style={styles.manSilhouette}
-              resizeMode="contain"
-            />
             <View style={styles.cardContent}>
               <Text style={styles.barberTitle}>ALMARE</Text>
               <Text style={styles.barberSubtitle}>BARBER</Text>
               <View style={styles.barberLine} />
+
+              {/* Rosto masculino por baixo de barber */}
+              <View style={styles.faceWrapper}>
+                <Image
+                  source={require('../../assets/man_face.png')}
+                  style={styles.manFace}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -240,13 +246,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  womanSilhouette: {
-    position: 'absolute',
-    bottom: '4%',
-    width: '92%',
-    height: '80%',
-    opacity: 0.17, // Subentendido - subtil, elegante e sem atrapalhar o texto
-    alignSelf: 'center',
+  faceWrapper: {
+    marginTop: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  womanFace: {
+    width: Math.min(halfWidth * 0.72, 160),
+    height: Math.min(halfWidth * 0.72, 160),
+    opacity: 0.88,
+  },
+  manFace: {
+    width: Math.min(halfWidth * 0.72, 160),
+    height: Math.min(halfWidth * 0.72, 160),
+    opacity: 0.88,
   },
   cardContent: {
     alignItems: 'center',
@@ -291,14 +304,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  manSilhouette: {
-    position: 'absolute',
-    bottom: '4%',
-    width: '92%',
-    height: '80%',
-    opacity: 0.18, // Subentendido a branco sobre o fundo escuro
-    alignSelf: 'center',
-  },
+
   barberTitle: {
     color: '#D4AF37',
     fontSize: 22,
