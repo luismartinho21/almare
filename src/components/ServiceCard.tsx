@@ -94,7 +94,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                   ? accentColor
                   : isBarber
                   ? '#27272A'
-                  : Theme.colors.beauty.primary,
+                  : '#F5E6B8',
+                borderWidth: isSelected || isBarber ? 0 : 1,
+                borderColor: '#D4AF37',
               },
             ]}
             onPress={() => onToggleSelect(service)}
@@ -103,12 +105,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               style={[
                 styles.selectBtnText,
                 {
-                  color:
-                    isSelected || !isBarber
-                      ? isSelected
-                        ? '#111'
-                        : '#FFF'
-                      : '#F4F4F5',
+                  color: isSelected
+                    ? '#111'
+                    : isBarber
+                    ? '#F4F4F5'
+                    : '#1F2937',
                 },
               ]}
             >

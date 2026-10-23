@@ -418,7 +418,7 @@ export const GestorBeautyView: React.FC = () => {
                     <Text style={styles.staffSummaryLabel}>Concluídos</Text>
                   </View>
                   <View style={styles.staffSummaryCol}>
-                    <Text style={[styles.staffSummaryNumber, { color: Theme.colors.beauty.primary }]}>
+                    <Text style={[styles.staffSummaryNumber, { color: '#3B1C26' }]}>
                       {stats.totalRevenue.toFixed(2)} €
                     </Text>
                     <Text style={styles.staffSummaryLabel}>Total Faturado</Text>
@@ -1279,8 +1279,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   dateFilterPillActive: {
-    backgroundColor: Theme.colors.beauty.primary,
-    borderColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderColor: '#B8860B',
   },
   dateFilterPillText: {
     color: '#4B5563',
@@ -1288,7 +1288,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   dateFilterPillTextActive: {
-    color: '#FFF',
+    color: '#111827',
     fontWeight: '900',
   },
   customDateNavRow: {
@@ -1348,7 +1348,7 @@ const styles = StyleSheet.create({
   },
   staffFilterChipActive: {
     backgroundColor: '#FDF2F8',
-    borderColor: Theme.colors.beauty.primary,
+    borderColor: '#BE185D',
   },
   staffFilterChipText: {
     color: '#4B5563',
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   staffFilterChipTextActive: {
-    color: Theme.colors.beauty.primary,
+    color: '#831843',
     fontWeight: '900',
   },
   searchInput: {
@@ -1556,15 +1556,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addServiceTopBtn: {
-    backgroundColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderWidth: 1,
+    borderColor: '#B8860B',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
   },
   addServiceTopBtnText: {
-    color: '#FFF',
+    color: '#111827',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   catFilterPill: {
     paddingHorizontal: 12,
@@ -1576,8 +1578,8 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   catFilterPillActive: {
-    backgroundColor: Theme.colors.beauty.primary,
-    borderColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderColor: '#B8860B',
   },
   catFilterPillText: {
     fontSize: 11,
@@ -1585,7 +1587,8 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   catFilterPillTextActive: {
-    color: '#FFF',
+    color: '#111827',
+    fontWeight: '900',
   },
   serviceManageCard: {
     backgroundColor: '#FFF',
@@ -1873,14 +1876,16 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   saveScheduleBtn: {
-    backgroundColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderWidth: 1,
+    borderColor: '#B8860B',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 6,
   },
   saveScheduleBtnText: {
-    color: '#FFF',
+    color: '#111827',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -1926,7 +1931,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   modalCatPillActive: {
-    backgroundColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderWidth: 1,
+    borderColor: '#B8860B',
   },
   modalCatPillText: {
     fontSize: 11,
@@ -1934,7 +1941,8 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   modalCatPillTextActive: {
-    color: '#FFF',
+    color: '#111827',
+    fontWeight: '900',
   },
   rowTwo: {
     flexDirection: 'row',
@@ -1953,8 +1961,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   toggleOptionBtnActive: {
-    backgroundColor: Theme.colors.beauty.primary,
-    borderColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderColor: '#B8860B',
   },
   toggleOptionText: {
     fontSize: 12,
@@ -1962,7 +1970,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   toggleOptionTextActive: {
-    color: '#FFF',
+    color: '#111827',
+    fontWeight: '900',
   },
   extrasConfigBox: {
     backgroundColor: '#FFFDF5',
@@ -2041,16 +2050,18 @@ const styles = StyleSheet.create({
   },
   inlineSaveBtn: {
     flex: 1,
-    backgroundColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderWidth: 1,
+    borderColor: '#B8860B',
     paddingVertical: 8,
     borderRadius: 6,
     alignItems: 'center',
     marginRight: 6,
   },
   inlineSaveBtnText: {
-    color: '#FFF',
+    color: '#111827',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   inlineCancelBtn: {
     paddingVertical: 8,
@@ -2062,14 +2073,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   modalSaveBtn: {
-    backgroundColor: Theme.colors.beauty.primary,
+    backgroundColor: '#D4AF37',
+    borderWidth: 1,
+    borderColor: '#B8860B',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 8,
   },
   modalSaveBtnText: {
-    color: '#FFF',
+    color: '#111827',
     fontSize: 14,
     fontWeight: '900',
   },
