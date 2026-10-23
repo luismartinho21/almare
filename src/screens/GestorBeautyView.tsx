@@ -61,7 +61,8 @@ export const GestorBeautyView: React.FC = () => {
   const [staffStatus, setStaffStatus] = useState<'active' | 'leave' | 'vacation' | 'inactive'>('active');
   const [staffAbsenceNote, setStaffAbsenceNote] = useState('');
   const [staffUnavailableDates, setStaffUnavailableDates] = useState<string[]>([]);
-  const [customAbsenceDateInput, setCustomAbsenceDateInput] = useState('');
+  const [absenceStartDate, setAbsenceStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [absenceEndDate, setAbsenceEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Staff working hours & schedule
   const [staffStart, setStaffStart] = useState('09:00');
@@ -206,6 +207,7 @@ export const GestorBeautyView: React.FC = () => {
   };
 
   const handleOpenCreateStaff = () => {
+    const today = new Date().toISOString().split('T')[0];
     setEditingStaffMember(null);
     setStaffName('');
     setStaffRole('Especialista Head-Spa');
@@ -213,7 +215,8 @@ export const GestorBeautyView: React.FC = () => {
     setStaffStatus('active');
     setStaffAbsenceNote('');
     setStaffUnavailableDates([]);
-    setCustomAbsenceDateInput('');
+    setAbsenceStartDate(today);
+    setAbsenceEndDate(today);
     setStaffStart('09:00');
     setStaffEnd('19:00');
     setStaffLunchStart('12:00');
@@ -224,14 +227,24 @@ export const GestorBeautyView: React.FC = () => {
   };
 
   const handleOpenEditStaff = (member: StaffMember) => {
+    const today = new Date().toISOString().split('T')[0];
     setEditingStaffMember(member);
     setStaffName(member.name);
     setStaffRole(member.roleTitle);
     setStaffPhone(member.phone || '+351 910 000 000');
     setStaffStatus(member.status || 'active');
     setStaffAbsenceNote(member.absenceNote || '');
-    setStaffUnavailableDates(member.unavailableDates ? [...member.unavailableDates] : []);
-    setCustomAbsenceDateInput('');
+
+    const unDates = member.unavailableDates ? [...member.unavailableDates].sort() : [];
+    setStaffUnavailableDates(unDates);
+    if (unDates.length > 0) {
+      setAbsenceStartDate(unDates[0]);
+      setAbsenceEndDate(unDates[unDates.length - 1]);
+    } else {
+      setAbsenceStartDate(today);
+      setAbsenceEndDate(today);
+    }
+
     setStaffStart(member.workingHours?.start || '09:00');
     setStaffEnd(member.workingHours?.end || '19:00');
     setStaffLunchStart(member.workingHours?.lunchStart || '12:00');
@@ -263,33 +276,38 @@ export const GestorBeautyView: React.FC = () => {
     }
   };
 
-  const handleAddQuickAbsenceDays = (numDays: number) => {
-    const dates: string[] = [];
-    const now = new Date();
-    for (let i = 0; i < numDays; i++) {
-      const target = new Date(now.getTime() + i * 86400000);
-      dates.push(target.toISOString().split('T')[0]);
+  const handleApplyDateRangeAbsence = () => {
+    const start = absenceStartDate.trim();
+    const end = absenceEndDate.trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      Alert.alert('Formato Inválido', 'Por favor use o formato AAAA-MM-DD (ex: 2026-10-23).');
+      return;
     }
-    setStaffUnavailableDates(prev => Array.from(new Set([...prev, ...dates])).sort());
+
+    if (start > end) {
+      Alert.alert('Datas Inválidas', 'A data de início deve ser anterior ou igual à data de fim.');
+      return;
+    }
+
+    const dStart = new Date(start + 'T00:00:00');
+    const dEnd = new Date(end + 'T00:00:00');
+    const dates: string[] = [];
+    const cur = new Date(dStart);
+
+    while (cur <= dEnd) {
+      dates.push(cur.toISOString().split('T')[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    setStaffUnavailableDates(dates);
     if (staffStatus === 'active') {
       setStaffStatus('leave');
     }
     if (!staffAbsenceNote.trim()) {
-      setStaffAbsenceNote(numDays === 1 ? 'Falta / Ausência pontual' : `Baixa médica (${numDays} dias)`);
+      const daysCount = dates.length;
+      setStaffAbsenceNote(daysCount === 1 ? 'Ausência / Falta pontual' : `Baixa médica (${daysCount} dias)`);
     }
-  };
-
-  const handleAddCustomAbsenceDate = () => {
-    const date = customAbsenceDateInput.trim();
-    if (!date) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      Alert.alert('Formato Inválido', 'Por favor use o formato AAAA-MM-DD (ex: 2026-10-25).');
-      return;
-    }
-    if (!staffUnavailableDates.includes(date)) {
-      setStaffUnavailableDates(prev => [...prev, date].sort());
-    }
-    setCustomAbsenceDateInput('');
   };
 
   const handleRemoveUnavailableDate = (date: string) => {
@@ -1345,86 +1363,78 @@ export const GestorBeautyView: React.FC = () => {
                 </View>
               </View>
 
-              {/* Gestão de Ausências e Baixas */}
+              {/* Gestão de Ausências e Baixas por Intervalo de Datas */}
               <View style={styles.extrasConfigBox}>
-                <Text style={styles.extrasSubTitle}>Registo de Baixas Médicas e Faltas</Text>
+                <Text style={styles.extrasSubTitle}>Registar Período de Ausência / Baixa</Text>
                 <Text style={styles.extrasSectionNotice}>
-                  Clique num botão rápido para registar a ausência (ex: baixa de 3 dias). As marcações de clientes ficarão bloqueadas automaticamente.
+                  Selecione a data de início e de fim. As marcações de clientes neste intervalo ficarão bloqueadas automaticamente.
                 </Text>
 
-                <View style={styles.quickAbsenceRow}>
-                  <TouchableOpacity
-                    style={styles.quickAbsenceBtn}
-                    onPress={() => handleAddQuickAbsenceDays(1)}
-                  >
-                    <Text style={styles.quickAbsenceBtnText}>+ Falta Hoje</Text>
-                  </TouchableOpacity>
+                <View style={styles.rowTwo}>
+                  <View style={[styles.fieldGroup, { flex: 1, marginRight: 8 }]}>
+                    <Text style={styles.labelMini}>Data Início (AAAA-MM-DD)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={absenceStartDate}
+                      onChangeText={setAbsenceStartDate}
+                      placeholder="2026-10-23"
+                      placeholderTextColor="#71717A"
+                    />
+                  </View>
 
-                  <TouchableOpacity
-                    style={[styles.quickAbsenceBtn, styles.quickAbsenceBtnHighlight]}
-                    onPress={() => handleAddQuickAbsenceDays(3)}
-                  >
-                    <Text style={[styles.quickAbsenceBtnText, { color: '#B45309', fontWeight: '900' }]}>
-                      + Baixa 3 Dias (Hoje + 2)
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.quickAbsenceBtn}
-                    onPress={() => handleAddQuickAbsenceDays(5)}
-                  >
-                    <Text style={styles.quickAbsenceBtnText}>+ Baixa 5 Dias</Text>
-                  </TouchableOpacity>
-
-                  {staffUnavailableDates.length > 0 && (
-                    <TouchableOpacity
-                      style={[styles.quickAbsenceBtn, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}
-                      onPress={handleClearAllAbsences}
-                    >
-                      <Text style={[styles.quickAbsenceBtnText, { color: '#DC2626' }]}>Limpar Faltas</Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={[styles.fieldGroup, { flex: 1 }]}>
+                    <Text style={styles.labelMini}>Data Fim (AAAA-MM-DD)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={absenceEndDate}
+                      onChangeText={setAbsenceEndDate}
+                      placeholder="2026-10-25"
+                      placeholderTextColor="#71717A"
+                    />
+                  </View>
                 </View>
 
                 {/* Motivo de ausência */}
-                <View style={{ marginTop: 8 }}>
+                <View style={{ marginBottom: 10 }}>
                   <Text style={styles.labelMini}>Motivo da Ausência / Baixa</Text>
                   <TextInput
                     style={styles.input}
                     value={staffAbsenceNote}
                     onChangeText={setStaffAbsenceNote}
-                    placeholder="Ex: Baixa médica por 3 dias com atestado"
+                    placeholder="Ex: Baixa médica de 3 dias com atestado"
                     placeholderTextColor="#71717A"
                   />
                 </View>
 
-                {/* Input manual para adicionar data específica */}
-                <View style={{ marginTop: 8 }}>
-                  <Text style={styles.labelMini}>Adicionar Data Específica de Falta (AAAA-MM-DD)</Text>
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
-                    <TextInput
-                      style={[styles.input, { flex: 1 }]}
-                      value={customAbsenceDateInput}
-                      onChangeText={setCustomAbsenceDateInput}
-                      placeholder={new Date().toISOString().split('T')[0]}
-                      placeholderTextColor="#71717A"
-                    />
+                {/* Botões de Ação para Ausência */}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                  <TouchableOpacity
+                    style={styles.applyDateRangeBtn}
+                    onPress={handleApplyDateRangeAbsence}
+                  >
+                    <Text style={styles.applyDateRangeBtnText}>Bloquear Período Selecionado</Text>
+                  </TouchableOpacity>
+
+                  {staffUnavailableDates.length > 0 && (
                     <TouchableOpacity
-                      style={styles.addDatePillBtn}
-                      onPress={handleAddCustomAbsenceDate}
+                      style={styles.clearAbsenceBtn}
+                      onPress={handleClearAllAbsences}
                     >
-                      <Text style={styles.addDatePillBtnText}>Bloquear Data</Text>
+                      <Text style={styles.clearAbsenceBtnText}>Limpar / Reativar</Text>
                     </TouchableOpacity>
-                  </View>
+                  )}
                 </View>
 
-                {/* Lista de datas bloqueadas */}
+                {/* Visualização do período e das datas bloqueadas */}
                 {staffUnavailableDates.length > 0 ? (
                   <View style={styles.blockedDatesContainer}>
                     <Text style={styles.extrasSubTitle}>
-                      Datas Bloqueadas ({staffUnavailableDates.length}):
+                      Período Bloqueado ({staffUnavailableDates.length} {staffUnavailableDates.length === 1 ? 'dia' : 'dias'}):
                     </Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                    <Text style={styles.staffBlockedDatesSummary}>
+                      De {staffUnavailableDates[0]} até {staffUnavailableDates[staffUnavailableDates.length - 1]}
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
                       {staffUnavailableDates.map(date => (
                         <View key={date} style={styles.blockedDateBadge}>
                           <Text style={styles.blockedDateBadgeText}>{date}</Text>
@@ -1437,7 +1447,7 @@ export const GestorBeautyView: React.FC = () => {
                   </View>
                 ) : (
                   <Text style={[styles.extrasSectionNotice, { marginTop: 8, fontStyle: 'italic' }]}>
-                    Nenhuma data específica bloqueada de momento.
+                    Nenhum período de ausência bloqueado atualmente.
                   </Text>
                 )}
               </View>
@@ -2605,6 +2615,41 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 11,
     fontWeight: '700',
+  },
+  applyDateRangeBtn: {
+    backgroundColor: '#D4AF37',
+    borderWidth: 1,
+    borderColor: '#B8860B',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+  },
+  applyDateRangeBtnText: {
+    color: '#111827',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  clearAbsenceBtn: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  clearAbsenceBtnText: {
+    color: '#DC2626',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  staffBlockedDatesSummary: {
+    color: '#92400E',
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   quickAbsenceRow: {
     flexDirection: 'row',
