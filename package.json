@@ -27,7 +27,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "deploy": "expo export -p web --clear && gh-pages -d dist --dotfiles"
+    "deploy": "expo export -p web --clear && npx gh-pages -d dist --dotfiles"
   },
   "private": true
 }
