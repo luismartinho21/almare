@@ -32,17 +32,17 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
   useEffect(() => {
     Animated.timing(buttonsFadeAnim, {
       toValue: 1,
-      duration: 800,
+      duration: 1000,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
   }, [buttonsFadeAnim]);
 
-  // BEAUTY (Esquerda): Roda PARA DENTRO (em direção ao centro/direita: 0 -> +85deg)
+  // BEAUTY (Esquerda): Roda PARA DENTRO de forma suave e serena
   const handleBeautyPress = () => {
     Animated.timing(beautyBookAnim, {
       toValue: 1,
-      duration: 850,
+      duration: 1350,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
@@ -50,11 +50,11 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BARBER (Direita): Roda PARA DENTRO (em direção ao centro/esquerda: 0 -> -85deg)
+  // BARBER (Direita): Roda PARA DENTRO de forma suave e serena
   const handleBarberPress = () => {
     Animated.timing(barberBookAnim, {
       toValue: 1,
-      duration: 850,
+      duration: 1350,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {

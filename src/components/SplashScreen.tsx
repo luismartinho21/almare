@@ -33,19 +33,19 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
           useNativeDriver: true,
         }),
       ]),
-      // FASE 2: Breve instante no centro para apreciação da marca (350ms)
-      Animated.delay(350),
-      // FASE 3: SAÍDA DA IMAGEM INICIAL -> VEM O MÁXIMO PARA FORA (não pára a meio, expande até passar da câmara)
+      // FASE 2: Breve instante no centro para apreciação da marca (450ms)
+      Animated.delay(450),
+      // FASE 3: SAÍDA DA IMAGEM INICIAL -> VEM O MÁXIMO PARA FORA (expansão suave e serena em direção ao ecrã)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 850,
+          duration: 1350,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
           toValue: 8.5, // Vem o máximo para fora ultrapassando todos os limites do ecrã
-          duration: 900,
+          duration: 1400,
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),

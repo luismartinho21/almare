@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
 import { Service, StaffMember, Appointment } from '../types';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
@@ -30,6 +30,18 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   // Fluxo de agendamento em 2 passos integrados:
   // 1: Serviços -> 2: Profissional & Horário integrado
   const [currentStep, setCurrentStep] = useState<BookingStep>(1);
+
+  // Fade in de entrada suave e sereno
+  const enterFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(enterFadeAnim, {
+      toValue: 1,
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enterFadeAnim]);
 
   // Filter services by branch
   const branchServices = useMemo(() => {
@@ -203,7 +215,13 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   };
 
   return (
-    <View style={[styles.container, isBarber ? styles.bgBarber : styles.bgBeauty]}>
+    <Animated.View
+      style={[
+        styles.container,
+        isBarber ? styles.bgBarber : styles.bgBeauty,
+        { opacity: enterFadeAnim },
+      ]}
+    >
       {/* Step Indicator Bar (2 passos apenas) */}
       <View style={[styles.stepBar, isBarber ? styles.stepBarBarber : styles.stepBarBeauty]}>
         <TouchableOpacity
@@ -619,7 +637,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
           onBackToHome();
         }}
       />
-    </View>
+    </Animated.View>
   );
 };
 
