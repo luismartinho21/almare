@@ -17,7 +17,7 @@ import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 
-type GestorTab = 'appointments' | 'services' | 'staff' | 'revenue';
+type GestorTab = 'appointments' | 'services' | 'staff';
 
 export const GestorBarberView: React.FC = () => {
   const {
@@ -479,15 +479,6 @@ export const GestorBarberView: React.FC = () => {
             Funcionários ({barberStaff.length})
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'revenue' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('revenue')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'revenue' && styles.tabBtnTextActive]}>
-            Financeiro
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -792,6 +783,14 @@ export const GestorBarberView: React.FC = () => {
                 </View>
               ))
             )}
+
+            {/* PAINEL FINANCEIRO EXCLUSIVO DO GESTOR BARBER */}
+            <View style={{ marginTop: 24, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#272732' }}>
+              <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>
+                Financeiro & Faturação Barber
+              </Text>
+              <FinancialDashboard initialBranch="barber" variant="dark" lockBranch={true} />
+            </View>
           </View>
         )}
 
@@ -1042,13 +1041,6 @@ export const GestorBarberView: React.FC = () => {
               );
             })}
           </View>
-        )}
-
-        {/* ============================================================ */}
-        {/* TAB 4: FINANCEIRO & RECEITA CONCLUÍDA */}
-        {/* ============================================================ */}
-        {activeTab === 'revenue' && (
-          <FinancialDashboard initialBranch="barber" variant="dark" />
         )}
       </ScrollView>
 

@@ -31,7 +31,7 @@ export const GestorBeautyView: React.FC = () => {
     deleteService,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'appointments' | 'services' | 'staff' | 'revenue'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'services' | 'staff'>('appointments');
   const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -488,20 +488,6 @@ export const GestorBeautyView: React.FC = () => {
             Funcionárias ({beautyStaff.length})
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.topTabBtn, activeTab === 'revenue' && styles.topTabBtnActive]}
-          onPress={() => setActiveTab('revenue')}
-        >
-          <Text
-            style={[
-              styles.topTabBtnText,
-              activeTab === 'revenue' && styles.topTabBtnTextActive,
-            ]}
-          >
-            Financeiro
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -811,6 +797,14 @@ export const GestorBeautyView: React.FC = () => {
                 </View>
               ))
             )}
+
+            {/* PAINEL FINANCEIRO EXCLUSIVO DO GESTOR BEAUTY */}
+            <View style={{ marginTop: 24, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#FCE7F3' }}>
+              <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>
+                Financeiro & Faturação Beauty
+              </Text>
+              <FinancialDashboard initialBranch="beauty" variant="beauty" lockBranch={true} />
+            </View>
           </View>
         )}
 
@@ -1061,13 +1055,6 @@ export const GestorBeautyView: React.FC = () => {
               );
             })}
           </View>
-        )}
-
-        {/* ============================================================ */}
-        {/* TAB 4: FINANCEIRO & RECEITA CONCLUÍDA */}
-        {/* ============================================================ */}
-        {activeTab === 'revenue' && (
-          <FinancialDashboard initialBranch="beauty" variant="beauty" />
         )}
       </ScrollView>
 

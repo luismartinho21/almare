@@ -16,17 +16,22 @@ export type RevenueBranchFilter = 'all' | 'barber' | 'beauty';
 interface FinancialDashboardProps {
   initialBranch?: RevenueBranchFilter;
   variant?: 'dark' | 'beauty';
+  lockBranch?: boolean;
 }
 
 export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
   initialBranch = 'all',
   variant = 'dark',
+  lockBranch = false,
 }) => {
   const { appointments } = useApp();
 
   const [revenuePeriod, setRevenuePeriod] = useState<RevenuePeriodFilter>('all');
   const [revenueBranch, setRevenueBranch] = useState<RevenueBranchFilter>(initialBranch);
   const [revenueSearch, setRevenueSearch] = useState<string>('');
+
+  // When branch is locked, force to initialBranch
+  const activeBranch = lockBranch ? initialBranch : revenueBranch;
 
   const isBeauty = variant === 'beauty';
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -53,7 +58,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
 
     return allCompletedAppointments.filter(app => {
       // Branch filter
-      if (revenueBranch !== 'all' && app.branch !== revenueBranch) return false;
+      if (activeBranch !== 'all' && app.branch !== activeBranch) return false;
 
       // Period filter
       if (revenuePeriod === 'today') {
@@ -97,7 +102,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
 
     // Today stats (all completed in filtered branch)
     const todayApps = allCompletedAppointments.filter(a => {
-      if (revenueBranch !== 'all' && a.branch !== revenueBranch) return false;
+      if (activeBranch !== 'all' && a.branch !== activeBranch) return false;
       return a.date === todayStr;
     });
     const todayRevenue = todayApps.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
@@ -105,7 +110,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
     // Current month stats (all completed in filtered branch)
     const currentMonthStr = todayStr.substring(0, 7);
     const monthApps = allCompletedAppointments.filter(a => {
-      if (revenueBranch !== 'all' && a.branch !== revenueBranch) return false;
+      if (activeBranch !== 'all' && a.branch !== activeBranch) return false;
       return a.date.startsWith(currentMonthStr);
     });
     const monthRevenue = monthApps.reduce((sum, a) => sum + (a.servicePrice || 0), 0);
@@ -157,7 +162,13 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
           </Text>
         </View>
         <Text style={[styles.liveSyncSub, isBeauty && { color: '#065F46' }]}>
-          Toda a marcação marcada como <Text style={{ color: isBeauty ? '#047857' : '#10B981', fontWeight: '800' }}>Concluída</Text> pelo gestor é automaticamente creditada e registada nesta receita.
+          {lockBranch
+            ? `Toda a marcação ${initialBranch === 'barber' ? 'Almare Barber' : 'Almare Beauty'} marcada como `
+            : 'Toda a marcação marcada como '}
+          <Text style={{ color: isBeauty ? '#047857' : '#10B981', fontWeight: '800' }}>Concluída</Text>
+          {lockBranch
+            ? ' pelo gestor é imediatamente creditada e registada nesta receita financeira.'
+            : ' pelo gestor é automaticamente creditada e registada nesta receita.'}
         </Text>
       </View>
 
@@ -206,39 +217,41 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
         </View>
       </View>
 
-      {/* Barber vs Beauty Distribution (when viewing all or comparison) */}
-      <View style={[styles.sectionCard, isBeauty && styles.sectionCardBeauty]}>
-        <Text style={[styles.sectionTitle, isBeauty && { color: '#3B1C26' }]}>
-          Divisão da Faturação por Salão
-        </Text>
-        <Text style={[styles.sectionSub, isBeauty && { color: '#6B7280' }]}>
-          Comparativo de receita concluída entre Almare Barber e Almare Beauty
-        </Text>
+      {/* Barber vs Beauty Distribution (only for Admin / unlocked view) */}
+      {!lockBranch && (
+        <View style={[styles.sectionCard, isBeauty && styles.sectionCardBeauty]}>
+          <Text style={[styles.sectionTitle, isBeauty && { color: '#3B1C26' }]}>
+            Divisão da Faturação por Salão
+          </Text>
+          <Text style={[styles.sectionSub, isBeauty && { color: '#6B7280' }]}>
+            Comparativo de receita concluída entre Almare Barber e Almare Beauty
+          </Text>
 
-        <View style={styles.branchRow}>
-          {/* Barber Card */}
-          <View style={[styles.branchStatBoxBarber, isBeauty && styles.branchStatBoxBarberBeauty]}>
-            <Text style={styles.branchNameBarber}>ALMARE BARBER</Text>
-            <Text style={[styles.branchValueBarber, isBeauty && { color: '#1F2937' }]}>
-              {revenueMetrics.barberRevenue.toFixed(2)} €
-            </Text>
-            <Text style={[styles.branchSubBarber, isBeauty && { color: '#4B5563' }]}>
-              {revenueMetrics.barberCount} atendimentos ({revenueMetrics.barberPct}%)
-            </Text>
-          </View>
+          <View style={styles.branchRow}>
+            {/* Barber Card */}
+            <View style={[styles.branchStatBoxBarber, isBeauty && styles.branchStatBoxBarberBeauty]}>
+              <Text style={styles.branchNameBarber}>ALMARE BARBER</Text>
+              <Text style={[styles.branchValueBarber, isBeauty && { color: '#1F2937' }]}>
+                {revenueMetrics.barberRevenue.toFixed(2)} €
+              </Text>
+              <Text style={[styles.branchSubBarber, isBeauty && { color: '#4B5563' }]}>
+                {revenueMetrics.barberCount} atendimentos ({revenueMetrics.barberPct}%)
+              </Text>
+            </View>
 
-          {/* Beauty Card */}
-          <View style={[styles.branchStatBoxBeauty, isBeauty && styles.branchStatBoxBeautyLight]}>
-            <Text style={styles.branchNameBeauty}>ALMARE BEAUTY</Text>
-            <Text style={[styles.branchValueBeauty, isBeauty && { color: '#1F2937' }]}>
-              {revenueMetrics.beautyRevenue.toFixed(2)} €
-            </Text>
-            <Text style={[styles.branchSubBeauty, isBeauty && { color: '#4B5563' }]}>
-              {revenueMetrics.beautyCount} atendimentos ({revenueMetrics.beautyPct}%)
-            </Text>
+            {/* Beauty Card */}
+            <View style={[styles.branchStatBoxBeauty, isBeauty && styles.branchStatBoxBeautyLight]}>
+              <Text style={styles.branchNameBeauty}>ALMARE BEAUTY</Text>
+              <Text style={[styles.branchValueBeauty, isBeauty && { color: '#1F2937' }]}>
+                {revenueMetrics.beautyRevenue.toFixed(2)} €
+              </Text>
+              <Text style={[styles.branchSubBeauty, isBeauty && { color: '#4B5563' }]}>
+                {revenueMetrics.beautyCount} atendimentos ({revenueMetrics.beautyPct}%)
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Filter Section */}
       <View style={[styles.sectionCard, isBeauty && styles.sectionCardBeauty]}>
@@ -280,38 +293,42 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
           ))}
         </View>
 
-        {/* Branch Filter */}
-        <Text style={[styles.filterGroupLabel, { marginTop: 12 }, isBeauty && { color: '#4B5563' }]}>Salão:</Text>
-        <View style={styles.filterPillsRow}>
-          {(
-            [
-              { id: 'all', label: 'Todos os Salões' },
-              { id: 'barber', label: 'Almare Barber' },
-              { id: 'beauty', label: 'Almare Beauty' },
-            ] as { id: RevenueBranchFilter; label: string }[]
-          ).map(b => (
-            <TouchableOpacity
-              key={b.id}
-              style={[
-                styles.filterChip,
-                isBeauty && styles.filterChipBeauty,
-                revenueBranch === b.id && (isBeauty ? styles.filterChipActiveBeauty : styles.filterChipActive),
-              ]}
-              onPress={() => setRevenueBranch(b.id)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  isBeauty && { color: '#4B5563' },
-                  revenueBranch === b.id && (isBeauty ? styles.filterChipTextActiveBeauty : styles.filterChipTextActive),
-                ]}
-              >
-                {b.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Branch Filter (only when not locked) */}
+        {!lockBranch && (
+          <>
+            <Text style={[styles.filterGroupLabel, { marginTop: 12 }, isBeauty && { color: '#4B5563' }]}>Salão:</Text>
+            <View style={styles.filterPillsRow}>
+              {(
+                [
+                  { id: 'all', label: 'Todos os Salões' },
+                  { id: 'barber', label: 'Almare Barber' },
+                  { id: 'beauty', label: 'Almare Beauty' },
+                ] as { id: RevenueBranchFilter; label: string }[]
+              ).map(b => (
+                <TouchableOpacity
+                  key={b.id}
+                  style={[
+                    styles.filterChip,
+                    isBeauty && styles.filterChipBeauty,
+                    revenueBranch === b.id && (isBeauty ? styles.filterChipActiveBeauty : styles.filterChipActive),
+                  ]}
+                  onPress={() => setRevenueBranch(b.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      isBeauty && { color: '#4B5563' },
+                      revenueBranch === b.id && (isBeauty ? styles.filterChipTextActiveBeauty : styles.filterChipTextActive),
+                    ]}
+                  >
+                    {b.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Search input */}
         <View style={{ marginTop: 12 }}>
