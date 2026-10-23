@@ -62,20 +62,20 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BEAUTY INTERPOLATIONS (virar para dentro)
+  // BEAUTY INTERPOLATIONS (virar e afastar completamente para fora)
   const beautyRotateY = beautyBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '85deg'],
+    outputRange: ['0deg', '110deg'],
   });
 
   const beautyTranslateX = beautyBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, halfWidth * 0.4],
+    outputRange: [0, halfWidth * 1.4],
   });
 
   const beautyOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.75, 1],
-    outputRange: [1, 0.7, 0],
+    inputRange: [0, 0.7, 1],
+    outputRange: [1, 0.6, 0],
   });
 
   // Fundo bege de Beauty ao abrir/rodar a folha
@@ -84,20 +84,20 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     outputRange: [0, 1],
   });
 
-  // BARBER INTERPOLATIONS (virar para dentro)
+  // BARBER INTERPOLATIONS (virar e afastar completamente para fora)
   const barberRotateY = barberBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '-85deg'],
+    outputRange: ['0deg', '-110deg'],
   });
 
   const barberTranslateX = barberBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -halfWidth * 0.4],
+    outputRange: [0, -halfWidth * 1.4],
   });
 
   const barberOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.75, 1],
-    outputRange: [1, 0.7, 0],
+    inputRange: [0, 0.7, 1],
+    outputRange: [1, 0.6, 0],
   });
 
   return (

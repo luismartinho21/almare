@@ -14,37 +14,38 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
 
   useEffect(() => {
     // Animação cinematográfica super fluida:
-    // 1) O logo surge do fundo (scale 0.6 -> 1.25) aproximando-se do utilizador até aos limites do ecrã com fade in suave
-    // 2) Seguidamente, continua a expandir suavemente (scale 1.25 -> 1.5) enquanto desvanece suavemente (fade out)
+    // 1) O logo surge do fundo (scale 0.65 -> 1.15) aproximando-se com fade in suave
+    // 2) Fica um breve instante no centro
+    // 3) SAÍDA: O logo vem o MÁXIMO PARA FORA (expande gigante até scale 8.5, ultrapassando totalmente os limites do ecrã)
     Animated.sequence([
-      // FASE 1: Vem em direção ao utilizador até cobrir/atingir os limites do ecrã (2400ms)
+      // FASE 1: Entrada do logo aproximando-se com fade in elegante (1300ms)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 1800,
+          duration: 1200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
-          toValue: 1.25,
-          duration: 2500,
+          toValue: 1.15,
+          duration: 1400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
-      // FASE 2: Fica um instante no pico de impacto (500ms)
-      Animated.delay(400),
-      // FASE 3: Desvanece suavemente em fade out fluído (1800ms) continuando a respirar
+      // FASE 2: Breve instante no centro para apreciação da marca (350ms)
+      Animated.delay(350),
+      // FASE 3: SAÍDA DA IMAGEM INICIAL -> VEM O MÁXIMO PARA FORA (não pára a meio, expande até passar da câmara)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 1600,
+          duration: 850,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
-          toValue: 1.45,
-          duration: 1600,
+          toValue: 8.5, // Vem o máximo para fora ultrapassando todos os limites do ecrã
+          duration: 900,
           easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),
