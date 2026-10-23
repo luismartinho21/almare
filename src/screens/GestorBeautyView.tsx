@@ -15,6 +15,7 @@ import { useApp } from '../context/AppContext';
 import { Service, StaffMember } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
+import { FinancialDashboard } from '../components/FinancialDashboard';
 
 export const GestorBeautyView: React.FC = () => {
   const {
@@ -30,7 +31,7 @@ export const GestorBeautyView: React.FC = () => {
     deleteService,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'appointments' | 'services' | 'staff'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'services' | 'staff' | 'revenue'>('appointments');
   const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -485,6 +486,20 @@ export const GestorBeautyView: React.FC = () => {
             ]}
           >
             Funcionárias ({beautyStaff.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.topTabBtn, activeTab === 'revenue' && styles.topTabBtnActive]}
+          onPress={() => setActiveTab('revenue')}
+        >
+          <Text
+            style={[
+              styles.topTabBtnText,
+              activeTab === 'revenue' && styles.topTabBtnTextActive,
+            ]}
+          >
+            Financeiro
           </Text>
         </TouchableOpacity>
       </View>
@@ -1046,6 +1061,13 @@ export const GestorBeautyView: React.FC = () => {
               );
             })}
           </View>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 4: FINANCEIRO & RECEITA CONCLUÍDA */}
+        {/* ============================================================ */}
+        {activeTab === 'revenue' && (
+          <FinancialDashboard initialBranch="beauty" variant="beauty" />
         )}
       </ScrollView>
 

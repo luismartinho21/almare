@@ -15,8 +15,9 @@ import { useApp } from '../context/AppContext';
 import { StaffMember, Service } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
+import { FinancialDashboard } from '../components/FinancialDashboard';
 
-type GestorTab = 'appointments' | 'services' | 'staff';
+type GestorTab = 'appointments' | 'services' | 'staff' | 'revenue';
 
 export const GestorBarberView: React.FC = () => {
   const {
@@ -476,6 +477,15 @@ export const GestorBarberView: React.FC = () => {
         >
           <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextActive]}>
             Funcionários ({barberStaff.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'revenue' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('revenue')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'revenue' && styles.tabBtnTextActive]}>
+            Financeiro
           </Text>
         </TouchableOpacity>
       </View>
@@ -1032,6 +1042,13 @@ export const GestorBarberView: React.FC = () => {
               );
             })}
           </View>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 4: FINANCEIRO & RECEITA CONCLUÍDA */}
+        {/* ============================================================ */}
+        {activeTab === 'revenue' && (
+          <FinancialDashboard initialBranch="barber" variant="dark" />
         )}
       </ScrollView>
 
