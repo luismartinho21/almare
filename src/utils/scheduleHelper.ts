@@ -59,6 +59,16 @@ export const isStaffAvailableForInterval = (
 ): boolean => {
   if (!isSalonOpenDay(date)) return false;
 
+  // Se o profissional estiver inativo, de baixa ou férias
+  if (staff.status === 'inactive' || staff.status === 'leave' || staff.status === 'vacation') {
+    return false;
+  }
+
+  // Se o profissional estiver com falta / ausência programada nesta data
+  if (staff.unavailableDates && staff.unavailableDates.includes(date)) {
+    return false;
+  }
+
   const duration = Math.max(durationMinutes || 30, 15);
   const slotStart = timeToMinutes(slot);
   const slotEnd = slotStart + duration;

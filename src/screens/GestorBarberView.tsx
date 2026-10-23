@@ -16,14 +16,16 @@ import { StaffMember, Service } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 
-type GestorTab = 'appointments' | 'services' | 'schedules';
+type GestorTab = 'appointments' | 'services' | 'staff';
 
 export const GestorBarberView: React.FC = () => {
   const {
     appointments,
     updateAppointmentStatus,
     staff,
+    addStaffMember,
     updateStaffMember,
+    deleteStaffMember,
     services,
     addService,
     updateService,
@@ -52,14 +54,24 @@ export const GestorBarberView: React.FC = () => {
   const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
 
-  // Edit Schedule Modal
-  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-  const [editStart, setEditStart] = useState('09:00');
-  const [editEnd, setEditEnd] = useState('19:00');
-  const [editLunchStart, setEditLunchStart] = useState('12:00');
-  const [editLunchEnd, setEditLunchEnd] = useState('14:00');
-  const [editWorkDays, setEditWorkDays] = useState('Terça a Sábado');
-  const [feedbackMsg, setFeedbackMsg] = useState('');
+  // Staff management & availability states
+  const [staffModalVisible, setStaffModalVisible] = useState(false);
+  const [editingStaffMember, setEditingStaffMember] = useState<StaffMember | null>(null);
+  const [staffName, setStaffName] = useState('');
+  const [staffRole, setStaffRole] = useState('Barbeiro Especialista');
+  const [staffPhone, setStaffPhone] = useState('+351 910 000 000');
+  const [staffStatus, setStaffStatus] = useState<'active' | 'leave' | 'vacation' | 'inactive'>('active');
+  const [staffAbsenceNote, setStaffAbsenceNote] = useState('');
+  const [staffUnavailableDates, setStaffUnavailableDates] = useState<string[]>([]);
+  const [customAbsenceDateInput, setCustomAbsenceDateInput] = useState('');
+
+  // Staff working hours & schedule
+  const [staffStart, setStaffStart] = useState('09:00');
+  const [staffEnd, setStaffEnd] = useState('19:00');
+  const [staffLunchStart, setStaffLunchStart] = useState('12:00');
+  const [staffLunchEnd, setStaffLunchEnd] = useState('14:00');
+  const [staffWorkDays, setStaffWorkDays] = useState('Terça a Sábado');
+  const [staffFeedbackMsg, setStaffFeedbackMsg] = useState('');
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -117,58 +129,172 @@ export const GestorBarberView: React.FC = () => {
     };
   }, [barberAppointments]);
 
-  const handleOpenEditSchedule = (member: StaffMember) => {
-    setEditingStaff(member);
-    setEditStart(member.workingHours?.start || '09:00');
-    setEditEnd(member.workingHours?.end || '19:00');
-    setEditLunchStart(member.workingHours?.lunchStart || '12:00');
-    setEditLunchEnd(member.workingHours?.lunchEnd || '14:00');
-    setEditWorkDays(member.workDays || 'Terça a Sábado');
-    setFeedbackMsg('');
+  const handleOpenCreateStaff = () => {
+    setEditingStaffMember(null);
+    setStaffName('');
+    setStaffRole('Barbeiro Especialista');
+    setStaffPhone('+351 910 000 000');
+    setStaffStatus('active');
+    setStaffAbsenceNote('');
+    setStaffUnavailableDates([]);
+    setCustomAbsenceDateInput('');
+    setStaffStart('09:00');
+    setStaffEnd('19:00');
+    setStaffLunchStart('12:00');
+    setStaffLunchEnd('14:00');
+    setStaffWorkDays('Terça a Sábado');
+    setStaffFeedbackMsg('');
+    setStaffModalVisible(true);
   };
 
-  const handleApplyPreset = (preset: 'standard' | 'morning' | 'afternoon') => {
+  const handleOpenEditStaff = (member: StaffMember) => {
+    setEditingStaffMember(member);
+    setStaffName(member.name);
+    setStaffRole(member.roleTitle);
+    setStaffPhone(member.phone || '+351 910 000 000');
+    setStaffStatus(member.status || 'active');
+    setStaffAbsenceNote(member.absenceNote || '');
+    setStaffUnavailableDates(member.unavailableDates ? [...member.unavailableDates] : []);
+    setCustomAbsenceDateInput('');
+    setStaffStart(member.workingHours?.start || '09:00');
+    setStaffEnd(member.workingHours?.end || '19:00');
+    setStaffLunchStart(member.workingHours?.lunchStart || '12:00');
+    setStaffLunchEnd(member.workingHours?.lunchEnd || '14:00');
+    setStaffWorkDays(member.workDays || 'Terça a Sábado');
+    setStaffFeedbackMsg('');
+    setStaffModalVisible(true);
+  };
+
+  const handleApplyWorkingHoursPreset = (preset: 'standard' | 'morning' | 'afternoon') => {
     if (preset === 'standard') {
-      setEditStart('09:00');
-      setEditEnd('19:00');
-      setEditLunchStart('12:00');
-      setEditLunchEnd('14:00');
-      setEditWorkDays('Terça a Sábado');
+      setStaffStart('09:00');
+      setStaffEnd('19:00');
+      setStaffLunchStart('12:00');
+      setStaffLunchEnd('14:00');
+      setStaffWorkDays('Terça a Sábado');
     } else if (preset === 'morning') {
-      setEditStart('09:00');
-      setEditEnd('13:00');
-      setEditLunchStart('13:00');
-      setEditLunchEnd('13:00');
-      setEditWorkDays('Terça a Sábado');
+      setStaffStart('09:00');
+      setStaffEnd('13:00');
+      setStaffLunchStart('13:00');
+      setStaffLunchEnd('13:00');
+      setStaffWorkDays('Terça a Sábado');
     } else if (preset === 'afternoon') {
-      setEditStart('14:00');
-      setEditEnd('19:00');
-      setEditLunchStart('14:00');
-      setEditLunchEnd('14:00');
-      setEditWorkDays('Terça a Sábado');
+      setStaffStart('14:00');
+      setStaffEnd('19:00');
+      setStaffLunchStart('14:00');
+      setStaffLunchEnd('14:00');
+      setStaffWorkDays('Terça a Sábado');
     }
   };
 
-  const handleSaveSchedule = async () => {
-    if (!editingStaff) return;
+  const handleAddQuickAbsenceDays = (numDays: number) => {
+    const dates: string[] = [];
+    const now = new Date();
+    for (let i = 0; i < numDays; i++) {
+      const target = new Date(now.getTime() + i * 86400000);
+      dates.push(target.toISOString().split('T')[0]);
+    }
+    setStaffUnavailableDates(prev => Array.from(new Set([...prev, ...dates])).sort());
+    if (staffStatus === 'active') {
+      setStaffStatus('leave');
+    }
+    if (!staffAbsenceNote.trim()) {
+      setStaffAbsenceNote(numDays === 1 ? 'Falta / Ausência pontual' : `Baixa médica (${numDays} dias)`);
+    }
+  };
 
-    const updatedMember: StaffMember = {
-      ...editingStaff,
-      workDays: editWorkDays.trim() || 'Terça a Sábado',
-      workingHours: {
-        start: editStart.trim() || '09:00',
-        end: editEnd.trim() || '19:00',
-        lunchStart: editLunchStart.trim() || '12:00',
-        lunchEnd: editLunchEnd.trim() || '14:00',
-      },
-    };
+  const handleAddCustomAbsenceDate = () => {
+    const date = customAbsenceDateInput.trim();
+    if (!date) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      Alert.alert('Formato Inválido', 'Por favor use o formato AAAA-MM-DD (ex: 2026-10-25).');
+      return;
+    }
+    if (!staffUnavailableDates.includes(date)) {
+      setStaffUnavailableDates(prev => [...prev, date].sort());
+    }
+    setCustomAbsenceDateInput('');
+  };
 
-    await updateStaffMember(updatedMember);
-    setFeedbackMsg(`Horário de ${editingStaff.name} atualizado com sucesso!`);
+  const handleRemoveUnavailableDate = (date: string) => {
+    setStaffUnavailableDates(prev => prev.filter(d => d !== date));
+  };
+
+  const handleClearAllAbsences = () => {
+    setStaffUnavailableDates([]);
+    setStaffStatus('active');
+    setStaffAbsenceNote('');
+  };
+
+  const handleSaveStaff = async () => {
+    if (!staffName.trim()) {
+      Alert.alert('Atenção', 'Introduza o nome do profissional.');
+      return;
+    }
+
+    if (editingStaffMember) {
+      await updateStaffMember({
+        ...editingStaffMember,
+        name: staffName.trim(),
+        roleTitle: staffRole.trim() || 'Barbeiro Especialista',
+        phone: staffPhone.trim() || '+351 910 000 000',
+        status: staffStatus,
+        absenceNote: staffAbsenceNote.trim(),
+        unavailableDates: staffUnavailableDates,
+        workDays: staffWorkDays.trim() || 'Terça a Sábado',
+        workingHours: {
+          start: staffStart.trim() || '09:00',
+          end: staffEnd.trim() || '19:00',
+          lunchStart: staffLunchStart.trim() || '12:00',
+          lunchEnd: staffLunchEnd.trim() || '14:00',
+        },
+      });
+      setStaffFeedbackMsg(`Barbeiro ${staffName} atualizado com sucesso!`);
+    } else {
+      await addStaffMember({
+        branch: 'barber',
+        name: staffName.trim(),
+        roleTitle: staffRole.trim() || 'Barbeiro Especialista',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        phone: staffPhone.trim() || '+351 910 000 000',
+        rating: 5.0,
+        specialties: ['Corte Clássico', 'Barba Terapia', 'Degradê'],
+        status: staffStatus,
+        absenceNote: staffAbsenceNote.trim(),
+        unavailableDates: staffUnavailableDates,
+        workDays: staffWorkDays.trim() || 'Terça a Sábado',
+        workingHours: {
+          start: staffStart.trim() || '09:00',
+          end: staffEnd.trim() || '19:00',
+          lunchStart: staffLunchStart.trim() || '12:00',
+          lunchEnd: staffLunchEnd.trim() || '14:00',
+        },
+      });
+      setStaffFeedbackMsg(`Barbeiro ${staffName} adicionado à equipa!`);
+    }
+
     setTimeout(() => {
-      setEditingStaff(null);
-      setFeedbackMsg('');
-    }, 1200);
+      setStaffModalVisible(false);
+      setEditingStaffMember(null);
+      setStaffFeedbackMsg('');
+    }, 900);
+  };
+
+  const handleDeleteStaff = (member: StaffMember) => {
+    Alert.alert(
+      'Eliminar Funcionário',
+      `Tem a certeza de que deseja remover "${member.name}" da equipa de barbeiros? As marcações existentes serão mantidas no histórico.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteStaffMember(member.id);
+          },
+        },
+      ]
+    );
   };
 
   // Barber services and extras
@@ -327,11 +453,11 @@ export const GestorBarberView: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'schedules' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('schedules')}
+          style={[styles.tabBtn, activeTab === 'staff' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('staff')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'schedules' && styles.tabBtnTextActive]}>
-            Horários ({barberStaff.length})
+          <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextActive]}>
+            Funcionários ({barberStaff.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -735,170 +861,456 @@ export const GestorBarberView: React.FC = () => {
         )}
 
         {/* ============================================================ */}
-        {/* TAB 3: DEFINIR HORÁRIOS DA EQUIPA */}
+        {/* TAB 3: GESTÃO COMPLETA DE FUNCIONÁRIOS (BARBER) */}
         {/* ============================================================ */}
-        {activeTab === 'schedules' && (
+        {activeTab === 'staff' && (
           <View>
+            <View style={styles.servicesHeaderRow}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.sectionTitle}>Equipa de Barbeiros ({barberStaff.length})</Text>
+                <Text style={styles.sectionSub}>
+                  Gerir barbeiros, funções, horários, baixas médicas e faltas.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.addServiceTopBtn}
+                onPress={handleOpenCreateStaff}
+              >
+                <Text style={styles.addServiceTopBtnText}>+ Novo Barbeiro</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.standardScheduleBanner}>
               <Text style={styles.standardScheduleLabel}>HORÁRIO GERAL DO SALÃO DEFINIDO</Text>
               <Text style={styles.standardScheduleTitle}>
                 Terça a Sábado das 09:00 às 12:00 e das 14:00 às 19:00
               </Text>
               <Text style={styles.standardScheduleSub}>
-                O gestor pode personalizar individualmente a escala de cada barbeiro abaixo.
+                Baixas médicas ou faltas registadas bloqueiam automaticamente a marcação de clientes online.
               </Text>
             </View>
 
-            <Text style={styles.sectionTitle}>Escala da Equipa de Barbeiros ({barberStaff.length})</Text>
+            {barberStaff.map(member => {
+              const isLeave = member.status === 'leave';
+              const isVacation = member.status === 'vacation';
+              const isInactive = member.status === 'inactive';
+              const hasAbsenceNotice =
+                isLeave ||
+                isVacation ||
+                isInactive ||
+                (member.unavailableDates && member.unavailableDates.length > 0) ||
+                Boolean(member.absenceNote);
 
-            {barberStaff.map(member => (
-              <View key={member.id} style={styles.scheduleConfigCard}>
-                <View style={styles.scheduleConfigHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.scheduleConfigName}>{member.name}</Text>
-                    <Text style={styles.scheduleConfigRole}>{member.roleTitle}</Text>
+              return (
+                <View key={member.id} style={styles.scheduleConfigCard}>
+                  <View style={styles.scheduleConfigHeader}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                        <Text style={styles.scheduleConfigName}>{member.name}</Text>
+                        <View
+                          style={[
+                            styles.staffStatusBadge,
+                            isLeave
+                              ? styles.staffStatusBadgeLeave
+                              : isVacation
+                              ? styles.staffStatusBadgeVacation
+                              : isInactive
+                              ? styles.staffStatusBadgeInactive
+                              : styles.staffStatusBadgeActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.staffStatusBadgeText,
+                              isLeave
+                                ? { color: '#F59E0B' }
+                                : isVacation
+                                ? { color: '#60A5FA' }
+                                : isInactive
+                                ? { color: '#A1A1AA' }
+                                : { color: '#10B981' },
+                            ]}
+                          >
+                            {isLeave
+                              ? '⚠ Baixa Médica'
+                              : isVacation
+                              ? '🏖 Em Férias'
+                              : isInactive
+                              ? '✕ Inativo'
+                              : '● No Ativo'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.scheduleConfigRole}>{member.roleTitle}</Text>
+                      <Text style={styles.staffPhoneSub}>Tel: {member.phone || 'Sem contacto'}</Text>
+                    </View>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.editScheduleBtn}
-                    onPress={() => handleOpenEditSchedule(member)}
-                  >
-                    <Text style={styles.editScheduleBtnText}>Definir Horário</Text>
-                  </TouchableOpacity>
+                  {hasAbsenceNotice && (
+                    <View style={styles.staffAbsenceNoticeBox}>
+                      <Text style={styles.staffAbsenceNoticeTitle}>
+                        {isLeave
+                          ? 'ALERTA: BAIXA MÉDICA / AUSÊNCIA ATIVA'
+                          : isVacation
+                          ? 'ALERTA: PERÍODO DE FÉRIAS'
+                          : 'AVISO DE INDISPONIBILIDADE'}
+                      </Text>
+                      {member.absenceNote ? (
+                        <Text style={styles.staffAbsenceNoticeText}>&quot;{member.absenceNote}&quot;</Text>
+                      ) : null}
+                      {member.unavailableDates && member.unavailableDates.length > 0 ? (
+                        <Text style={styles.staffBlockedDatesText}>
+                          Datas de ausência bloqueadas ({member.unavailableDates.length}): {member.unavailableDates.join(', ')}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.staffBlockedHint}>
+                        (As vagas deste profissional nestas datas ficam inacessíveis para os clientes)
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.scheduleValuesBox}>
+                    <View style={styles.scheduleValueCol}>
+                      <Text style={styles.scheduleValueLabel}>Dias Ativos</Text>
+                      <Text style={styles.scheduleValueText}>{member.workDays || 'Terça a Sábado'}</Text>
+                    </View>
+
+                    <View style={styles.scheduleValueCol}>
+                      <Text style={styles.scheduleValueLabel}>Manhã</Text>
+                      <Text style={styles.scheduleValueText}>
+                        {member.workingHours?.start || '09:00'} - {member.workingHours?.lunchStart || '12:00'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.scheduleValueCol}>
+                      <Text style={styles.scheduleValueLabel}>Tarde</Text>
+                      <Text style={styles.scheduleValueText}>
+                        {member.workingHours?.lunchEnd || '14:00'} - {member.workingHours?.end || '19:00'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.schedulePauseHint}>
+                    Pausa de almoço: {member.workingHours?.lunchStart || '12:00'} às{' '}
+                    {member.workingHours?.lunchEnd || '14:00'}
+                  </Text>
+
+                  <View style={styles.staffActionRow}>
+                    <TouchableOpacity
+                      style={styles.editStaffBtn}
+                      onPress={() => handleOpenEditStaff(member)}
+                    >
+                      <Text style={styles.editStaffBtnText}>Editar / Disponibilidade</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.deleteStaffBtn}
+                      onPress={() => handleDeleteStaff(member)}
+                    >
+                      <Text style={styles.deleteStaffBtnText}>Eliminar</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-
-                <View style={styles.scheduleValuesBox}>
-                  <View style={styles.scheduleValueCol}>
-                    <Text style={styles.scheduleValueLabel}>Dias Ativos</Text>
-                    <Text style={styles.scheduleValueText}>{member.workDays || 'Terça a Sábado'}</Text>
-                  </View>
-
-                  <View style={styles.scheduleValueCol}>
-                    <Text style={styles.scheduleValueLabel}>Manhã</Text>
-                    <Text style={styles.scheduleValueText}>
-                      {member.workingHours?.start || '09:00'} - {member.workingHours?.lunchStart || '12:00'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.scheduleValueCol}>
-                    <Text style={styles.scheduleValueLabel}>Tarde</Text>
-                    <Text style={styles.scheduleValueText}>
-                      {member.workingHours?.lunchEnd || '14:00'} - {member.workingHours?.end || '19:00'}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={styles.schedulePauseHint}>
-                  Pausa de almoço: {member.workingHours?.lunchStart || '12:00'} às{' '}
-                  {member.workingHours?.lunchEnd || '14:00'}
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
 
-      {/* Modal: Editar Horário do Funcionário */}
-      <Modal visible={!!editingStaff} transparent animationType="slide" onRequestClose={() => setEditingStaff(null)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setEditingStaff(null)}>
-          <Pressable style={styles.modalBody} onPress={e => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Definir Horário de {editingStaff?.name}</Text>
-            <Text style={styles.modalSub}>
-              Configuração oficial do gestor para vagas de agendamento e visibilidade do staff.
-            </Text>
+      {/* Modal: Adicionar / Editar Funcionário e Disponibilidade */}
+      <Modal visible={staffModalVisible} transparent animationType="slide" onRequestClose={() => setStaffModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setStaffModalVisible(false)}>
+          <Pressable style={[styles.modalBody, { maxHeight: '92%' }]} onPress={e => e.stopPropagation()}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>
+                {editingStaffMember ? `Editar ${editingStaffMember.name}` : 'Novo Barbeiro'}
+              </Text>
+              <Text style={styles.modalSub}>
+                Configure o perfil profissional, horário de expediente e registe baixas médicas ou faltas.
+              </Text>
 
-            {/* Presets Rápidos */}
-            <Text style={styles.presetTitle}>Predefinições Rápidas:</Text>
-            <View style={styles.presetRow}>
-              <TouchableOpacity
-                style={styles.presetBtn}
-                onPress={() => handleApplyPreset('standard')}
-              >
-                <Text style={styles.presetBtnText}>Padrão (09:00-12:00 / 14:00-19:00)</Text>
+              {/* Nome */}
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>Nome do Barbeiro *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={staffName}
+                  onChangeText={setStaffName}
+                  placeholder="Ex: Diogo Silva"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* Função / Cargo */}
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>Função / Cargo *</Text>
+                <View style={styles.categoryPillRow}>
+                  {['Master Barber', 'Barbeiro Especialista', 'Barbeiro', 'Colorista Masculino'].map(role => (
+                    <TouchableOpacity
+                      key={role}
+                      style={[styles.categorySelectPill, staffRole === role && styles.categorySelectPillActive]}
+                      onPress={() => setStaffRole(role)}
+                    >
+                      <Text
+                        style={[
+                          styles.categorySelectPillText,
+                          staffRole === role && styles.categorySelectPillTextActive,
+                        ]}
+                      >
+                        {role}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[styles.modalInput, { marginTop: 6 }]}
+                  value={staffRole}
+                  onChangeText={setStaffRole}
+                  placeholder="Ou introduza outro cargo..."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* Telefone */}
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>Contacto Telefónico</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={staffPhone}
+                  onChangeText={setStaffPhone}
+                  placeholder="+351 910 000 000"
+                  placeholderTextColor="#71717A"
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              {/* Estado do Funcionário */}
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>Estado / Disponibilidade Geral</Text>
+                <View style={styles.categoryPillRow}>
+                  {[
+                    { key: 'active', label: '● Ativo' },
+                    { key: 'leave', label: '⚠ Baixa Médica' },
+                    { key: 'vacation', label: '🏖 Férias' },
+                    { key: 'inactive', label: '✕ Inativo' },
+                  ].map(st => (
+                    <TouchableOpacity
+                      key={st.key}
+                      style={[styles.categorySelectPill, staffStatus === st.key && styles.categorySelectPillActive]}
+                      onPress={() => setStaffStatus(st.key as typeof staffStatus)}
+                    >
+                      <Text
+                        style={[
+                          styles.categorySelectPillText,
+                          staffStatus === st.key && styles.categorySelectPillTextActive,
+                        ]}
+                      >
+                        {st.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Gestão de Ausências e Baixas */}
+              <View style={styles.extrasSectionContainer}>
+                <Text style={styles.serviceFieldLabel}>Registo de Baixas Médicas e Faltas</Text>
+                <Text style={styles.extrasSectionNotice}>
+                  Clique num botão rápido para registar a ausência (ex: baixa de 3 dias). As marcações de clientes ficarão bloqueadas automaticamente.
+                </Text>
+
+                <View style={styles.quickAbsenceRow}>
+                  <TouchableOpacity
+                    style={styles.quickAbsenceBtn}
+                    onPress={() => handleAddQuickAbsenceDays(1)}
+                  >
+                    <Text style={styles.quickAbsenceBtnText}>+ Falta Hoje</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.quickAbsenceBtn, styles.quickAbsenceBtnHighlight]}
+                    onPress={() => handleAddQuickAbsenceDays(3)}
+                  >
+                    <Text style={[styles.quickAbsenceBtnText, { color: '#D4AF37', fontWeight: '900' }]}>
+                      + Baixa 3 Dias (Hoje + 2)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.quickAbsenceBtn}
+                    onPress={() => handleAddQuickAbsenceDays(5)}
+                  >
+                    <Text style={styles.quickAbsenceBtnText}>+ Baixa 5 Dias</Text>
+                  </TouchableOpacity>
+
+                  {staffUnavailableDates.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.quickAbsenceBtn, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}
+                      onPress={handleClearAllAbsences}
+                    >
+                      <Text style={[styles.quickAbsenceBtnText, { color: '#EF4444' }]}>Limpar Faltas</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Motivo de ausência */}
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.modalFieldLabelMini}>Motivo da Ausência / Baixa</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={staffAbsenceNote}
+                    onChangeText={setStaffAbsenceNote}
+                    placeholder="Ex: Baixa médica por 3 dias com atestado"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+
+                {/* Input manual para adicionar data específica */}
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.modalFieldLabelMini}>Adicionar Data Específica de Falta (AAAA-MM-DD)</Text>
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+                    <TextInput
+                      style={[styles.modalInput, { flex: 1 }]}
+                      value={customAbsenceDateInput}
+                      onChangeText={setCustomAbsenceDateInput}
+                      placeholder={new Date().toISOString().split('T')[0]}
+                      placeholderTextColor="#71717A"
+                    />
+                    <TouchableOpacity
+                      style={styles.addDatePillBtn}
+                      onPress={handleAddCustomAbsenceDate}
+                    >
+                      <Text style={styles.addDatePillBtnText}>Bloquear Data</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Lista de datas bloqueadas */}
+                {staffUnavailableDates.length > 0 ? (
+                  <View style={styles.blockedDatesContainer}>
+                    <Text style={styles.extrasSubTitle}>
+                      Datas Bloqueadas ({staffUnavailableDates.length}):
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                      {staffUnavailableDates.map(date => (
+                        <View key={date} style={styles.blockedDateBadge}>
+                          <Text style={styles.blockedDateBadgeText}>{date}</Text>
+                          <TouchableOpacity onPress={() => handleRemoveUnavailableDate(date)}>
+                            <Text style={styles.blockedDateRemove}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={[styles.extrasSectionNotice, { marginTop: 8, fontStyle: 'italic' }]}>
+                    Nenhuma data específica bloqueada de momento.
+                  </Text>
+                )}
+              </View>
+
+              {/* Horário de Trabalho e Presets */}
+              <Text style={styles.presetTitle}>Horário de Expediente & Presets:</Text>
+              <View style={styles.presetRow}>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => handleApplyWorkingHoursPreset('standard')}
+                >
+                  <Text style={styles.presetBtnText}>Padrão (09:00-12:00 / 14:00-19:00)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => handleApplyWorkingHoursPreset('morning')}
+                >
+                  <Text style={styles.presetBtnText}>Só Manhã (09:00-13:00)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => handleApplyWorkingHoursPreset('afternoon')}
+                >
+                  <Text style={styles.presetBtnText}>Só Tarde (14:00-19:00)</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.formGrid}>
+                <View style={styles.formCol}>
+                  <Text style={styles.modalLabel}>Hora de Entrada</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={staffStart}
+                    onChangeText={setStaffStart}
+                    placeholder="09:00"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+
+                <View style={styles.formCol}>
+                  <Text style={styles.modalLabel}>Hora de Saída</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={staffEnd}
+                    onChangeText={setStaffEnd}
+                    placeholder="19:00"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGrid}>
+                <View style={styles.formCol}>
+                  <Text style={styles.modalLabel}>Início Almoço</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={staffLunchStart}
+                    onChangeText={setStaffLunchStart}
+                    placeholder="12:00"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+
+                <View style={styles.formCol}>
+                  <Text style={styles.modalLabel}>Fim Almoço</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={staffLunchEnd}
+                    onChangeText={setStaffLunchEnd}
+                    placeholder="14:00"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>Dias de Trabalho</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={staffWorkDays}
+                  onChangeText={setStaffWorkDays}
+                  placeholder="Terça a Sábado"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {staffFeedbackMsg ? (
+                <Text style={styles.feedbackSuccessText}>{staffFeedbackMsg}</Text>
+              ) : null}
+
+              <TouchableOpacity style={styles.saveScheduleBtn} onPress={handleSaveStaff}>
+                <Text style={styles.saveScheduleBtnText}>
+                  {editingStaffMember ? 'Guardar Alterações do Barbeiro' : 'Criar Barbeiro'}
+                </Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={styles.presetBtn}
-                onPress={() => handleApplyPreset('morning')}
+                style={styles.cancelModalBtn}
+                onPress={() => {
+                  setStaffModalVisible(false);
+                  setEditingStaffMember(null);
+                }}
               >
-                <Text style={styles.presetBtnText}>Só Manhã (09:00-13:00)</Text>
+                <Text style={styles.cancelModalBtnText}>Fechar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.presetBtn}
-                onPress={() => handleApplyPreset('afternoon')}
-              >
-                <Text style={styles.presetBtnText}>Só Tarde (14:00-19:00)</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Campos de Horário */}
-            <View style={styles.formGrid}>
-              <View style={styles.formCol}>
-                <Text style={styles.modalLabel}>Hora de Entrada</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editStart}
-                  onChangeText={setEditStart}
-                  placeholder="09:00"
-                  placeholderTextColor="#71717A"
-                />
-              </View>
-
-              <View style={styles.formCol}>
-                <Text style={styles.modalLabel}>Hora de Saída</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editEnd}
-                  onChangeText={setEditEnd}
-                  placeholder="19:00"
-                  placeholderTextColor="#71717A"
-                />
-              </View>
-            </View>
-
-            <View style={styles.formGrid}>
-              <View style={styles.formCol}>
-                <Text style={styles.modalLabel}>Início Almoço</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editLunchStart}
-                  onChangeText={setEditLunchStart}
-                  placeholder="12:00"
-                  placeholderTextColor="#71717A"
-                />
-              </View>
-
-              <View style={styles.formCol}>
-                <Text style={styles.modalLabel}>Fim Almoço</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editLunchEnd}
-                  onChangeText={setEditLunchEnd}
-                  placeholder="14:00"
-                  placeholderTextColor="#71717A"
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>Dias de Trabalho</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editWorkDays}
-                onChangeText={setEditWorkDays}
-                placeholder="Terça a Sábado"
-                placeholderTextColor="#71717A"
-              />
-            </View>
-
-            {feedbackMsg ? <Text style={styles.feedbackSuccessText}>{feedbackMsg}</Text> : null}
-
-            <TouchableOpacity style={styles.saveScheduleBtn} onPress={handleSaveSchedule}>
-              <Text style={styles.saveScheduleBtnText}>Guardar Horário do Funcionário</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.cancelModalBtn} onPress={() => setEditingStaff(null)}>
-              <Text style={styles.cancelModalBtnText}>Fechar</Text>
-            </TouchableOpacity>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2080,5 +2492,167 @@ const styles = StyleSheet.create({
   inlineCancelBtnText: {
     color: '#9CA3AF',
     fontSize: 11,
+  },
+  // Staff & Absence Management Styles
+  staffStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  staffStatusBadgeActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  staffStatusBadgeLeave: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  staffStatusBadgeVacation: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  staffStatusBadgeInactive: {
+    backgroundColor: 'rgba(113, 113, 122, 0.15)',
+    borderColor: 'rgba(113, 113, 122, 0.3)',
+  },
+  staffStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  staffPhoneSub: {
+    color: '#A1A1AA',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  staffAbsenceNoticeBox: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  staffAbsenceNoticeTitle: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  staffAbsenceNoticeText: {
+    color: '#FDE68A',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  staffBlockedDatesText: {
+    color: '#E5E7EB',
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  staffBlockedHint: {
+    color: '#9CA3AF',
+    fontSize: 10,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  staffActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 10,
+  },
+  editStaffBtn: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  editStaffBtnText: {
+    color: '#111827',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  deleteStaffBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  deleteStaffBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  quickAbsenceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginVertical: 6,
+  },
+  quickAbsenceBtn: {
+    backgroundColor: '#272732',
+    borderWidth: 1,
+    borderColor: '#3F3F4D',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  quickAbsenceBtnText: {
+    color: '#E4E4E7',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  quickAbsenceBtnHighlight: {
+    backgroundColor: '#2E2614',
+    borderColor: '#D4AF37',
+  },
+  addDatePillBtn: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addDatePillBtnText: {
+    color: '#111827',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  blockedDatesContainer: {
+    backgroundColor: '#15151A',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#282833',
+    marginTop: 8,
+  },
+  blockedDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#242430',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#383848',
+  },
+  blockedDateBadgeText: {
+    color: '#F4F4F5',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  blockedDateRemove: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '900',
+    marginLeft: 6,
   },
 });

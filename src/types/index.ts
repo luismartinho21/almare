@@ -30,6 +30,9 @@ export interface StaffMember {
     lunchEnd?: string;   // e.g. "14:00"
   };
   workDays?: string; // e.g. "Terça a Sábado"
+  status?: 'active' | 'leave' | 'vacation' | 'inactive'; // e.g. ativo, de baixa, férias, inativo
+  absenceNote?: string; // e.g. "Baixa médica por 3 dias", "Férias"
+  unavailableDates?: string[]; // Datas específicas de ausência (YYYY-MM-DD)
 }
 
 export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled';
