@@ -17,7 +17,8 @@ import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 
-type GestorTab = 'appointments' | 'services' | 'staff';
+type GestorTab = 'management' | 'services' | 'staff';
+type ManagementSubTab = 'appointments' | 'finance';
 
 export const GestorBarberView: React.FC = () => {
   const {
@@ -33,7 +34,8 @@ export const GestorBarberView: React.FC = () => {
     deleteService,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<GestorTab>('appointments');
+  const [activeTab, setActiveTab] = useState<GestorTab>('management');
+  const [managementSubTab, setManagementSubTab] = useState<ManagementSubTab>('appointments');
   const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -451,14 +453,14 @@ export const GestorBarberView: React.FC = () => {
         </View>
       </View>
 
-      {/* Tabs: Agenda & Marcações | Serviços & Extras | Horários da Equipa */}
+      {/* Tabs: Gestão | Serviços | Colaboradores */}
       <View style={styles.tabBar}>
         <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'appointments' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('appointments')}
+          style={[styles.tabBtn, activeTab === 'management' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('management')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'appointments' && styles.tabBtnTextActive]}>
-            Marcações ({barberAppointments.length})
+          <Text style={[styles.tabBtnText, activeTab === 'management' && styles.tabBtnTextActive]}>
+            Gestão
           </Text>
         </TouchableOpacity>
 
@@ -467,7 +469,7 @@ export const GestorBarberView: React.FC = () => {
           onPress={() => setActiveTab('services')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'services' && styles.tabBtnTextActive]}>
-            Serviços & Extras ({barberServices.length})
+            Serviços
           </Text>
         </TouchableOpacity>
 
@@ -476,42 +478,66 @@ export const GestorBarberView: React.FC = () => {
           onPress={() => setActiveTab('staff')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextActive]}>
-            Funcionários ({barberStaff.length})
+            Colaboradores
           </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* ============================================================ */}
-        {/* TAB 1: AGENDA & MARCAÇÕES */}
+        {/* ABA SUPERIOR 1: GESTÃO (MARCAÇÕES & FINANÇAS) */}
         {/* ============================================================ */}
-        {activeTab === 'appointments' && (
+        {activeTab === 'management' && (
           <View>
-            {/* KPI Stat Cards */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{stats.totalCount}</Text>
-                <Text style={styles.statLabel}>
-                  {dateFilter === 'today' ? 'Marcações Hoje' : 'Total no Filtro'}
+            {/* Sub-abas: Marcações | Finanças */}
+            <View style={styles.subTabBar}>
+              <TouchableOpacity
+                style={[styles.subTabBtn, managementSubTab === 'appointments' && styles.subTabBtnActive]}
+                onPress={() => setManagementSubTab('appointments')}
+              >
+                <Text style={[styles.subTabBtnText, managementSubTab === 'appointments' && styles.subTabBtnTextActive]}>
+                  Marcações ({barberAppointments.length})
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              <View style={styles.statCard}>
-                <Text style={[styles.statNumber, { color: Theme.colors.barber.accent }]}>
-                  {stats.totalRevenue.toFixed(0)} €
+              <TouchableOpacity
+                style={[styles.subTabBtn, managementSubTab === 'finance' && styles.subTabBtnActive]}
+                onPress={() => setManagementSubTab('finance')}
+              >
+                <Text style={[styles.subTabBtnText, managementSubTab === 'finance' && styles.subTabBtnTextActive]}>
+                  Finanças
                 </Text>
-                <Text style={styles.statLabel}>Faturamento</Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Text style={[styles.statNumber, { color: '#10B981' }]}>
-                  {stats.completedCount > 0 ? stats.completedCount : stats.confirmedCount}
-                </Text>
-                <Text style={styles.statLabel}>
-                  {stats.completedCount > 0 ? 'Concluídos' : 'Confirmados'}
-                </Text>
-              </View>
+              </TouchableOpacity>
             </View>
+
+            {/* SUB-ABA: MARCAÇÕES */}
+            {managementSubTab === 'appointments' && (
+              <View>
+                {/* KPI Stat Cards */}
+                <View style={styles.statsGrid}>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statNumber}>{stats.totalCount}</Text>
+                    <Text style={styles.statLabel}>
+                      {dateFilter === 'today' ? 'Marcações Hoje' : 'Total no Filtro'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.statCard}>
+                    <Text style={[styles.statNumber, { color: Theme.colors.barber.accent }]}>
+                      {stats.totalRevenue.toFixed(0)} €
+                    </Text>
+                    <Text style={styles.statLabel}>Faturamento</Text>
+                  </View>
+
+                  <View style={styles.statCard}>
+                    <Text style={[styles.statNumber, { color: '#10B981' }]}>
+                      {stats.completedCount > 0 ? stats.completedCount : stats.confirmedCount}
+                    </Text>
+                    <Text style={styles.statLabel}>
+                      {stats.completedCount > 0 ? 'Concluídos' : 'Confirmados'}
+                    </Text>
+                  </View>
+                </View>
 
             {/* Individual Staff Summary Card (when filtering by a specific professional) */}
             {activeStaffMember && (
@@ -783,14 +809,13 @@ export const GestorBarberView: React.FC = () => {
                 </View>
               ))
             )}
+              </View>
+            )}
 
-            {/* PAINEL FINANCEIRO EXCLUSIVO DO GESTOR BARBER */}
-            <View style={{ marginTop: 24, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#272732' }}>
-              <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>
-                Financeiro & Faturação Barber
-              </Text>
+            {/* SUB-ABA: FINANÇAS */}
+            {managementSubTab === 'finance' && (
               <FinancialDashboard initialBranch="barber" variant="dark" lockBranch={true} />
-            </View>
+            )}
           </View>
         )}
 
@@ -1629,6 +1654,33 @@ const styles = StyleSheet.create({
   },
   tabBtnTextActive: {
     color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  subTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#16161D',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2A2415',
+  },
+  subTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  subTabBtnActive: {
+    backgroundColor: '#D4AF37',
+  },
+  subTabBtnText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  subTabBtnTextActive: {
+    color: '#0D0D11',
     fontWeight: '900',
   },
   content: {

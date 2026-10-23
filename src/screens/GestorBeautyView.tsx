@@ -17,6 +17,9 @@ import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 
+type GestorTab = 'management' | 'services' | 'staff';
+type ManagementSubTab = 'appointments' | 'finance';
+
 export const GestorBeautyView: React.FC = () => {
   const {
     appointments,
@@ -31,7 +34,8 @@ export const GestorBeautyView: React.FC = () => {
     deleteService,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'appointments' | 'services' | 'staff'>('appointments');
+  const [activeTab, setActiveTab] = useState<GestorTab>('management');
+  const [managementSubTab, setManagementSubTab] = useState<ManagementSubTab>('appointments');
   const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
   const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -445,19 +449,19 @@ export const GestorBeautyView: React.FC = () => {
         <Text style={styles.headerSub}>Almare Beauty Salon • Acesso Exclusivo Gestor</Text>
       </View>
 
-      {/* Main Section Navigation Bar */}
+      {/* Main Section Navigation Bar: Gestão | Serviços | Colaboradores */}
       <View style={styles.topTabBar}>
         <TouchableOpacity
-          style={[styles.topTabBtn, activeTab === 'appointments' && styles.topTabBtnActive]}
-          onPress={() => setActiveTab('appointments')}
+          style={[styles.topTabBtn, activeTab === 'management' && styles.topTabBtnActive]}
+          onPress={() => setActiveTab('management')}
         >
           <Text
             style={[
               styles.topTabBtnText,
-              activeTab === 'appointments' && styles.topTabBtnTextActive,
+              activeTab === 'management' && styles.topTabBtnTextActive,
             ]}
           >
-            Agenda ({beautyAppointments.length})
+            Gestão
           </Text>
         </TouchableOpacity>
 
@@ -471,7 +475,7 @@ export const GestorBeautyView: React.FC = () => {
               activeTab === 'services' && styles.topTabBtnTextActive,
             ]}
           >
-            Serviços & Extras ({beautyServices.length})
+            Serviços
           </Text>
         </TouchableOpacity>
 
@@ -485,17 +489,41 @@ export const GestorBeautyView: React.FC = () => {
               activeTab === 'staff' && styles.topTabBtnTextActive,
             ]}
           >
-            Funcionárias ({beautyStaff.length})
+            Colaboradores
           </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* ============================================================ */}
-        {/* TAB 1: AGENDA & MARCAÇÕES BEAUTY */}
+        {/* ABA SUPERIOR 1: GESTÃO (MARCAÇÕES & FINANÇAS) */}
         {/* ============================================================ */}
-        {activeTab === 'appointments' && (
+        {activeTab === 'management' && (
           <View>
+            {/* Sub-abas: Marcações | Finanças */}
+            <View style={styles.subTabBar}>
+              <TouchableOpacity
+                style={[styles.subTabBtn, managementSubTab === 'appointments' && styles.subTabBtnActive]}
+                onPress={() => setManagementSubTab('appointments')}
+              >
+                <Text style={[styles.subTabBtnText, managementSubTab === 'appointments' && styles.subTabBtnTextActive]}>
+                  Marcações ({beautyAppointments.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.subTabBtn, managementSubTab === 'finance' && styles.subTabBtnActive]}
+                onPress={() => setManagementSubTab('finance')}
+              >
+                <Text style={[styles.subTabBtnText, managementSubTab === 'finance' && styles.subTabBtnTextActive]}>
+                  Finanças
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* SUB-ABA: MARCAÇÕES */}
+            {managementSubTab === 'appointments' && (
+              <View>
             {/* KPI Stat Cards */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
@@ -797,14 +825,13 @@ export const GestorBeautyView: React.FC = () => {
                 </View>
               ))
             )}
+              </View>
+            )}
 
-            {/* PAINEL FINANCEIRO EXCLUSIVO DO GESTOR BEAUTY */}
-            <View style={{ marginTop: 24, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#FCE7F3' }}>
-              <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 12 }]}>
-                Financeiro & Faturação Beauty
-              </Text>
+            {/* SUB-ABA: FINANÇAS */}
+            {managementSubTab === 'finance' && (
               <FinancialDashboard initialBranch="beauty" variant="beauty" lockBranch={true} />
-            </View>
+            )}
           </View>
         )}
 
@@ -1979,6 +2006,40 @@ const styles = StyleSheet.create({
   },
   topTabBtnTextActive: {
     color: '#FBCFE8',
+    fontWeight: '900',
+  },
+  subTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FCE7F3',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FBCFE8',
+  },
+  subTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  subTabBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F472B6',
+  },
+  subTabBtnText: {
+    color: '#831843',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  subTabBtnTextActive: {
+    color: '#111827',
     fontWeight: '900',
   },
   servicesHeaderRow: {
