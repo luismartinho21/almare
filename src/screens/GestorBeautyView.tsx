@@ -1279,8 +1279,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   dateFilterPillActive: {
-    backgroundColor: '#D4AF37',
-    borderColor: '#B8860B',
+    backgroundColor: '#FCE7F3',
+    borderWidth: 1.5,
+    borderColor: '#BE185D',
   },
   dateFilterPillText: {
     color: '#4B5563',
@@ -1347,7 +1348,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   staffFilterChipActive: {
-    backgroundColor: '#FDF2F8',
+    backgroundColor: '#FCE7F3',
+    borderWidth: 1.5,
     borderColor: '#BE185D',
   },
   staffFilterChipText: {
@@ -1356,7 +1358,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   staffFilterChipTextActive: {
-    color: '#831843',
+    color: '#111827',
     fontWeight: '900',
   },
   searchInput: {
@@ -1578,8 +1580,9 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   catFilterPillActive: {
-    backgroundColor: '#D4AF37',
-    borderColor: '#B8860B',
+    backgroundColor: '#FCE7F3',
+    borderWidth: 1.5,
+    borderColor: '#BE185D',
   },
   catFilterPillText: {
     fontSize: 11,
