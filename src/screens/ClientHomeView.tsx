@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
+import { salonSound } from '../utils/soundHelper';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
@@ -22,11 +23,11 @@ const { width } = Dimensions.get('window');
 const halfWidth = width / 2;
 
 export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, onOpenPinModal }) => {
+  // Lado atualmente a folhear ('beauty' ou 'barber') para passar garantidamente por cima
+  const [turningBranch, setTurningBranch] = useState<'beauty' | 'barber' | null>(null);
+
   // Fade in de entrada dos 2 botões
   const buttonsFadeAnim = useRef(new Animated.Value(0)).current;
-
-  // Ramo atualmente a animar (para garantir que a folha passa sempre POR CIMA da outra com zIndex prioritário)
-  const [animatingBranch, setAnimatingBranch] = useState<'beauty' | 'barber' | null>(null);
 
   // Valor de animação de 0 a 1 para o efeito livro rodando para dentro (fechar/folhear em direção ao centro)
   const beautyBookAnim = useRef(new Animated.Value(0)).current;
@@ -41,10 +42,10 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     }).start();
   }, [buttonsFadeAnim]);
 
-  // BEAUTY (Esquerda): Roda PARA DENTRO de forma super lenta, suave e serena
+  // BEAUTY (Esquerda): Roda e passa POR CIMA do lado direito como folha de livro
   const handleBeautyPress = () => {
-    if (animatingBranch) return;
-    setAnimatingBranch('beauty');
+    setTurningBranch('beauty');
+    salonSound.playBranchMusic('beauty');
     Animated.timing(beautyBookAnim, {
       toValue: 1,
       duration: 1850,
@@ -55,10 +56,10 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BARBER (Direita): Roda PARA DENTRO de forma super lenta, suave e serena
+  // BARBER (Direita): Roda e passa POR CIMA do lado esquerdo como folha de livro
   const handleBarberPress = () => {
-    if (animatingBranch) return;
-    setAnimatingBranch('barber');
+    setTurningBranch('barber');
+    salonSound.playBranchMusic('barber');
     Animated.timing(barberBookAnim, {
       toValue: 1,
       duration: 1850,
@@ -69,20 +70,21 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BEAUTY INTERPOLATIONS (virar e afastar completamente para fora)
+  // BEAUTY INTERPOLATIONS (virar e passar por cima para a direita)
   const beautyRotateY = beautyBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '110deg'],
+    outputRange: ['0deg', '105deg'],
   });
 
   const beautyTranslateX = beautyBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, halfWidth * 1.4],
+    outputRange: [0, halfWidth * 1.35],
   });
 
+  // Mantém-se 100% sólido enquanto passa por cima da outra folha, dissolvendo só no final
   const beautyOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.8, 1],
-    outputRange: [1, 0.75, 0],
+    inputRange: [0, 0.85, 1],
+    outputRange: [1, 0.95, 0],
   });
 
   // Fundo bege de Beauty ao abrir/rodar a folha
@@ -91,20 +93,21 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     outputRange: [0, 1],
   });
 
-  // BARBER INTERPOLATIONS (virar e afastar completamente para fora)
+  // BARBER INTERPOLATIONS (virar e passar por cima para a esquerda)
   const barberRotateY = barberBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '-110deg'],
+    outputRange: ['0deg', '-105deg'],
   });
 
   const barberTranslateX = barberBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -halfWidth * 1.4],
+    outputRange: [0, -halfWidth * 1.35],
   });
 
+  // Mantém-se 100% sólido enquanto passa por cima da outra folha, dissolvendo só no final
   const barberOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.8, 1],
-    outputRange: [1, 0.75, 0],
+    inputRange: [0, 0.85, 1],
+    outputRange: [1, 0.95, 0],
   });
 
   return (
@@ -136,18 +139,18 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
         <Animated.View
           style={[
             styles.cardWrapper,
-            animatingBranch === 'beauty' && styles.animatingLeaf,
             {
-              zIndex: animatingBranch === 'beauty' ? 20 : 1,
-              elevation: animatingBranch === 'beauty' ? 20 : 1,
               backgroundColor: '#FAF7F2',
               opacity: beautyOpacity,
+              zIndex: turningBranch === 'beauty' ? 50 : 1,
+              elevation: turningBranch === 'beauty' ? 50 : 1,
               transform: [
-                { perspective: 1000 },
+                { perspective: 1200 },
                 { translateX: beautyTranslateX },
                 { rotateY: beautyRotateY },
               ],
             },
+            turningBranch === 'beauty' && styles.cardTurningBeauty,
           ]}
         >
           <TouchableOpacity
@@ -156,7 +159,6 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             onLongPress={onOpenPinModal}
             delayLongPress={1200}
             activeOpacity={0.85}
-            disabled={animatingBranch !== null}
           >
             <View style={styles.cardContent}>
               <Text style={styles.beautyTitle}>ALMARE</Text>
@@ -182,18 +184,18 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
         <Animated.View
           style={[
             styles.cardWrapper,
-            animatingBranch === 'barber' && styles.animatingLeaf,
             {
-              zIndex: animatingBranch === 'barber' ? 20 : 1,
-              elevation: animatingBranch === 'barber' ? 20 : 1,
               backgroundColor: '#1E1E28',
               opacity: barberOpacity,
+              zIndex: turningBranch === 'barber' ? 50 : 1,
+              elevation: turningBranch === 'barber' ? 50 : 1,
               transform: [
-                { perspective: 1000 },
+                { perspective: 1200 },
                 { translateX: barberTranslateX },
                 { rotateY: barberRotateY },
               ],
             },
+            turningBranch === 'barber' && styles.cardTurningBarber,
           ]}
         >
           <TouchableOpacity
@@ -202,7 +204,6 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             onLongPress={onOpenPinModal}
             delayLongPress={1200}
             activeOpacity={0.85}
-            disabled={animatingBranch !== null}
           >
             <View style={styles.cardContent}>
               <Text style={styles.barberTitle}>ALMARE</Text>
@@ -249,13 +250,6 @@ const styles = StyleSheet.create({
   cardWrapper: {
     flex: 1,
     height: '100%',
-  },
-  animatingLeaf: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 20,
   },
   /* BEAUTY — esquerda: fundo branco */
   beautyCard: {
@@ -308,11 +302,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#B8860B',
   },
 
+  cardTurningBeauty: {
+    shadowColor: '#000',
+    shadowOffset: { width: 10, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 20,
+  },
+  cardTurningBarber: {
+    shadowColor: '#000',
+    shadowOffset: { width: -10, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 20,
+  },
+
   /* Lombada central do livro */
   spineDivider: {
     width: 2,
     backgroundColor: Theme.colors.brandSecondary,
     opacity: 0.7,
+    zIndex: 5,
   },
 
   /* BARBER — direita: fundo carvão/preto premium */
