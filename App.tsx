@@ -12,7 +12,6 @@ import { StaffView } from './src/screens/StaffView';
 import { AdminConfigView } from './src/screens/AdminConfigView';
 import { SalonBranch } from './src/types';
 import { SplashScreen } from './src/components/SplashScreen';
-import { salonSound } from './src/utils/soundHelper';
 
 function MainScreen() {
   const { role, setRole, activeBranch, setActiveBranch, activeNotification, dismissNotification } = useApp();
@@ -26,12 +25,10 @@ function MainScreen() {
   };
 
   const handleBackToHome = () => {
-    salonSound.stop();
     setInBookingFlow(false);
   };
 
   const handleGoHome = () => {
-    salonSound.stop();
     setRole('client');
     setInBookingFlow(false);
   };

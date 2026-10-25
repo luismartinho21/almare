@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
-import { salonSound } from '../utils/soundHelper';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
@@ -45,7 +44,6 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
   // BEAUTY (Esquerda): Roda e passa POR CIMA do lado direito como folha de livro
   const handleBeautyPress = () => {
     setTurningBranch('beauty');
-    salonSound.playBranchMusic('beauty');
     Animated.timing(beautyBookAnim, {
       toValue: 1,
       duration: 1850,
@@ -59,7 +57,6 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
   // BARBER (Direita): Roda e passa POR CIMA do lado esquerdo como folha de livro
   const handleBarberPress = () => {
     setTurningBranch('barber');
-    salonSound.playBranchMusic('barber');
     Animated.timing(barberBookAnim, {
       toValue: 1,
       duration: 1850,
