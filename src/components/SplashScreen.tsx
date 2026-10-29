@@ -67,7 +67,7 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
         ]}
       >
         <Image
-          source={require('../../assets/logo.png')}
+          source={require('../../assets/splash_logo.jpeg')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -79,7 +79,7 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.bgDark,
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
     width,
