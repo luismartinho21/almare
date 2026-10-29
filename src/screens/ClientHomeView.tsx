@@ -67,27 +67,22 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BEAUTY INTERPOLATIONS (virar 180° e fechar completamente sobre o lado direito)
+  // BEAUTY INTERPOLATIONS (virar 180° ancorado na lombada como folha de livro)
   const beautyRotateY = beautyBookAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '180deg'],
   });
 
-  const beautyTranslateX = beautyBookAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, halfWidth],
-  });
-
   // O conteúdo frontal (textos) dissolve-se suavemente à medida que a capa vira de costas
   const beautyFrontContentOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.45, 0.55, 1],
-    outputRange: [1, 0.2, 0, 0],
+    inputRange: [0, 0.42, 0.54, 1],
+    outputRange: [1, 0.1, 0, 0],
   });
 
   // Camada que fecha completamente o lado direito a bege/branco (#FAF7F2) à medida que a folha aterra
   const beautyCoverRightOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.45, 0.9, 1],
-    outputRange: [0, 0.2, 1, 1],
+    inputRange: [0, 0.48, 0.95, 1],
+    outputRange: [0, 0, 1, 1],
   });
 
   // Fundo bege de Beauty ao abrir/rodar a folha
@@ -96,27 +91,22 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     outputRange: [0, 1],
   });
 
-  // BARBER INTERPOLATIONS (virar -180° e fechar completamente sobre o lado esquerdo)
+  // BARBER INTERPOLATIONS (virar -180° ancorado na lombada como folha de livro)
   const barberRotateY = barberBookAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '-180deg'],
   });
 
-  const barberTranslateX = barberBookAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -halfWidth],
-  });
-
   // O conteúdo frontal (textos) dissolve-se suavemente à medida que a capa vira de costas
   const barberFrontContentOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.45, 0.55, 1],
-    outputRange: [1, 0.2, 0, 0],
+    inputRange: [0, 0.42, 0.54, 1],
+    outputRange: [1, 0.1, 0, 0],
   });
 
   // Camada que fecha completamente o lado esquerdo a preto (#111116) à medida que a folha aterra
   const barberCoverLeftOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.45, 0.9, 1],
-    outputRange: [0, 0.2, 1, 1],
+    inputRange: [0, 0.48, 0.95, 1],
+    outputRange: [0, 0, 1, 1],
   });
 
   // Desvanecimento suave da lombada central dourada quando o livro fecha
@@ -181,9 +171,9 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
               backgroundColor: '#FAF7F2',
               zIndex: turningBranch === 'beauty' ? 50 : 1,
               elevation: turningBranch === 'beauty' ? 50 : 1,
+              transformOrigin: 'right center' as any,
               transform: [
-                { perspective: 1200 },
-                { translateX: beautyTranslateX },
+                { perspective: 1800 },
                 { rotateY: beautyRotateY },
               ],
             },
@@ -225,9 +215,9 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
               backgroundColor: '#111116',
               zIndex: turningBranch === 'barber' ? 50 : 1,
               elevation: turningBranch === 'barber' ? 50 : 1,
+              transformOrigin: 'left center' as any,
               transform: [
-                { perspective: 1200 },
-                { translateX: barberTranslateX },
+                { perspective: 1800 },
                 { rotateY: barberRotateY },
               ],
             },
@@ -300,10 +290,12 @@ const styles = StyleSheet.create({
   cardsRow: {
     flex: 1,
     flexDirection: 'row',
+    overflow: 'visible',
   },
   cardWrapper: {
     flex: 1,
     height: '100%',
+    overflow: 'visible',
   },
   /* BEAUTY — esquerda: fundo branco */
   beautyCard: {

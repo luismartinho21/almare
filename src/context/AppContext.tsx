@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   SalonBranch,
   UserRole,
@@ -56,10 +56,13 @@ interface AppContextType {
   activeNotification: { title: string; message: string; branch: SalonBranch } | null;
   dismissNotification: () => void;
   
-  // Staff management
+  // Staff management & personal profile
+  currentStaffId: string | null;
+  setCurrentStaffId: (id: string | null) => void;
+  currentStaffMember: StaffMember | null;
   updateStaffWorkingHours: (id: string, workingHours: { start: string; end: string; lunchStart?: string; lunchEnd?: string }) => Promise<void>;
   updateStaffMember: (updatedMember: StaffMember) => Promise<void>;
-  addStaffMember: (newStaff: Omit<StaffMember, 'id'>) => Promise<void>;
+  addStaffMember: (newStaff: Omit<StaffMember, 'id'>) => Promise<StaffMember>;
   deleteStaffMember: (id: string) => Promise<void>;
   addService: (newService: Omit<Service, 'id'>) => Promise<Service>;
   updateService: (updatedService: Service) => Promise<void>;
@@ -73,12 +76,18 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [role, setRole] = useState<UserRole>('client');
   const [activeBranch, setActiveBranch] = useState<SalonBranch>('barber');
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clientHistory, setClientHistory] = useState<ClientHistoryNote[]>([]);
   const [config, setConfig] = useState<BusinessConfig>(INITIAL_BUSINESS_CONFIG);
+
+  const currentStaffMember = useMemo(() => {
+    if (!currentStaffId) return null;
+    return staff.find(s => s.id === currentStaffId) || null;
+  }, [staff, currentStaffId]);
 
   const [activeNotification, setActiveNotification] = useState<{
     title: string;
@@ -212,15 +221,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setServices(updated);
   };
 
-  const addStaffMember = async (newStaff: Omit<StaffMember, 'id'>) => {
-    const created: StaffMember = { ...newStaff, id: `staff-${Date.now()}` };
+  const generateUniqueStaffPin = (branch: SalonBranch, currentStaff: StaffMember[]): string => {
+    const existingPins = new Set(currentStaff.map(s => s.pin).filter(Boolean));
+    const base = branch === 'barber' ? 1000 : 2000;
+    for (let i = 1; i <= 999; i++) {
+      const candidate = String(base + i);
+      if (!existingPins.has(candidate)) {
+        return candidate;
+      }
+    }
+    return String(Math.floor(1000 + Math.random() * 9000));
+  };
+
+  const addStaffMember = async (newStaff: Omit<StaffMember, 'id'>): Promise<StaffMember> => {
+    const pin = newStaff.pin?.trim() || generateUniqueStaffPin(newStaff.branch, staff);
+    const created: StaffMember = { ...newStaff, pin, id: `staff-${Date.now()}` };
     const updated = [...staff, created];
     await saveStaff(updated);
     setStaff(updated);
+    return created;
   };
 
   const deleteStaffMember = async (id: string) => {
     const updated = staff.filter(s => s.id !== id);
+    if (currentStaffId === id) {
+      setCurrentStaffId(null);
+    }
     await saveStaff(updated);
     setStaff(updated);
   };
@@ -249,6 +275,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRole,
         activeBranch,
         setActiveBranch,
+        currentStaffId,
+        setCurrentStaffId,
+        currentStaffMember,
         services,
         staff,
         appointments,
