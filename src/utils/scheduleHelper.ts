@@ -32,6 +32,120 @@ export const minutesToTime = (mins: number): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+export type StaffShiftType = 'all_day' | 'morning_only' | 'afternoon_only' | 'off';
+
+/**
+ * Determina o tipo de turno de trabalho de um profissional (Apenas Manhã, Apenas Tarde, ou Dia Completo).
+ */
+export const getStaffShiftType = (staff: StaffMember): StaffShiftType => {
+  const startMins = timeToMinutes(staff.workingHours?.start || '09:00');
+  const endMins = timeToMinutes(staff.workingHours?.end || '19:00');
+  const lunchStartMins = staff.workingHours?.lunchStart ? timeToMinutes(staff.workingHours.lunchStart) : 720;
+  const lunchEndMins = staff.workingHours?.lunchEnd ? timeToMinutes(staff.workingHours.lunchEnd) : 840;
+
+  const morningEnd = Math.min(endMins, lunchStartMins);
+  const hasMorning = startMins < morningEnd;
+
+  const afternoonStart = Math.max(startMins, lunchEndMins);
+  const hasAfternoon = afternoonStart < endMins;
+
+  if (hasMorning && hasAfternoon) return 'all_day';
+  if (hasMorning && !hasAfternoon) return 'morning_only';
+  if (!hasMorning && hasAfternoon) return 'afternoon_only';
+  return 'off';
+};
+
+export interface StaffAbsenceInfo {
+  isAbsent: boolean;
+  type: 'leave' | 'vacation' | 'inactive' | 'none';
+  label: string;
+  reason?: string;
+  periodText?: string;
+  returnDate?: string;
+}
+
+/**
+ * Devolve informações detalhadas de ausência (baixa médica, férias, motivo e tempo) para uma data.
+ */
+export const getStaffAbsenceInfoForDate = (
+  staff: StaffMember,
+  dateStr: string
+): StaffAbsenceInfo => {
+  const isDateUnavailable = !!(staff.unavailableDates && staff.unavailableDates.includes(dateStr));
+  const hasSpecificDates = !!(staff.unavailableDates && staff.unavailableDates.length > 0);
+
+  if (hasSpecificDates) {
+    if (!isDateUnavailable) {
+      return { isAbsent: false, type: 'none', label: 'Disponível' };
+    }
+  } else {
+    if (staff.status !== 'leave' && staff.status !== 'vacation' && staff.status !== 'inactive') {
+      return { isAbsent: false, type: 'none', label: 'Disponível' };
+    }
+  }
+
+  const type =
+    staff.status === 'vacation'
+      ? 'vacation'
+      : staff.status === 'leave'
+      ? 'leave'
+      : staff.status === 'inactive'
+      ? 'inactive'
+      : 'leave';
+
+  const label = type === 'vacation' ? 'Férias' : type === 'leave' ? 'Baixa Médica' : 'Indisponível';
+  const reason =
+    staff.absenceNote ||
+    (type === 'vacation'
+      ? 'Período de férias regulamentar'
+      : type === 'leave'
+      ? 'Baixa médica / motivo de saúde'
+      : 'Profissional temporariamente indisponível');
+
+  let periodText: string | undefined;
+  let returnDate: string | undefined;
+
+  if (hasSpecificDates) {
+    const sorted = [...staff.unavailableDates!].sort();
+    const start = sorted[0];
+    const end = sorted[sorted.length - 1];
+    const daysCount = sorted.length;
+
+    const formatPt = (dStr: string) => {
+      const parts = dStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dStr;
+    };
+
+    periodText =
+      daysCount === 1
+        ? `Data: ${formatPt(start)} (1 dia)`
+        : `De ${formatPt(start)} a ${formatPt(end)} (${daysCount} dias)`;
+
+    try {
+      const endDateObj = new Date(end + 'T00:00:00');
+      endDateObj.setDate(endDateObj.getDate() + 1);
+      const ry = endDateObj.getFullYear();
+      const rm = String(endDateObj.getMonth() + 1).padStart(2, '0');
+      const rd = String(endDateObj.getDate()).padStart(2, '0');
+      returnDate = `${rd}/${rm}/${ry}`;
+    } catch {
+      // ignore
+    }
+  }
+
+  return {
+    isAbsent: true,
+    type,
+    label,
+    reason,
+    periodText,
+    returnDate,
+  };
+};
+
 /**
  * O salão abre de Terça a Sábado (Fechado Domingo=0 e Segunda=1).
  */
@@ -47,8 +161,9 @@ export const isSalonOpenDay = (dateStr: string): boolean => {
  * 
  * Regras:
  * 1. O salão tem de estar aberto no dia.
- * 2. O intervalo tem de caber integralmente no turno de trabalho (Manhã: até às 12:00 / Tarde: até às 19:00).
- * 3. Nenhuma marcação ativa ou concluída (status !== 'cancelled') do profissional pode colidir no tempo.
+ * 2. O profissional não pode estar de baixa, férias ou com ausência na data.
+ * 3. O intervalo tem de caber integralmente no turno de trabalho (Manhã ou Tarde).
+ * 4. Nenhuma marcação ativa ou concluída (status !== 'cancelled') do profissional pode colidir no tempo.
  */
 export const isStaffAvailableForInterval = (
   staff: StaffMember,
@@ -59,13 +174,18 @@ export const isStaffAvailableForInterval = (
 ): boolean => {
   if (!isSalonOpenDay(date)) return false;
 
-  // Se o profissional estiver inativo, de baixa ou férias
-  if (staff.status === 'inactive' || staff.status === 'leave' || staff.status === 'vacation') {
+  // Se o profissional estiver inativo
+  if (staff.status === 'inactive') {
     return false;
   }
 
-  // Se o profissional estiver com falta / ausência programada nesta data
-  if (staff.unavailableDates && staff.unavailableDates.includes(date)) {
+  // Se o profissional tiver datas específicas de ausência registadas (baixa médica, férias)
+  if (staff.unavailableDates && staff.unavailableDates.length > 0) {
+    if (staff.unavailableDates.includes(date)) {
+      return false;
+    }
+  } else if (staff.status === 'leave' || staff.status === 'vacation') {
+    // Ausência geral sem datas específicas delimitadas
     return false;
   }
 
@@ -76,12 +196,16 @@ export const isStaffAvailableForInterval = (
   // Horários de trabalho do profissional e pausa de almoço
   const startMins = timeToMinutes(staff.workingHours?.start || '09:00');
   const endMins = timeToMinutes(staff.workingHours?.end || '19:00');
-  const lunchStartMins = timeToMinutes(staff.workingHours?.lunchStart || '12:00');
-  const lunchEndMins = timeToMinutes(staff.workingHours?.lunchEnd || '14:00');
+  const lunchStartMins = staff.workingHours?.lunchStart ? timeToMinutes(staff.workingHours.lunchStart) : 720;
+  const lunchEndMins = staff.workingHours?.lunchEnd ? timeToMinutes(staff.workingHours.lunchEnd) : 840;
 
-  // Verificar se o intervalo completo cabe no turno da manhã ou no turno da tarde
-  const fitsMorning = slotStart >= startMins && slotEnd <= lunchStartMins;
-  const fitsAfternoon = slotStart >= lunchEndMins && slotEnd <= endMins;
+  // Turno da Manhã: desde startMins até ao fim da manhã (min entre endMins e lunchStartMins)
+  const morningEnd = Math.min(endMins, lunchStartMins);
+  const fitsMorning = startMins < morningEnd && slotStart >= startMins && slotEnd <= morningEnd;
+
+  // Turno da Tarde: desde o início da tarde (max entre startMins e lunchEndMins) até endMins
+  const afternoonStart = Math.max(startMins, lunchEndMins);
+  const fitsAfternoon = afternoonStart < endMins && slotStart >= afternoonStart && slotEnd <= endMins;
 
   if (!fitsMorning && !fitsAfternoon) {
     return false;

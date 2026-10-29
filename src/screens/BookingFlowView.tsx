@@ -457,6 +457,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   isNoPreference={true}
                   branch={activeBranch}
                   isSelected={isNoPreference}
+                  selectedDate={selectedDate}
                   onSelect={() => {
                     if (isNoPreference) {
                       setIsNoPreference(false);
@@ -538,6 +539,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   staff={s}
                   branch={activeBranch}
                   isSelected={isSelected}
+                  selectedDate={selectedDate}
                   onSelect={() => {
                     if (isSelected) {
                       setSelectedStaff(null);

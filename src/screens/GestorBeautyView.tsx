@@ -268,9 +268,9 @@ export const GestorBeautyView: React.FC = () => {
       setStaffWorkDays('Terça a Sábado');
     } else if (preset === 'morning') {
       setStaffStart('09:00');
-      setStaffEnd('13:00');
-      setStaffLunchStart('13:00');
-      setStaffLunchEnd('13:00');
+      setStaffEnd('12:00');
+      setStaffLunchStart('12:00');
+      setStaffLunchEnd('12:00');
       setStaffWorkDays('Terça a Sábado');
     } else if (preset === 'afternoon') {
       setStaffStart('14:00');
@@ -1501,7 +1501,7 @@ export const GestorBeautyView: React.FC = () => {
                   style={styles.presetBtn}
                   onPress={() => handleApplyWorkingHoursPreset('morning')}
                 >
-                  <Text style={styles.presetBtnText}>Só Manhã (09:00-13:00)</Text>
+                  <Text style={styles.presetBtnText}>Só Manhã (09:00-12:00)</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.presetBtn}
