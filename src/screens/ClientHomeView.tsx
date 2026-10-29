@@ -91,6 +91,37 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     outputRange: [0, 1],
   });
 
+  // Fundo preto de Barber ao abrir/rodar a folha (simétrico ao Beauty)
+  const barberBgFade = barberBookAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  // Símbolo Almare no meio ao fechar a folha (simétrico em ambos)
+  const emblemOpacity = turningBranch === 'barber'
+    ? barberBookAnim.interpolate({
+        inputRange: [0, 0.44, 0.88, 1],
+        outputRange: [0, 0, 1, 1],
+      })
+    : turningBranch === 'beauty'
+    ? beautyBookAnim.interpolate({
+        inputRange: [0, 0.44, 0.88, 1],
+        outputRange: [0, 0, 1, 1],
+      })
+    : 0;
+
+  const emblemScale = turningBranch === 'barber'
+    ? barberBookAnim.interpolate({
+        inputRange: [0, 0.44, 0.88, 1],
+        outputRange: [0.82, 0.82, 1, 1],
+      })
+    : turningBranch === 'beauty'
+    ? beautyBookAnim.interpolate({
+        inputRange: [0, 0.44, 0.88, 1],
+        outputRange: [0.82, 0.82, 1, 1],
+      })
+    : 1;
+
   // BARBER INTERPOLATIONS (virar -180° ancorado na lombada como folha de livro)
   const barberRotateY = barberBookAnim.interpolate({
     inputRange: [0, 1],
@@ -140,6 +171,18 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
         pointerEvents="none"
       />
 
+      {/* Ao rodar o homem, o fundo global transita suavemente para o tom preto (#111116) */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: '#111116',
+            opacity: barberBgFade,
+          },
+        ]}
+        pointerEvents="none"
+      />
+
       {/* Camada que fecha completamente o lado esquerdo a preto quando Barber é selecionado */}
       <Animated.View
         style={[
@@ -161,6 +204,31 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
         ]}
         pointerEvents="none"
       />
+
+      {/* Símbolo ALMARE centralizado no meio ao fechar a folha */}
+      {turningBranch && (
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            styles.centerEmblemWrapper,
+            {
+              opacity: emblemOpacity,
+              transform: [{ scale: emblemScale }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Image
+            source={
+              turningBranch === 'barber'
+                ? require('../../assets/splash_logo_transparent.png')
+                : require('../../assets/logo_beauty.png')
+            }
+            style={styles.centerEmblem}
+            resizeMode="contain"
+          />
+        </Animated.View>
+      )}
 
       <Animated.View style={[styles.cardsRow, { opacity: buttonsFadeAnim }]}>
         {/* BEAUTY — ESQUERDA (Branco e Dourado com interior Bege) */}
@@ -286,6 +354,15 @@ const styles = StyleSheet.create({
     width: halfWidth,
     backgroundColor: '#FAF7F2',
     zIndex: 35,
+  },
+  centerEmblemWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 60,
+  },
+  centerEmblem: {
+    width: Math.min(width * 0.72, 320),
+    height: Math.min(width * 0.72, 320),
   },
   cardsRow: {
     flex: 1,

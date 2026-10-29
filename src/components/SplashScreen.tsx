@@ -9,32 +9,29 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onFinished }: SplashScreenProps) {
-  // Transição 100% contínua e LINEAR da entrada do Almare sem travar nem parar
+  // Transição 100% LINEAR e com o mesmo movimento lento constante por todo o tempo
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      duration: 5400, // Ainda mais suave, sereno e fluido
-      easing: Easing.linear, // Movimento contínuo sem travar nem parar
+      duration: 4800, // Duração lenta, serena e uniforme
+      easing: Easing.linear, // 100% linear: velocidade rigorosamente constante do início ao fim
       useNativeDriver: true,
     }).start(() => {
       onFinished();
     });
   }, [progress, onFinished]);
 
-  // Escala ultra-suave na parte inicial:
-  // Na primeira metade, aproxima-se com extrema suavidade (0.80 -> 1.25)
-  // e de seguida expande suave e continuamente até 8.5
+  // Escala 100% linear com a mesma velocidade lenta por todo o percurso (sem acelerações)
   const scale = progress.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.80, 1.25, 8.5],
+    inputRange: [0, 1],
+    outputRange: [0.85, 5.2],
   });
 
-  // Opacidade contínua e aveludada:
-  // Fade in ultra-suave e gradual no início (0 -> 1 ao longo de 28%)
+  // Opacidade suave e equilibrada
   const opacity = progress.interpolate({
-    inputRange: [0, 0.28, 0.82, 1],
+    inputRange: [0, 0.16, 0.84, 1],
     outputRange: [0, 1, 1, 0],
   });
 
