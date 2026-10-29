@@ -1,6 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, Image, Dimensions, Easing } from 'react-native';
-import { Theme } from '../constants/theme';
+import {
+  Animated,
+  StyleSheet,
+  View,
+  Image,
+  Dimensions,
+  Easing,
+  TouchableWithoutFeedback,
+} from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -9,50 +16,145 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onFinished }: SplashScreenProps) {
-  // Transição 100% LINEAR e com o mesmo movimento lento constante por todo o percurso
-  const progress = useRef(new Animated.Value(0)).current;
+  // Fase 1: Zoom linear continuo ("vem tudo")
+  const zoomProgress = useRef(new Animated.Value(0)).current;
+  // Fase 2: Fade out do texto e centralização do "A" ao atingir o pico
+  const textFadeProgress = useRef(new Animated.Value(0)).current;
+  // Fase 3: Fade out final de saída para a página inicial
+  const exitFadeProgress = useRef(new Animated.Value(1)).current;
+
+  // Dimensões proporcionais extraídas da imagem oficial de alta resolução (1254x1254)
+  const containerWidth = Math.min(width * 0.85, 380);
+  const emblemHeight = containerWidth * (444 / 1254);
+  const textHeight = containerWidth * (305 / 1254);
+  const gap = containerWidth * (16 / 1254);
+  const shiftY = (gap + textHeight) / 2;
 
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 5200, // Duração lenta, serena e uniforme
-      easing: Easing.linear, // 100% linear: velocidade rigorosamente constante do início ao fim
-      useNativeDriver: true,
-    }).start(() => {
-      onFinished();
-    });
-  }, [progress, onFinished]);
+    let isMounted = true;
 
-  // Começa bem pequeno (0.35) e aumenta linearmente e devagar à mesma velocidade rigorosamente constante
-  const scale = progress.interpolate({
+    // 1. Zoom linear contínuo durante 3800ms à mesma velocidade suave
+    Animated.timing(zoomProgress, {
+      toValue: 1,
+      duration: 3800,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
+
+    // 2. Transição do texto: ao aproximar-se do pico de zoom (3300ms),
+    // o texto dissolve suavemente e o monograma "A" alinha-se ao centro perfeito
+    const textFadeTimer = setTimeout(() => {
+      if (!isMounted) return;
+      Animated.timing(textFadeProgress, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    }, 3300);
+
+    // 3. Pausa de 3 segundos no maior zoom mostrando EXCLUSIVAMENTE o "A" sem texto:
+    // O zoom atinge o pico aos 3800ms + 3000ms de permanência = 6800ms
+    const exitTimer = setTimeout(() => {
+      if (!isMounted) return;
+      Animated.timing(exitFadeProgress, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => {
+        if (isMounted) {
+          onFinished();
+        }
+      });
+    }, 6800);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(textFadeTimer);
+      clearTimeout(exitTimer);
+    };
+  }, [zoomProgress, textFadeProgress, exitFadeProgress, onFinished]);
+
+  // Escala linear do arranque pequeno (0.35) até ao pico do maior zoom (1.80)
+  const scale = zoomProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.35, 4.8],
+    outputRange: [0.35, 1.8],
   });
 
-  // Opacidade: surge suavemente logo no início enquanto é pequeno, mantendo-se visível durante o crescimento
-  const opacity = progress.interpolate({
-    inputRange: [0, 0.08, 0.90, 1],
-    outputRange: [0, 1, 1, 0],
+  // Fade in inicial suave nos primeiros instantes
+  const initialFade = zoomProgress.interpolate({
+    inputRange: [0, 0.08],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  // Dissolução do texto "ALMARE" ao chegar ao topo
+  const textOpacity = textFadeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+
+  // Deslocamento vertical que traz o "A" para o centro absoluto do ecrã
+  const emblemTranslateY = textFadeProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, shiftY],
   });
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.logoWrapper,
-          {
-            opacity,
-            transform: [{ scale }],
-          },
-        ]}
-      >
-        <Image
-          source={require('../../assets/splash_logo.jpeg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+    <TouchableWithoutFeedback onPress={onFinished}>
+      <Animated.View style={[styles.container, { opacity: exitFadeProgress }]}>
+        <Animated.View
+          style={[
+            styles.zoomWrapper,
+            {
+              width: containerWidth,
+              opacity: initialFade,
+              transform: [{ scale }],
+            },
+          ]}
+        >
+          {/* Monograma "A" da Almare */}
+          <Animated.View
+            style={[
+              styles.emblemWrapper,
+              {
+                width: containerWidth,
+                height: emblemHeight,
+                transform: [{ translateY: emblemTranslateY }],
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/splash_slice_emblem.png')}
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </Animated.View>
+
+          {/* Espaço proporcional original entre o símbolo e o texto */}
+          <View style={{ height: gap }} />
+
+          {/* Texto "ALMARE" que se desvanece no maior zoom */}
+          <Animated.View
+            style={[
+              styles.textWrapper,
+              {
+                width: containerWidth,
+                height: textHeight,
+                opacity: textOpacity,
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/splash_slice_text.png')}
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </Animated.View>
+        </Animated.View>
       </Animated.View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -66,13 +168,19 @@ const styles = StyleSheet.create({
     height,
     overflow: 'hidden',
   },
-  logoWrapper: {
+  zoomWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: Math.min(width * 0.85, 380),
-    height: Math.min(width * 0.85, 380),
   },
-  logo: {
+  emblemWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  image: {
     width: '100%',
     height: '100%',
   },
