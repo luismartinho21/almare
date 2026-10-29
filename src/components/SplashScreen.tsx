@@ -9,13 +9,13 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onFinished }: SplashScreenProps) {
-  // Transição 100% LINEAR e com o mesmo movimento lento constante por todo o tempo
+  // Transição 100% LINEAR e com o mesmo movimento lento constante por todo o percurso
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      duration: 4800, // Duração lenta, serena e uniforme
+      duration: 5200, // Duração lenta, serena e uniforme
       easing: Easing.linear, // 100% linear: velocidade rigorosamente constante do início ao fim
       useNativeDriver: true,
     }).start(() => {
@@ -23,15 +23,15 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
     });
   }, [progress, onFinished]);
 
-  // Escala 100% linear com a mesma velocidade lenta por todo o percurso (sem acelerações)
+  // Começa bem pequeno (0.35) e aumenta linearmente e devagar à mesma velocidade rigorosamente constante
   const scale = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.85, 5.2],
+    outputRange: [0.35, 4.8],
   });
 
-  // Opacidade suave e equilibrada
+  // Opacidade: surge suavemente logo no início enquanto é pequeno, mantendo-se visível durante o crescimento
   const opacity = progress.interpolate({
-    inputRange: [0, 0.16, 0.84, 1],
+    inputRange: [0, 0.08, 0.90, 1],
     outputRange: [0, 1, 1, 0],
   });
 
