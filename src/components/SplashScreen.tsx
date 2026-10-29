@@ -9,51 +9,33 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onFinished }: SplashScreenProps) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.6)).current;
+  // Transição 100% contínua sem parar a meio, lenta, majestosa e super fluida
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animação cinematográfica super fluida:
-    // 1) O logo surge do fundo (scale 0.65 -> 1.15) aproximando-se com fade in suave
-    // 2) Fica um breve instante no centro
-    // 3) SAÍDA: O logo vem o MÁXIMO PARA FORA (expande gigante até scale 8.5, ultrapassando totalmente os limites do ecrã)
-    Animated.sequence([
-      // FASE 1: Entrada do logo aproximando-se com fade in elegante (1600ms)
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 1400,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 1.15,
-          duration: 1600,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      // FASE 2: Breve instante no centro para apreciação da marca (500ms)
-      Animated.delay(500),
-      // FASE 3: SAÍDA DA IMAGEM INICIAL -> VEM O MÁXIMO PARA FORA (expansão super fluida, lenta e serena contra o ecrã)
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 1850,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 8.5, // Vem o máximo para fora ultrapassando todos os limites do ecrã
-          duration: 1900,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 3800, // Duração lenta, serena e fluida
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
       onFinished();
     });
-  }, [opacity, scale, onFinished]);
+  }, [progress, onFinished]);
+
+  // Escala contínua sem paragens:
+  // Começa subtil em 0.65, aproxima-se continuamente e expande até 9.0 ultrapassando o ecrã
+  const scale = progress.interpolate({
+    inputRange: [0, 0.45, 0.75, 1],
+    outputRange: [0.65, 1.15, 2.3, 9.0],
+  });
+
+  // Opacidade contínua:
+  // Fade in suave inicial (0 -> 1), mantém-se 100% nítido e dissolve suavemente na expansão final
+  const opacity = progress.interpolate({
+    inputRange: [0, 0.22, 0.74, 1],
+    outputRange: [0, 1, 1, 0],
+  });
 
   return (
     <View style={styles.container}>

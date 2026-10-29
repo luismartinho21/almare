@@ -41,12 +41,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     }).start();
   }, [buttonsFadeAnim]);
 
-  // BEAUTY (Esquerda): Roda e passa POR CIMA do lado direito como folha de livro
+  // BEAUTY (Esquerda): Roda e fecha completamente sobre o lado direito (180°)
   const handleBeautyPress = () => {
     setTurningBranch('beauty');
     Animated.timing(beautyBookAnim, {
       toValue: 1,
-      duration: 1850,
+      duration: 2200,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
@@ -54,12 +54,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BARBER (Direita): Roda e passa POR CIMA do lado esquerdo como folha de livro
+  // BARBER (Direita): Roda e fecha completamente sobre o lado esquerdo (-180°)
   const handleBarberPress = () => {
     setTurningBranch('barber');
     Animated.timing(barberBookAnim, {
       toValue: 1,
-      duration: 1850,
+      duration: 2200,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
     }).start(() => {
@@ -67,21 +67,27 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BEAUTY INTERPOLATIONS (virar e passar por cima para a direita)
+  // BEAUTY INTERPOLATIONS (virar 180° e fechar completamente sobre o lado direito)
   const beautyRotateY = beautyBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '105deg'],
+    outputRange: ['0deg', '180deg'],
   });
 
   const beautyTranslateX = beautyBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, halfWidth * 1.35],
+    outputRange: [0, halfWidth],
   });
 
-  // Mantém-se 100% sólido enquanto passa por cima da outra folha, dissolvendo só no final
-  const beautyOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.85, 1],
-    outputRange: [1, 0.95, 0],
+  // O conteúdo frontal (textos) dissolve-se suavemente à medida que a capa vira de costas
+  const beautyFrontContentOpacity = beautyBookAnim.interpolate({
+    inputRange: [0, 0.45, 0.55, 1],
+    outputRange: [1, 0.2, 0, 0],
+  });
+
+  // Camada que fecha completamente o lado direito a bege/branco (#FAF7F2) à medida que a folha aterra
+  const beautyCoverRightOpacity = beautyBookAnim.interpolate({
+    inputRange: [0, 0.45, 0.9, 1],
+    outputRange: [0, 0.2, 1, 1],
   });
 
   // Fundo bege de Beauty ao abrir/rodar a folha
@@ -90,22 +96,35 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     outputRange: [0, 1],
   });
 
-  // BARBER INTERPOLATIONS (virar e passar por cima para a esquerda)
+  // BARBER INTERPOLATIONS (virar -180° e fechar completamente sobre o lado esquerdo)
   const barberRotateY = barberBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '-105deg'],
+    outputRange: ['0deg', '-180deg'],
   });
 
   const barberTranslateX = barberBookAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -halfWidth * 1.35],
+    outputRange: [0, -halfWidth],
   });
 
-  // Mantém-se 100% sólido enquanto passa por cima da outra folha, dissolvendo só no final
-  const barberOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.85, 1],
-    outputRange: [1, 0.95, 0],
+  // O conteúdo frontal (textos) dissolve-se suavemente à medida que a capa vira de costas
+  const barberFrontContentOpacity = barberBookAnim.interpolate({
+    inputRange: [0, 0.45, 0.55, 1],
+    outputRange: [1, 0.2, 0, 0],
   });
+
+  // Camada que fecha completamente o lado esquerdo a preto (#111116) à medida que a folha aterra
+  const barberCoverLeftOpacity = barberBookAnim.interpolate({
+    inputRange: [0, 0.45, 0.9, 1],
+    outputRange: [0, 0.2, 1, 1],
+  });
+
+  // Desvanecimento suave da lombada central dourada quando o livro fecha
+  const spineOpacity = turningBranch === 'barber'
+    ? barberBookAnim.interpolate({ inputRange: [0, 0.35, 0.65], outputRange: [1, 0.4, 0] })
+    : turningBranch === 'beauty'
+    ? beautyBookAnim.interpolate({ inputRange: [0, 0.35, 0.65], outputRange: [1, 0.4, 0] })
+    : 1;
 
   return (
     <View style={styles.homeContainer}>
@@ -131,6 +150,28 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
         pointerEvents="none"
       />
 
+      {/* Camada que fecha completamente o lado esquerdo a preto quando Barber é selecionado */}
+      <Animated.View
+        style={[
+          styles.leftCoverOverlay,
+          {
+            opacity: barberCoverLeftOpacity,
+          },
+        ]}
+        pointerEvents="none"
+      />
+
+      {/* Camada que fecha completamente o lado direito a branco/bege quando Beauty é selecionado */}
+      <Animated.View
+        style={[
+          styles.rightCoverOverlay,
+          {
+            opacity: beautyCoverRightOpacity,
+          },
+        ]}
+        pointerEvents="none"
+      />
+
       <Animated.View style={[styles.cardsRow, { opacity: buttonsFadeAnim }]}>
         {/* BEAUTY — ESQUERDA (Branco e Dourado com interior Bege) */}
         <Animated.View
@@ -138,7 +179,6 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             styles.cardWrapper,
             {
               backgroundColor: '#FAF7F2',
-              opacity: beautyOpacity,
               zIndex: turningBranch === 'beauty' ? 50 : 1,
               elevation: turningBranch === 'beauty' ? 50 : 1,
               transform: [
@@ -157,7 +197,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             delayLongPress={1200}
             activeOpacity={0.85}
           >
-            <View style={styles.cardContent}>
+            <Animated.View style={[styles.cardContent, { opacity: beautyFrontContentOpacity }]}>
               <Text style={styles.beautyTitle}>ALMARE</Text>
               <Text style={styles.beautySubtitle}>ESTÉTICA</Text>
               <View style={styles.beautyLine} />
@@ -170,20 +210,19 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
                   resizeMode="contain"
                 />
               </View>
-            </View>
+            </Animated.View>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Lombada central dourada do livro */}
-        <View style={styles.spineDivider} />
+        <Animated.View style={[styles.spineDivider, { opacity: spineOpacity }]} />
 
         {/* BARBER — DIREITA (Preto e Dourado) */}
         <Animated.View
           style={[
             styles.cardWrapper,
             {
-              backgroundColor: '#1E1E28',
-              opacity: barberOpacity,
+              backgroundColor: '#111116',
               zIndex: turningBranch === 'barber' ? 50 : 1,
               elevation: turningBranch === 'barber' ? 50 : 1,
               transform: [
@@ -202,7 +241,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             delayLongPress={1200}
             activeOpacity={0.85}
           >
-            <View style={styles.cardContent}>
+            <Animated.View style={[styles.cardContent, { opacity: barberFrontContentOpacity }]}>
               <Text style={styles.barberTitle}>ALMARE</Text>
               <Text style={styles.barberSubtitle}>BARBER</Text>
               <View style={styles.barberLine} />
@@ -215,7 +254,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
                   resizeMode="contain"
                 />
               </View>
-            </View>
+            </Animated.View>
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
@@ -239,6 +278,24 @@ const styles = StyleSheet.create({
   barberUnderlay: {
     flex: 1,
     backgroundColor: '#0D0D11',
+  },
+  leftCoverOverlay: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: halfWidth,
+    backgroundColor: '#111116',
+    zIndex: 35,
+  },
+  rightCoverOverlay: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: halfWidth,
+    backgroundColor: '#FAF7F2',
+    zIndex: 35,
   },
   cardsRow: {
     flex: 1,
