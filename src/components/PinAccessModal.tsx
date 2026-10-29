@@ -16,7 +16,7 @@ interface PinAccessModalProps {
 }
 
 export const PinAccessModal: React.FC<PinAccessModalProps> = ({ visible, onClose }) => {
-  const { config, setRole, setActiveBranch } = useApp();
+  const { config, setRole, setActiveBranch, staff, setCurrentStaffId } = useApp();
   const [pin, setPin] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
@@ -54,6 +54,19 @@ export const PinAccessModal: React.FC<PinAccessModalProps> = ({ visible, onClose
   };
 
   const verifyPin = (enteredPin: string) => {
+    // 1. Verificar se é o código pessoal de algum funcionário individual
+    const matchedStaff = staff.find(s => s.pin === enteredPin);
+    if (matchedStaff) {
+      setSuccessMsg(`Bem-vindo, ${matchedStaff.name}!`);
+      setTimeout(() => {
+        setCurrentStaffId(matchedStaff.id);
+        setActiveBranch(matchedStaff.branch);
+        setRole('staff');
+        onClose();
+      }, 500);
+      return;
+    }
+
     const pins = config.pins || {
       adminPin: '9999',
       gestorBarberPin: '1111',
@@ -64,12 +77,14 @@ export const PinAccessModal: React.FC<PinAccessModalProps> = ({ visible, onClose
     if (enteredPin === pins.adminPin) {
       setSuccessMsg('Acesso concedido: Administrador');
       setTimeout(() => {
+        setCurrentStaffId(null);
         setRole('admin');
         onClose();
       }, 500);
     } else if (enteredPin === pins.gestorBarberPin) {
       setSuccessMsg('Acesso concedido: Gestor Barber');
       setTimeout(() => {
+        setCurrentStaffId(null);
         setActiveBranch('barber');
         setRole('gestor_barber');
         onClose();
@@ -77,13 +92,15 @@ export const PinAccessModal: React.FC<PinAccessModalProps> = ({ visible, onClose
     } else if (enteredPin === pins.gestorBeautyPin) {
       setSuccessMsg('Acesso concedido: Gestor Beauty');
       setTimeout(() => {
+        setCurrentStaffId(null);
         setActiveBranch('beauty');
         setRole('gestor_beauty');
         onClose();
       }, 500);
     } else if (enteredPin === pins.staffPin) {
-      setSuccessMsg('Acesso concedido: Equipa / Staff');
+      setSuccessMsg('Acesso concedido: Equipa Almare');
       setTimeout(() => {
+        setCurrentStaffId(null);
         setRole('staff');
         onClose();
       }, 500);

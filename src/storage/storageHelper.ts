@@ -145,7 +145,21 @@ export const loadStaff = async (): Promise<StaffMember[]> => {
     return INITIAL_STAFF;
   }
   try {
-    return JSON.parse(json);
+    const list: StaffMember[] = JSON.parse(json);
+    let updated = false;
+    const patched = list.map((s, idx) => {
+      if (!s.pin) {
+        updated = true;
+        const base = s.branch === 'barber' ? 1000 : 2000;
+        return { ...s, pin: String(base + idx + 1) };
+      }
+      return s;
+    });
+    if (updated) {
+      await saveStaff(patched);
+      return patched;
+    }
+    return list;
   } catch (e) {
     return INITIAL_STAFF;
   }

@@ -15,24 +15,26 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      duration: 4800, // Mais lento e sereno, permitindo apreciar o arranque
-      easing: Easing.linear, // Movimento puramente linear, sem travar nem parar
+      duration: 5400, // Ainda mais suave, sereno e fluido
+      easing: Easing.linear, // Movimento contínuo sem travar nem parar
       useNativeDriver: true,
     }).start(() => {
       onFinished();
     });
   }, [progress, onFinished]);
 
-  // Escala puramente linear sem qualquer paragem ou alteração de velocidade
+  // Escala ultra-suave na parte inicial:
+  // Na primeira metade, aproxima-se com extrema suavidade (0.80 -> 1.25)
+  // e de seguida expande suave e continuamente até 8.5
   const scale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.70, 8.5],
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.80, 1.25, 8.5],
   });
 
-  // Opacidade contínua:
-  // Surge suavemente no início (0 -> 1 em 20%), fica nítido e dissolve suavemente no fim
+  // Opacidade contínua e aveludada:
+  // Fade in ultra-suave e gradual no início (0 -> 1 ao longo de 28%)
   const opacity = progress.interpolate({
-    inputRange: [0, 0.20, 0.85, 1],
+    inputRange: [0, 0.28, 0.82, 1],
     outputRange: [0, 1, 1, 0],
   });
 

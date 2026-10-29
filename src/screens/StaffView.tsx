@@ -8,374 +8,431 @@ import {
   Linking,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { Appointment } from '../types';
+import { Appointment, StaffMember } from '../types';
 import { Theme } from '../constants/theme';
 
-type TimeFilter = 'today' | 'future' | 'past';
-
 export const StaffView: React.FC = () => {
-  const { staff, appointments, updateAppointmentStatus } = useApp();
-
-  // Selected staff member ID ('ALL' or specific staff ID)
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('ALL');
-  // Branch filter for staff selector ('all' | 'barber' | 'beauty')
-  const [branchFilter, setBranchFilter] = useState<'all' | 'barber' | 'beauty'>('all');
-  // Active Tab: Hoje (o dia) | Futuro | Passado
-  const [activeTab, setActiveTab] = useState<TimeFilter>('today');
+  const {
+    staff,
+    appointments,
+    updateAppointmentStatus,
+    currentStaffId,
+    setCurrentStaffId,
+    currentStaffMember,
+    setRole,
+  } = useApp();
 
   const todayStr = useMemo(() => {
     return new Date().toISOString().split('T')[0];
   }, []);
 
+  // Selected date for "O Dia" view
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+
+  // Active staff: either currently authenticated staff member or first fallback
+  const activeStaff: StaffMember | null = useMemo(() => {
+    if (currentStaffMember) return currentStaffMember;
+    if (currentStaffId) {
+      const found = staff.find(s => s.id === currentStaffId);
+      if (found) return found;
+    }
+    return null;
+  }, [currentStaffMember, currentStaffId, staff]);
+
+  const accentColor = useMemo(() => {
+    if (activeStaff) {
+      return activeStaff.branch === 'barber' ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+    }
+    return Theme.colors.barber.accent;
+  }, [activeStaff]);
+
+  // Navigate dates
+  const handlePrevDay = () => {
+    const cur = new Date(selectedDate + 'T00:00:00');
+    cur.setDate(cur.getDate() - 1);
+    setSelectedDate(cur.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    const cur = new Date(selectedDate + 'T00:00:00');
+    cur.setDate(cur.getDate() + 1);
+    setSelectedDate(cur.toISOString().split('T')[0]);
+  };
+
+  const handleGoToday = () => {
+    setSelectedDate(todayStr);
+  };
+
   const formatDateLabel = (dateStr: string) => {
     if (!dateStr) return '';
     if (dateStr === todayStr) return 'Hoje';
 
-    const today = new Date();
+    const today = new Date(todayStr + 'T00:00:00');
+    const target = new Date(dateStr + 'T00:00:00');
+
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    if (dateStr === tomorrowStr) return 'Amanhã';
+    if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Amanhã';
 
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    if (dateStr === yesterdayStr) return 'Ontem';
+    if (dateStr === yesterday.toISOString().split('T')[0]) return 'Ontem';
 
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateStr;
+    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    const dayName = days[target.getDay()];
+    const dayNum = target.getDate();
+    const monthName = months[target.getMonth()];
+
+    return `${dayName}, ${dayNum} ${monthName}`;
   };
 
-  // Staff members matching branch filter
-  const filteredStaffList = useMemo(() => {
-    if (branchFilter === 'all') return staff;
-    return staff.filter(s => s.branch === branchFilter);
-  }, [staff, branchFilter]);
+  const formatFullDateDisplay = (dateStr: string) => {
+    const target = new Date(dateStr + 'T00:00:00');
+    const daysFull = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const monthsFull = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
 
-  const currentStaff = useMemo(() => {
-    if (selectedStaffId === 'ALL') return null;
-    return staff.find(s => s.id === selectedStaffId) || null;
-  }, [staff, selectedStaffId]);
+    const dayOfWeek = daysFull[target.getDay()];
+    const dayNum = target.getDate();
+    const month = monthsFull[target.getMonth()];
+    const year = target.getFullYear();
 
-  const accentColor = useMemo(() => {
-    if (currentStaff) {
-      return currentStaff.branch === 'barber' ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
-    }
-    if (branchFilter === 'beauty') return Theme.colors.beauty.accent;
-    return Theme.colors.barber.accent;
-  }, [currentStaff, branchFilter]);
+    const prefix = dateStr === todayStr ? 'Hoje • ' : '';
+    return `${prefix}${dayOfWeek}, ${dayNum} de ${month} de ${year}`;
+  };
 
-  // Base list of appointments filtered by selected staff member / branch
-  const staffAppointments = useMemo(() => {
-    return appointments.filter(app => {
-      if (selectedStaffId !== 'ALL' && app.staffId !== selectedStaffId) {
-        return false;
-      }
-      if (selectedStaffId === 'ALL' && branchFilter !== 'all' && app.branch !== branchFilter) {
-        return false;
-      }
-      return true;
-    });
-  }, [appointments, selectedStaffId, branchFilter]);
+  // Base list of appointments for this specific employee
+  const employeeAppointments = useMemo(() => {
+    if (!activeStaff) return [];
+    return appointments.filter(app => app.staffId === activeStaff.id);
+  }, [appointments, activeStaff]);
 
-  // Filtered by Period: Hoje (o dia), Futuro, Passado
-  const todayAppointments = useMemo(() => {
-    return staffAppointments
-      .filter(a => a.date === todayStr && a.status !== 'cancelled')
+  // Appointments for the selected day
+  const dayAppointments = useMemo(() => {
+    return employeeAppointments
+      .filter(a => a.date === selectedDate)
       .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
-  }, [staffAppointments, todayStr]);
+  }, [employeeAppointments, selectedDate]);
 
-  const futureAppointments = useMemo(() => {
-    return staffAppointments
-      .filter(a => a.date > todayStr && a.status !== 'cancelled')
-      .sort((a, b) => {
-        const dateComp = a.date.localeCompare(b.date);
-        if (dateComp !== 0) return dateComp;
-        return a.timeSlot.localeCompare(b.timeSlot);
-      });
-  }, [staffAppointments, todayStr]);
+  // Daily statistics
+  const dailyStats = useMemo(() => {
+    const totalClients = dayAppointments.length;
+    const completed = dayAppointments.filter(a => a.status === 'completed').length;
+    const pending = dayAppointments.filter(a => a.status === 'confirmed').length;
+    const cancelled = dayAppointments.filter(a => a.status === 'cancelled').length;
+    const expectedRevenue = dayAppointments
+      .filter(a => a.status !== 'cancelled')
+      .reduce((acc, a) => acc + (a.servicePrice || 0), 0);
 
-  const pastAppointments = useMemo(() => {
-    return staffAppointments
-      .filter(a => a.date < todayStr || a.status === 'cancelled')
-      .sort((a, b) => {
-        const dateComp = b.date.localeCompare(a.date); // Most recent past first
-        if (dateComp !== 0) return dateComp;
-        return b.timeSlot.localeCompare(a.timeSlot);
-      });
-  }, [staffAppointments, todayStr]);
-
-  const currentList = useMemo(() => {
-    switch (activeTab) {
-      case 'today':
-        return todayAppointments;
-      case 'future':
-        return futureAppointments;
-      case 'past':
-        return pastAppointments;
-      default:
-        return todayAppointments;
-    }
-  }, [activeTab, todayAppointments, futureAppointments, pastAppointments]);
+    return { totalClients, completed, pending, cancelled, expectedRevenue };
+  }, [dayAppointments]);
 
   const handleOpenWhatsApp = (app: Appointment) => {
     const cleanPhone = app.clientPhone.replace(/\s+/g, '');
     const dateLabel = formatDateLabel(app.date);
     const text = encodeURIComponent(
-      `Olá ${app.clientName}! Contacto da Almare sobre a sua marcação para ${dateLabel} às ${app.timeSlot} (${app.serviceName}).`
+      `Olá ${app.clientName}! Contacto do(a) seu(sua) profissional na Almare sobre a sua marcação para ${dateLabel} às ${app.timeSlot} (${app.serviceName}).`
     );
     Linking.openURL(`https://wa.me/${cleanPhone}?text=${text}`);
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Text style={[styles.headerTitle, { color: accentColor }]}>MARCAÇÕES DO STAFF</Text>
-          <View style={styles.branchBadgesRow}>
-            <TouchableOpacity
-              style={[
-                styles.branchBadgeBtn,
-                branchFilter === 'all' && styles.branchBadgeBtnActive,
-              ]}
-              onPress={() => setBranchFilter('all')}
-            >
-              <Text style={[styles.branchBadgeText, branchFilter === 'all' && styles.branchBadgeTextActive]}>
-                Todos
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.branchBadgeBtn,
-                branchFilter === 'barber' && styles.branchBadgeBtnActive,
-              ]}
-              onPress={() => setBranchFilter('barber')}
-            >
-              <Text style={[styles.branchBadgeText, branchFilter === 'barber' && styles.branchBadgeTextActive]}>
-                Barber
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.branchBadgeBtn,
-                branchFilter === 'beauty' && styles.branchBadgeBtnActive,
-              ]}
-              onPress={() => setBranchFilter('beauty')}
-            >
-              <Text style={[styles.branchBadgeText, branchFilter === 'beauty' && styles.branchBadgeTextActive]}>
-                Beauty
-              </Text>
-            </TouchableOpacity>
-          </View>
+  const handleLogout = () => {
+    setCurrentStaffId(null);
+    setRole('client');
+  };
+
+  // -------------------------------------------------------------
+  // If no staff member is selected, show profile chooser
+  // -------------------------------------------------------------
+  if (!activeStaff) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: Theme.colors.barber.accent }]}>
+            PERFIS DOS FUNCIONÁRIOS
+          </Text>
+          <Text style={styles.headerSub}>
+            Selecione o seu perfil profissional para consultar a sua agenda diária e serviços:
+          </Text>
         </View>
 
-        <Text style={styles.headerSub}>Selecione o profissional para ver as suas marcações:</Text>
-
-        {/* Staff Members Selector */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.staffPickerScroll}>
-          <TouchableOpacity
-            style={[
-              styles.staffChip,
-              selectedStaffId === 'ALL' && { backgroundColor: accentColor, borderColor: accentColor },
-            ]}
-            onPress={() => setSelectedStaffId('ALL')}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.staffChipText,
-                selectedStaffId === 'ALL' && { color: '#111', fontWeight: '900' },
-              ]}
-            >
-              Toda a Equipa
-            </Text>
-          </TouchableOpacity>
-
-          {filteredStaffList.map(s => {
-            const isSelected = s.id === selectedStaffId;
-            return (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Text style={styles.sectionTitle}>Equipa Barber Shop</Text>
+          {staff
+            .filter(s => s.branch === 'barber')
+            .map(member => (
               <TouchableOpacity
-                key={s.id}
-                style={[
-                  styles.staffChip,
-                  isSelected && { backgroundColor: accentColor, borderColor: accentColor },
-                ]}
-                onPress={() => setSelectedStaffId(s.id)}
+                key={member.id}
+                style={[styles.staffSelectCard, { borderColor: Theme.colors.barber.accent }]}
+                onPress={() => setCurrentStaffId(member.id)}
                 activeOpacity={0.8}
               >
-                <Text
-                  style={[
-                    styles.staffChipText,
-                    isSelected && { color: '#111', fontWeight: '900' },
-                  ]}
-                >
-                  {s.name} ({s.branch === 'barber' ? 'Barber' : 'Beauty'})
-                </Text>
+                <View style={styles.staffSelectInfo}>
+                  <Text style={styles.staffSelectName}>{member.name}</Text>
+                  <Text style={styles.staffSelectRole}>{member.roleTitle}</Text>
+                  <View style={styles.pinTag}>
+                    <Text style={styles.pinTagText}>🔑 Código PIN: {member.pin || '1001'}</Text>
+                  </View>
+                </View>
+                <View style={[styles.staffSelectBtn, { backgroundColor: Theme.colors.barber.accent }]}>
+                  <Text style={styles.staffSelectBtnText}>Ver Agenda</Text>
+                </View>
               </TouchableOpacity>
-            );
-          })}
+            ))}
+
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Equipa Beauty Salon</Text>
+          {staff
+            .filter(s => s.branch === 'beauty')
+            .map(member => (
+              <TouchableOpacity
+                key={member.id}
+                style={[styles.staffSelectCard, { borderColor: Theme.colors.beauty.accent }]}
+                onPress={() => setCurrentStaffId(member.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.staffSelectInfo}>
+                  <Text style={styles.staffSelectName}>{member.name}</Text>
+                  <Text style={styles.staffSelectRole}>{member.roleTitle}</Text>
+                  <View style={styles.pinTag}>
+                    <Text style={styles.pinTagText}>🔑 Código PIN: {member.pin || '2001'}</Text>
+                  </View>
+                </View>
+                <View style={[styles.staffSelectBtn, { backgroundColor: Theme.colors.beauty.accent }]}>
+                  <Text style={styles.staffSelectBtnText}>Ver Agenda</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+          <TouchableOpacity style={styles.logoutFullBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Text style={styles.logoutFullBtnText}>Voltar ao Menu Principal</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
+    );
+  }
 
-      {/* Selected Staff Info Bar */}
-      <View style={styles.currentStaffBar}>
-        <View style={styles.currentStaffInfo}>
-          <Text style={styles.currentStaffName}>
-            {currentStaff ? currentStaff.name : 'Toda a Equipa'}
-          </Text>
-          <Text style={styles.currentStaffRole}>
-            {currentStaff
-              ? `${currentStaff.roleTitle} • ${currentStaff.branch === 'barber' ? 'Almare Barber' : 'Almare Beauty'}`
-              : `A visualizar todos os profissionais (${filteredStaffList.length} membros)`}
-          </Text>
+  // -------------------------------------------------------------
+  // Dedicated Individual Employee View:
+  // "apenas com o dia, clientes e serviços de trabalho para cada um individual"
+  // -------------------------------------------------------------
+  return (
+    <View style={styles.container}>
+      {/* Employee Profile Header */}
+      <View style={styles.header}>
+        <View style={styles.profileHeaderRow}>
+          <View style={styles.profileAvatarBox}>
+            <Text style={[styles.profileAvatarText, { color: accentColor }]}>
+              {activeStaff.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+
+          <View style={styles.profileInfoCol}>
+            <Text style={styles.greetingText}>Olá,</Text>
+            <Text style={[styles.profileName, { color: accentColor }]}>{activeStaff.name}</Text>
+            <Text style={styles.profileRoleText}>
+              {activeStaff.roleTitle} • {activeStaff.branch === 'barber' ? 'Almare Barber' : 'Almare Beauty'}
+            </Text>
+          </View>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Text style={styles.logoutBtnText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* PIN Badge & Working Hours */}
+        <View style={styles.profileDetailsRow}>
+          <View style={styles.pinBadge}>
+            <Text style={styles.pinBadgeIcon}>🔑</Text>
+            <Text style={styles.pinBadgeLabel}>Código:</Text>
+            <Text style={styles.pinBadgeValue}>{activeStaff.pin || '----'}</Text>
+          </View>
+
+          <View style={styles.hoursBadge}>
+            <Text style={styles.hoursBadgeText}>
+              🕒 {activeStaff.workingHours?.start || '09:00'} - {activeStaff.workingHours?.end || '19:00'}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* 3 Main Tabs: Hoje (o dia) | Futuro | Passado */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'today' && [styles.tabBtnActive, { borderBottomColor: accentColor }]]}
-          onPress={() => setActiveTab('today')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'today' && styles.tabBtnTextActive]}>
-            Hoje ({todayAppointments.length})
-          </Text>
-        </TouchableOpacity>
+      {/* Date Navigation Bar: "O Dia" */}
+      <View style={styles.dayNavContainer}>
+        <View style={styles.dayNavHeader}>
+          <Text style={[styles.dayNavSectionTitle, { color: accentColor }]}>O DIA DE TRABALHO</Text>
+          {selectedDate !== todayStr && (
+            <TouchableOpacity style={styles.todayQuickBtn} onPress={handleGoToday}>
+              <Text style={styles.todayQuickBtnText}>Ir para Hoje</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'future' && [styles.tabBtnActive, { borderBottomColor: accentColor }]]}
-          onPress={() => setActiveTab('future')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'future' && styles.tabBtnTextActive]}>
-            Futuro ({futureAppointments.length})
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.dayNavControls}>
+          <TouchableOpacity style={styles.dayNavArrowBtn} onPress={handlePrevDay} activeOpacity={0.7}>
+            <Text style={styles.dayNavArrowText}>◀</Text>
+            <Text style={styles.dayNavSubText}>Anterior</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'past' && [styles.tabBtnActive, { borderBottomColor: accentColor }]]}
-          onPress={() => setActiveTab('past')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'past' && styles.tabBtnTextActive]}>
-            Passado ({pastAppointments.length})
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.dayNavDisplayBox}>
+            <Text style={styles.dayNavLabelText}>{formatDateLabel(selectedDate)}</Text>
+            <Text style={styles.dayNavFullDateText}>{formatFullDateDisplay(selectedDate)}</Text>
+          </View>
+
+          <TouchableOpacity style={styles.dayNavArrowBtn} onPress={handleNextDay} activeOpacity={0.7}>
+            <Text style={styles.dayNavArrowText}>▶</Text>
+            <Text style={styles.dayNavSubText}>Seguinte</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Appointments List */}
+      {/* Daily Metrics Summary */}
+      <View style={styles.statsSummaryRow}>
+        <View style={styles.statMetricCard}>
+          <Text style={styles.statMetricValue}>{dailyStats.totalClients}</Text>
+          <Text style={styles.statMetricLabel}>Clientes Hoje</Text>
+        </View>
+
+        <View style={styles.statMetricCard}>
+          <Text style={[styles.statMetricValue, { color: '#10B981' }]}>{dailyStats.completed}</Text>
+          <Text style={styles.statMetricLabel}>Concluídos</Text>
+        </View>
+
+        <View style={styles.statMetricCard}>
+          <Text style={[styles.statMetricValue, { color: '#F59E0B' }]}>{dailyStats.pending}</Text>
+          <Text style={styles.statMetricLabel}>A Realizar</Text>
+        </View>
+
+        <View style={styles.statMetricCard}>
+          <Text style={[styles.statMetricValue, { color: accentColor }]}>
+            {dailyStats.expectedRevenue.toFixed(0)} €
+          </Text>
+          <Text style={styles.statMetricLabel}>Total Previsto</Text>
+        </View>
+      </View>
+
+      {/* Clients & Work Services List */}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {currentList.length === 0 ? (
+        <View style={styles.listHeaderRow}>
+          <Text style={styles.listHeaderTitle}>
+            Clientes e Serviços Agendados ({dayAppointments.length})
+          </Text>
+        </View>
+
+        {dayAppointments.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>
-              {activeTab === 'today'
-                ? 'Sem marcações para hoje'
-                : activeTab === 'future'
-                ? 'Sem marcações futuras'
-                : 'Sem marcações no histórico passado'}
-            </Text>
+            <Text style={styles.emptyIcon}>📅</Text>
+            <Text style={styles.emptyTitle}>Sem marcações para este dia</Text>
             <Text style={styles.emptySub}>
-              {activeTab === 'today'
-                ? 'Não existem clientes agendados para a data de hoje com o filtro selecionado.'
-                : activeTab === 'future'
-                ? 'Não há novos agendamentos marcados para datas futuras.'
-                : 'Não existem registos de marcações anteriores.'}
+              Não existem clientes agendados para {formatDateLabel(selectedDate).toLowerCase()} ({selectedDate}).
             </Text>
+            {selectedDate !== todayStr && (
+              <TouchableOpacity
+                style={[styles.goTodayBtn, { backgroundColor: accentColor }]}
+                onPress={handleGoToday}
+              >
+                <Text style={styles.goTodayBtnText}>Ver Marcações de Hoje</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
-          currentList.map(app => {
+          dayAppointments.map(app => {
             const isCompleted = app.status === 'completed';
             const isCancelled = app.status === 'cancelled';
-            const dateLabel = formatDateLabel(app.date);
+            const isConfirmed = app.status === 'confirmed';
 
             return (
-              <View key={app.id} style={styles.appointmentCard}>
-                {/* Header Row: Horário & Badge de Data / Profissional */}
-                <View style={styles.appCardTop}>
-                  <View style={styles.timeContainer}>
-                    <Text style={[styles.appTimeSlot, { color: accentColor }]}>
+              <View
+                key={app.id}
+                style={[
+                  styles.clientWorkCard,
+                  isCompleted && styles.clientWorkCardCompleted,
+                  isCancelled && styles.clientWorkCardCancelled,
+                ]}
+              >
+                {/* Card Top: Horário e Estado */}
+                <View style={styles.cardTopRow}>
+                  <View style={styles.timeSlotBadge}>
+                    <Text style={[styles.timeSlotText, { color: accentColor }]}>
                       {app.timeSlot}
                     </Text>
-                    <Text style={styles.appDuration}>
-                      ({app.serviceDuration} min)
+                    <Text style={styles.durationSubText}>({app.serviceDuration} min)</Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.statusPill,
+                      isCompleted && styles.statusPillCompleted,
+                      isCancelled && styles.statusPillCancelled,
+                      isConfirmed && styles.statusPillConfirmed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        isCompleted && { color: '#3B82F6' },
+                        isCancelled && { color: '#EF4444' },
+                        isConfirmed && { color: '#10B981' },
+                      ]}
+                    >
+                      {isCompleted ? '✓ Concluído' : isCancelled ? '✕ Cancelado' : '● Agendado'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Cliente */}
+                <View style={styles.clientSection}>
+                  <Text style={styles.clientLabel}>CLIENTE:</Text>
+                  <Text style={styles.clientName}>{app.clientName}</Text>
+                  <Text style={styles.clientPhone}>{app.clientPhone}</Text>
+                </View>
+
+                {/* Serviços de Trabalho */}
+                <View style={styles.servicesBox}>
+                  <Text style={styles.servicesBoxLabel}>SERVIÇO DE TRABALHO:</Text>
+                  <Text style={styles.serviceTitle}>{app.serviceName}</Text>
+                  <View style={styles.serviceMetaRow}>
+                    <Text style={styles.serviceMetaItem}>Duração: {app.serviceDuration} minutos</Text>
+                    <Text style={styles.serviceMetaDivider}>•</Text>
+                    <Text style={[styles.serviceMetaItem, { color: accentColor, fontWeight: '800' }]}>
+                      Valor: {app.servicePrice.toFixed(2)} €
                     </Text>
                   </View>
 
-                  <View style={styles.dateAndStaffContainer}>
-                    <View style={styles.dateBadge}>
-                      <Text style={styles.dateBadgeText}>{dateLabel}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.appStatusBadge,
-                        isCompleted
-                          ? styles.statusCompleted
-                          : isCancelled
-                          ? styles.statusCancelled
-                          : styles.statusConfirmed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.appStatusText,
-                          isCompleted
-                            ? { color: '#3B82F6' }
-                            : isCancelled
-                            ? { color: '#EF4444' }
-                            : { color: '#10B981' },
-                        ]}
-                      >
-                        {isCompleted ? 'Concluído' : isCancelled ? 'Cancelado' : 'Confirmado'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Staff member responsible (very helpful when viewing All or verifying) */}
-                <View style={styles.staffRow}>
-                  <Text style={styles.staffLabel}>Profissional:</Text>
-                  <Text style={styles.staffNameText}>
-                    {app.staffName} ({app.branch === 'barber' ? 'Barber' : 'Beauty'})
-                  </Text>
-                </View>
-
-                {/* Client info */}
-                <View style={styles.clientSection}>
-                  <Text style={styles.appClientName}>{app.clientName}</Text>
-                  <Text style={styles.appClientPhone}>{app.clientPhone}</Text>
-                </View>
-
-                {/* Service details */}
-                <View style={styles.appDetailsBox}>
-                  <Text style={styles.appServiceName}>{app.serviceName}</Text>
-                  <Text style={styles.appPriceText}>
-                    Valor: {app.servicePrice.toFixed(2)} € • Data: {app.date}
-                  </Text>
                   {app.notes ? (
-                    <Text style={styles.appNotesText}>Nota: &quot;{app.notes}&quot;</Text>
+                    <View style={styles.notesBox}>
+                      <Text style={styles.notesLabel}>Nota do Cliente / Pedido:</Text>
+                      <Text style={styles.notesText}>&quot;{app.notes}&quot;</Text>
+                    </View>
                   ) : null}
                 </View>
 
-                {/* Actions */}
-                <View style={styles.appActionsRow}>
+                {/* Botões de Ação */}
+                <View style={styles.actionsRow}>
                   <TouchableOpacity
-                    style={styles.actionBtnWhatsApp}
+                    style={styles.whatsAppBtn}
                     onPress={() => handleOpenWhatsApp(app)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.actionBtnWhatsAppText}>WhatsApp</Text>
+                    <Text style={styles.whatsAppBtnText}>WhatsApp</Text>
                   </TouchableOpacity>
 
-                  {app.status === 'confirmed' && (
+                  {isConfirmed && (
                     <TouchableOpacity
-                      style={styles.actionBtnComplete}
+                      style={[styles.completeBtn, { backgroundColor: accentColor }]}
                       onPress={() => updateAppointmentStatus(app.id, 'completed')}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.actionBtnCompleteText}>Concluir</Text>
+                      <Text style={styles.completeBtnText}>✓ Concluir Serviço</Text>
                     </TouchableOpacity>
+                  )}
+
+                  {isCompleted && (
+                    <View style={styles.completedIndicator}>
+                      <Text style={styles.completedIndicatorText}>Serviço Finalizado</Text>
+                    </View>
                   )}
                 </View>
               </View>
@@ -394,288 +451,504 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingTop: 16,
+    paddingBottom: 14,
     backgroundColor: '#18181E',
     borderBottomWidth: 1,
     borderBottomColor: '#272730',
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   headerTitle: {
     fontSize: 16,
     fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  branchBadgesRow: {
-    flexDirection: 'row',
-    backgroundColor: '#272730',
-    borderRadius: 8,
-    padding: 2,
-  },
-  branchBadgeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  branchBadgeBtnActive: {
-    backgroundColor: '#3F3F46',
-  },
-  branchBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#9CA3AF',
-  },
-  branchBadgeTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '900',
+    letterSpacing: 1.5,
   },
   headerSub: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#9CA3AF',
-    marginTop: 6,
-    marginBottom: 6,
+    marginTop: 4,
+    lineHeight: 17,
   },
-  staffPickerScroll: {
+  profileHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileAvatarBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#272730',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#3F3F46',
+  },
+  profileAvatarText: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  profileInfoCol: {
+    flex: 1,
+  },
+  greetingText: {
+    fontSize: 11,
+    color: '#A1A1AA',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  profileName: {
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  profileRoleText: {
+    fontSize: 12,
+    color: '#D4D4D8',
     marginTop: 2,
   },
-  staffChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+  logoutBtn: {
     backgroundColor: '#272730',
-    marginRight: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#3F3F46',
   },
-  staffChipText: {
-    color: '#D4D4D8',
+  logoutBtnText: {
+    color: '#EF4444',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  currentStaffBar: {
+  profileDetailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  pinBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22222A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3A3A46',
+  },
+  pinBadgeIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  pinBadgeLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  pinBadgeValue: {
+    fontSize: 13,
+    color: '#F4F4F5',
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  hoursBadge: {
+    backgroundColor: '#22222A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3A3A46',
+  },
+  hoursBadgeText: {
+    fontSize: 11,
+    color: '#D4D4D8',
+    fontWeight: '600',
+  },
+  dayNavContainer: {
+    backgroundColor: '#15151B',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#141419',
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#22222A',
   },
-  currentStaffInfo: {
-    flexDirection: 'column',
-  },
-  currentStaffName: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  currentStaffRole: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 1,
-  },
-  tabBar: {
+  dayNavHeader: {
     flexDirection: 'row',
-    backgroundColor: '#141419',
-    borderBottomWidth: 1,
-    borderBottomColor: '#272730',
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    marginBottom: 8,
   },
-  tabBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
+  dayNavSectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.2,
   },
-  tabBtnText: {
-    color: '#71717A',
-    fontSize: 12,
+  todayQuickBtn: {
+    backgroundColor: '#272730',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  todayQuickBtnText: {
+    color: '#F4F4F5',
+    fontSize: 11,
     fontWeight: '700',
   },
-  tabBtnTextActive: {
-    color: '#F4F4F5',
+  dayNavControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E1E26',
+    borderRadius: 10,
+    padding: 6,
+  },
+  dayNavArrowBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayNavArrowText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '900',
+  },
+  dayNavSubText: {
+    color: '#71717A',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  dayNavDisplayBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  dayNavLabelText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  dayNavFullDateText: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  statsSummaryRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#111116',
+    borderBottomWidth: 1,
+    borderBottomColor: '#22222A',
+    gap: 8,
+  },
+  statMetricCard: {
+    flex: 1,
+    backgroundColor: '#1A1A22',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2A2A34',
+  },
+  statMetricValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#F4F4F5',
+  },
+  statMetricLabel: {
+    fontSize: 9,
+    color: '#71717A',
+    fontWeight: '700',
+    marginTop: 2,
+    textTransform: 'uppercase',
   },
   content: {
     padding: 16,
     paddingBottom: 40,
   },
-  emptyCard: {
-    backgroundColor: '#18181E',
-    padding: 32,
-    borderRadius: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2E2E3A',
-    marginTop: 16,
+  listHeaderRow: {
+    marginBottom: 12,
   },
-  emptyIcon: {
-    fontSize: 32,
-    marginBottom: 10,
-  },
-  emptyTitle: {
-    color: '#F4F4F5',
-    fontSize: 15,
+  listHeaderTitle: {
+    fontSize: 13,
     fontWeight: '800',
+    color: '#D4D4D8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  emptySub: {
-    color: '#71717A',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 18,
-    maxWidth: 280,
-  },
-  appointmentCard: {
+  clientWorkCard: {
     backgroundColor: '#18181E',
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#2E2E3A',
+    borderColor: '#272730',
   },
-  appCardTop: {
+  clientWorkCardCompleted: {
+    borderColor: '#1E3A5F',
+    backgroundColor: '#121722',
+    opacity: 0.9,
+  },
+  clientWorkCardCancelled: {
+    borderColor: '#3F1D1D',
+    backgroundColor: '#191214',
+    opacity: 0.7,
+  },
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 8,
+    marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#24242E',
-    marginBottom: 8,
+    borderBottomColor: '#22222A',
+    paddingBottom: 8,
   },
-  timeContainer: {
+  timeSlotBadge: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    gap: 6,
   },
-  appTimeSlot: {
-    fontSize: 20,
+  timeSlotText: {
+    fontSize: 22,
     fontWeight: '900',
-    marginRight: 6,
   },
-  appDuration: {
+  durationSubText: {
     fontSize: 12,
     color: '#9CA3AF',
     fontWeight: '600',
   },
-  dateAndStaffContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dateBadge: {
-    backgroundColor: '#272730',
+  statusPill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  dateBadgeText: {
-    color: '#D4D4D8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  appStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusConfirmed: {
+  statusPillConfirmed: {
     backgroundColor: 'rgba(16,185,129,0.15)',
   },
-  statusCompleted: {
+  statusPillCompleted: {
     backgroundColor: 'rgba(59,130,246,0.15)',
   },
-  statusCancelled: {
+  statusPillCancelled: {
     backgroundColor: 'rgba(239,68,68,0.15)',
   },
-  appStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  staffRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  staffLabel: {
+  statusPillText: {
     fontSize: 11,
-    color: '#71717A',
-    marginRight: 4,
-    fontWeight: '600',
-  },
-  staffNameText: {
-    fontSize: 12,
-    color: '#E4E4E7',
     fontWeight: '800',
   },
   clientSection: {
-    marginVertical: 4,
+    marginBottom: 8,
   },
-  appClientName: {
-    fontSize: 16,
+  clientLabel: {
+    fontSize: 10,
+    color: '#71717A',
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  clientName: {
+    fontSize: 17,
     fontWeight: '900',
     color: '#FFFFFF',
+    marginTop: 2,
   },
-  appClientPhone: {
+  clientPhone: {
     fontSize: 12,
     color: '#9CA3AF',
     marginTop: 2,
     fontWeight: '600',
   },
-  appDetailsBox: {
-    backgroundColor: '#22222A',
+  servicesBox: {
+    backgroundColor: '#202028',
     padding: 10,
     borderRadius: 8,
-    marginTop: 8,
+    marginBottom: 12,
   },
-  appServiceName: {
-    fontSize: 13,
+  servicesBoxLabel: {
+    fontSize: 9,
+    color: '#71717A',
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  serviceTitle: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#F4F4F5',
   },
-  appPriceText: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 3,
-  },
-  appNotesText: {
-    fontSize: 11,
-    color: '#FBBF24',
-    marginTop: 5,
-    fontStyle: 'italic',
-  },
-  appActionsRow: {
+  serviceMetaRow: {
     flexDirection: 'row',
-    marginTop: 10,
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
   },
-  actionBtnWhatsApp: {
+  serviceMetaItem: {
+    fontSize: 11,
+    color: '#A1A1AA',
+  },
+  serviceMetaDivider: {
+    color: '#52525B',
+    fontSize: 10,
+  },
+  notesBox: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#2B2B36',
+  },
+  notesLabel: {
+    fontSize: 10,
+    color: '#FBBF24',
+    fontWeight: '700',
+  },
+  notesText: {
+    fontSize: 11,
+    color: '#FDE68A',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  whatsAppBtn: {
     flex: 1,
     backgroundColor: '#25D366',
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
-  actionBtnWhatsAppText: {
+  whatsAppBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '800',
   },
-  actionBtnComplete: {
-    flex: 1,
-    backgroundColor: '#3B82F6',
-    paddingVertical: 9,
+  completeBtn: {
+    flex: 1.3,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
-  actionBtnCompleteText: {
-    color: '#FFFFFF',
+  completeBtnText: {
+    color: '#111116',
     fontSize: 12,
+    fontWeight: '900',
+  },
+  completedIndicator: {
+    flex: 1.3,
+    backgroundColor: '#1E293B',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  completedIndicatorText: {
+    color: '#60A5FA',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  emptyCard: {
+    backgroundColor: '#18181E',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#272730',
+    marginTop: 10,
+  },
+  emptyIcon: {
+    fontSize: 36,
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#F4F4F5',
+    marginBottom: 6,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 16,
+  },
+  goTodayBtn: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  goTodayBtnText: {
+    color: '#111116',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  // Selection view styles
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  staffSelectCard: {
+    backgroundColor: '#18181E',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderLeftWidth: 4,
+  },
+  staffSelectInfo: {
+    flex: 1,
+  },
+  staffSelectName: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  staffSelectRole: {
+    fontSize: 12,
+    color: '#A1A1AA',
+    marginTop: 2,
+  },
+  pinTag: {
+    backgroundColor: '#272730',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  pinTagText: {
+    fontSize: 11,
+    color: '#E4E4E7',
+    fontWeight: '700',
+  },
+  staffSelectBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginLeft: 10,
+  },
+  staffSelectBtnText: {
+    color: '#111116',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  logoutFullBtn: {
+    backgroundColor: '#272730',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  logoutFullBtnText: {
+    color: '#EF4444',
+    fontSize: 13,
     fontWeight: '800',
   },
 });

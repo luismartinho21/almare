@@ -25,6 +25,7 @@ export const GestorBarberView: React.FC = () => {
     appointments,
     updateAppointmentStatus,
     staff,
+    generateStaffPin,
     addStaffMember,
     updateStaffMember,
     deleteStaffMember,
@@ -60,6 +61,7 @@ export const GestorBarberView: React.FC = () => {
   // Staff management & availability states
   const [staffModalVisible, setStaffModalVisible] = useState(false);
   const [editingStaffMember, setEditingStaffMember] = useState<StaffMember | null>(null);
+  const [staffPin, setStaffPin] = useState('');
   const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState('Barbeiro Especialista');
   const [staffPhone, setStaffPhone] = useState('+351 910 000 000');
@@ -135,7 +137,9 @@ export const GestorBarberView: React.FC = () => {
 
   const handleOpenCreateStaff = () => {
     const today = new Date().toISOString().split('T')[0];
+    const nextPin = generateStaffPin('barber');
     setEditingStaffMember(null);
+    setStaffPin(nextPin);
     setStaffName('');
     setStaffRole('Barbeiro Especialista');
     setStaffPhone('+351 910 000 000');
@@ -156,6 +160,7 @@ export const GestorBarberView: React.FC = () => {
   const handleOpenEditStaff = (member: StaffMember) => {
     const today = new Date().toISOString().split('T')[0];
     setEditingStaffMember(member);
+    setStaffPin(member.pin || generateStaffPin('barber'));
     setStaffName(member.name);
     setStaffRole(member.roleTitle);
     setStaffPhone(member.phone || '+351 910 000 000');
@@ -256,6 +261,7 @@ export const GestorBarberView: React.FC = () => {
     if (editingStaffMember) {
       await updateStaffMember({
         ...editingStaffMember,
+        pin: staffPin.trim() || editingStaffMember.pin,
         name: staffName.trim(),
         roleTitle: staffRole.trim() || 'Barbeiro Especialista',
         phone: staffPhone.trim() || '+351 910 000 000',
@@ -274,6 +280,7 @@ export const GestorBarberView: React.FC = () => {
     } else {
       await addStaffMember({
         branch: 'barber',
+        pin: staffPin.trim() || undefined,
         name: staffName.trim(),
         roleTitle: staffRole.trim() || 'Barbeiro Especialista',
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
@@ -995,6 +1002,15 @@ export const GestorBarberView: React.FC = () => {
                       </View>
                       <Text style={styles.scheduleConfigRole}>{member.roleTitle}</Text>
                       <Text style={styles.staffPhoneSub}>Tel: {member.phone || 'Sem contacto'}</Text>
+                      
+                      {/* Código de Acesso PIN */}
+                      <View style={styles.staffPinDisplayBadge}>
+                        <Text style={styles.staffPinDisplayIcon}>🔑</Text>
+                        <Text style={styles.staffPinDisplayLabel}>Código PIN:</Text>
+                        <View style={styles.staffPinValueBox}>
+                          <Text style={styles.staffPinDisplayValue}>{member.pin || '1001'}</Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
 
@@ -1090,6 +1106,23 @@ export const GestorBarberView: React.FC = () => {
                   onChangeText={setStaffName}
                   placeholder="Ex: Diogo Silva"
                   placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* Código de Acesso PIN */}
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>Código de Acesso PIN (4 dígitos) *</Text>
+                <Text style={styles.modalFieldHint}>
+                  Código gerado automaticamente para o barbeiro aceder ao seu perfil individual e marcações.
+                </Text>
+                <TextInput
+                  style={[styles.modalInput, styles.modalPinInput]}
+                  value={staffPin}
+                  onChangeText={setStaffPin}
+                  placeholder="Ex: 1004"
+                  placeholderTextColor="#71717A"
+                  keyboardType="number-pad"
+                  maxLength={6}
                 />
               </View>
 
@@ -2758,5 +2791,53 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     marginLeft: 6,
+  },
+  staffPinDisplayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1E26',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#383848',
+  },
+  staffPinDisplayIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  staffPinDisplayLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  staffPinValueBox: {
+    backgroundColor: '#2A2616',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+  },
+  staffPinDisplayValue: {
+    fontSize: 12,
+    color: '#D4AF37',
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  modalPinInput: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 4,
+    color: '#D4AF37',
+  },
+  modalFieldHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 6,
+    lineHeight: 15,
   },
 });

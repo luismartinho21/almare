@@ -33,6 +33,7 @@ export interface StaffMember {
   status?: 'active' | 'leave' | 'vacation' | 'inactive'; // e.g. ativo, de baixa, férias, inativo
   absenceNote?: string; // e.g. "Baixa médica por 3 dias", "Férias"
   unavailableDates?: string[]; // Datas específicas de ausência (YYYY-MM-DD)
+  pin?: string; // Código de acesso pessoal único do colaborador (4 dígitos)
 }
 
 export type AppointmentStatus = 'confirmed' | 'completed' | 'cancelled';
