@@ -60,6 +60,7 @@ interface AppContextType {
   currentStaffId: string | null;
   setCurrentStaffId: (id: string | null) => void;
   currentStaffMember: StaffMember | null;
+  generateStaffPin: (branch: SalonBranch) => string;
   updateStaffWorkingHours: (id: string, workingHours: { start: string; end: string; lunchStart?: string; lunchEnd?: string }) => Promise<void>;
   updateStaffMember: (updatedMember: StaffMember) => Promise<void>;
   addStaffMember: (newStaff: Omit<StaffMember, 'id'>) => Promise<StaffMember>;
@@ -278,6 +279,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentStaffId,
         setCurrentStaffId,
         currentStaffMember,
+        generateStaffPin: (b: SalonBranch) => generateUniqueStaffPin(b, staff),
         services,
         staff,
         appointments,
