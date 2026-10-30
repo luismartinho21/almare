@@ -33,6 +33,8 @@ export const GestorBeautyView: React.FC = () => {
     addService,
     updateService,
     deleteService,
+    renameCategory,
+    deleteCategory,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<GestorTab>('management');
@@ -57,6 +59,14 @@ export const GestorBeautyView: React.FC = () => {
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('6');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
+  const [inlineExtraCat, setInlineExtraCat] = useState('Extras');
+
+  // Filter / Category customization states
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [manageFiltersModalVisible, setManageFiltersModalVisible] = useState(false);
+  const [newFilterInput, setNewFilterInput] = useState('');
+  const [editingFilterOldName, setEditingFilterOldName] = useState<string | null>(null);
+  const [editingFilterNewName, setEditingFilterNewName] = useState('');
 
   // Staff management & availability states
   const [staffModalVisible, setStaffModalVisible] = useState(false);
@@ -104,10 +114,83 @@ export const GestorBeautyView: React.FC = () => {
 
   const beautyCategories = useMemo(() => {
     const defaultCats = ['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Extras'];
-    const dynamicCats = Array.from(new Set(beautyServices.map(s => s.category)));
-    const merged = Array.from(new Set([...defaultCats, ...dynamicCats]));
+    const dynamicCats = Array.from(new Set(beautyServices.map(s => s.category).filter(Boolean)));
+    const merged = Array.from(new Set([...defaultCats, ...dynamicCats, ...customCategories]));
     return ['TODOS', ...merged];
-  }, [beautyServices]);
+  }, [beautyServices, customCategories]);
+
+  const getCategoryCount = (cat: string) => {
+    if (cat === 'TODOS') return beautyServices.length;
+    return beautyServices.filter(s => s.category.toLowerCase() === cat.toLowerCase()).length;
+  };
+
+  const handleAddNewFilter = () => {
+    const name = newFilterInput.trim();
+    if (!name) {
+      Alert.alert('Atenção', 'Introduza o nome do filtro.');
+      return;
+    }
+    if (beautyCategories.map(c => c.toLowerCase()).includes(name.toLowerCase())) {
+      Alert.alert('Atenção', 'Este filtro já existe.');
+      return;
+    }
+    setCustomCategories(prev => [...prev, name]);
+    setNewServCat(name);
+    setNewFilterInput('');
+    Alert.alert('Sucesso', `Filtro "${name}" criado com sucesso! Já o pode associar aos seus serviços e extras.`);
+  };
+
+  const handleSaveRenameFilter = async (oldName: string) => {
+    const newName = editingFilterNewName.trim();
+    if (!newName) {
+      Alert.alert('Atenção', 'O nome do filtro não pode estar vazio.');
+      return;
+    }
+    if (newName.toLowerCase() === oldName.toLowerCase()) {
+      setEditingFilterOldName(null);
+      return;
+    }
+    await renameCategory('beauty', oldName, newName);
+    setCustomCategories(prev => prev.map(c => (c.toLowerCase() === oldName.toLowerCase() ? newName : c)));
+    if (catFilter.toLowerCase() === oldName.toLowerCase()) {
+      setCatFilter(newName);
+    }
+    if (newServCat.toLowerCase() === oldName.toLowerCase()) {
+      setNewServCat(newName);
+    }
+    setEditingFilterOldName(null);
+    setEditingFilterNewName('');
+    Alert.alert('Sucesso', `Filtro renomeado para "${newName}" com todos os serviços e extras associados atualizados!`);
+  };
+
+  const handleDeleteFilter = (filterName: string) => {
+    const count = getCategoryCount(filterName);
+    Alert.alert(
+      'Eliminar Filtro',
+      count > 0
+        ? `O filtro "${filterName}" tem ${count} serviço(s) associado(s). Ao eliminar, estes serviços passarão para a categoria "Manicure / Pedicure". Deseja continuar?`
+        : `Tem a certeza de que deseja eliminar o filtro "${filterName}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            if (count > 0) {
+              await deleteCategory('beauty', filterName, 'Manicure / Pedicure');
+            }
+            setCustomCategories(prev => prev.filter(c => c.toLowerCase() !== filterName.toLowerCase()));
+            if (catFilter.toLowerCase() === filterName.toLowerCase()) {
+              setCatFilter('TODOS');
+            }
+            if (newServCat.toLowerCase() === filterName.toLowerCase()) {
+              setNewServCat('Manicure / Pedicure');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleToggleExtraId = (extraId: string) => {
     setSelectedExtraIds(prev =>
@@ -148,7 +231,7 @@ export const GestorBeautyView: React.FC = () => {
     }
     const created = await addService({
       branch: 'beauty',
-      category: 'Extras',
+      category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
       description: 'Extra opcional para serviços de beleza.',
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
@@ -860,20 +943,29 @@ export const GestorBeautyView: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Category Filter */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-              {beautyCategories.map(cat => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.catFilterPill, catFilter === cat && styles.catFilterPillActive]}
-                  onPress={() => setCatFilter(cat)}
-                >
-                  <Text style={[styles.catFilterPillText, catFilter === cat && styles.catFilterPillTextActive]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {/* Category Filter & Manage Filters button */}
+            <View style={styles.catFilterContainerRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+                {beautyCategories.map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.catFilterPill, catFilter === cat && styles.catFilterPillActive]}
+                    onPress={() => setCatFilter(cat)}
+                  >
+                    <Text style={[styles.catFilterPillText, catFilter === cat && styles.catFilterPillTextActive]}>
+                      {cat} ({getCategoryCount(cat)})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.manageFiltersTopBtn}
+                onPress={() => setManageFiltersModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.manageFiltersTopBtnText}>⚙️ Filtros</Text>
+              </TouchableOpacity>
+            </View>
 
             {filteredBeautyServices.map(item => {
               const compatibleExtras = item.compatibleExtraIds && item.compatibleExtraIds.length > 0
@@ -1138,15 +1230,23 @@ export const GestorBeautyView: React.FC = () => {
 
               {/* Category Pills & Input */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Categoria</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>Filtro / Categoria *</Text>
+                  <TouchableOpacity onPress={() => setManageFiltersModalVisible(true)}>
+                    <Text style={styles.manageFiltersLinkText}>⚙️ Gerir Filtros</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.modalFieldHint}>
+                  Define em que aba de filtro este serviço/extra vai aparecer para as clientes e na gestão.
+                </Text>
                 <View style={styles.modalCatRow}>
-                  {['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Extras'].map(cat => (
+                  {beautyCategories.filter(c => c !== 'TODOS').map(cat => (
                     <TouchableOpacity
                       key={cat}
-                      style={[styles.modalCatPill, newServCat === cat && styles.modalCatPillActive]}
+                      style={[styles.modalCatPill, newServCat.toLowerCase() === cat.toLowerCase() && styles.modalCatPillActive]}
                       onPress={() => setNewServCat(cat)}
                     >
-                      <Text style={[styles.modalCatPillText, newServCat === cat && styles.modalCatPillTextActive]}>
+                      <Text style={[styles.modalCatPillText, newServCat.toLowerCase() === cat.toLowerCase() && styles.modalCatPillTextActive]}>
                         {cat}
                       </Text>
                     </TouchableOpacity>
@@ -1156,7 +1256,7 @@ export const GestorBeautyView: React.FC = () => {
                   style={[styles.input, { marginTop: 6 }]}
                   value={newServCat}
                   onChangeText={setNewServCat}
-                  placeholder="Ou digite outra categoria"
+                  placeholder="Ou digite outro filtro personalizado..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1266,6 +1366,32 @@ export const GestorBeautyView: React.FC = () => {
                         value={inlineExtraName}
                         onChangeText={setInlineExtraName}
                       />
+
+                      {/* Filtro / Categoria do Extra */}
+                      <View style={{ marginBottom: 6 }}>
+                        <Text style={styles.labelMini}>Filtro / Categoria do Extra:</Text>
+                        <View style={[styles.modalCatRow, { marginTop: 2 }]}>
+                          {['Extras', 'Tratamentos', 'Head-Spa', 'Signature'].map(cat => (
+                            <TouchableOpacity
+                              key={cat}
+                              style={[styles.modalCatPill, inlineExtraCat.toLowerCase() === cat.toLowerCase() && styles.modalCatPillActive]}
+                              onPress={() => setInlineExtraCat(cat)}
+                            >
+                              <Text style={[styles.modalCatPillText, inlineExtraCat.toLowerCase() === cat.toLowerCase() && styles.modalCatPillTextActive]}>
+                                {cat}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TextInput
+                          style={[styles.input, { marginTop: 4 }]}
+                          placeholder="Categoria (Ex: Extras, Tratamentos...)"
+                          placeholderTextColor="#71717A"
+                          value={inlineExtraCat}
+                          onChangeText={setInlineExtraCat}
+                        />
+                      </View>
+
                       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                         <TextInput
                           style={[styles.input, { flex: 1 }]}
@@ -1314,6 +1440,111 @@ export const GestorBeautyView: React.FC = () => {
                 }}
               >
                 <Text style={styles.modalCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal: Gerir Filtros e Categorias Beauty */}
+      <Modal visible={manageFiltersModalVisible} transparent animationType="slide" onRequestClose={() => setManageFiltersModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setManageFiltersModalVisible(false)}>
+          <Pressable style={[styles.modalContent, { maxHeight: '88%' }]} onPress={e => e.stopPropagation()}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Gerir Filtros e Categorias</Text>
+              <Text style={styles.modalSub}>
+                Crie novos filtros ou renomeie filtros existentes. Ao renomear um filtro, todos os serviços e extras associados são atualizados automaticamente na aplicação.
+              </Text>
+
+              {/* Criar Novo Filtro */}
+              <View style={styles.addNewFilterBox}>
+                <Text style={styles.filterSectionLabel}>Criar Novo Filtro / Categoria:</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    value={newFilterInput}
+                    onChangeText={setNewFilterInput}
+                    placeholder="Ex: Noivas, Tratamentos Faciais..."
+                    placeholderTextColor="#71717A"
+                  />
+                  <TouchableOpacity
+                    style={styles.addFilterBtn}
+                    onPress={handleAddNewFilter}
+                  >
+                    <Text style={styles.addFilterBtnText}>+ Adicionar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Lista de Filtros Ativos */}
+              <Text style={[styles.filterSectionLabel, { marginTop: 18 }]}>Filtros Ativos do Catálogo:</Text>
+              {beautyCategories.filter(c => c !== 'TODOS').map(cat => {
+                const count = getCategoryCount(cat);
+                const isEditingThis = editingFilterOldName === cat;
+
+                return (
+                  <View key={cat} style={styles.filterRowItem}>
+                    {isEditingThis ? (
+                      <View style={{ flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        <TextInput
+                          style={[styles.input, { flex: 1 }]}
+                          value={editingFilterNewName}
+                          onChangeText={setEditingFilterNewName}
+                          placeholder="Novo nome do filtro"
+                          placeholderTextColor="#71717A"
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.saveFilterNameBtn}
+                          onPress={() => handleSaveRenameFilter(cat)}
+                        >
+                          <Text style={styles.saveFilterNameBtnText}>Guardar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.cancelFilterNameBtn}
+                          onPress={() => setEditingFilterOldName(null)}
+                        >
+                          <Text style={styles.cancelFilterNameBtnText}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.filterRowItemName}>{cat}</Text>
+                          <Text style={styles.filterRowItemSub}>
+                            {count} {count === 1 ? 'item associado' : 'itens associados'}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          <TouchableOpacity
+                            style={styles.editFilterBtn}
+                            onPress={() => {
+                              setEditingFilterOldName(cat);
+                              setEditingFilterNewName(cat);
+                            }}
+                          >
+                            <Text style={styles.editFilterBtnText}>Renomear</Text>
+                          </TouchableOpacity>
+                          {cat !== 'Extras' && cat !== 'Manicure / Pedicure' && (
+                            <TouchableOpacity
+                              style={styles.deleteFilterBtn}
+                              onPress={() => handleDeleteFilter(cat)}
+                            >
+                              <Text style={styles.deleteFilterBtnText}>Eliminar</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                );
+              })}
+
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { marginTop: 20 }]}
+                onPress={() => setManageFiltersModalVisible(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>Concluir / Fechar</Text>
               </TouchableOpacity>
             </ScrollView>
           </Pressable>
@@ -2890,5 +3121,127 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 6,
     lineHeight: 15,
+  },
+  catFilterContainerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 8,
+  },
+  manageFiltersTopBtn: {
+    backgroundColor: '#FDF2F8',
+    borderWidth: 1,
+    borderColor: '#EC4899',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  manageFiltersTopBtnText: {
+    color: '#BE185D',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  manageFiltersLinkText: {
+    color: '#BE185D',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  addNewFilterBox: {
+    backgroundColor: '#FDF2F8',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FCE7F3',
+    marginTop: 6,
+  },
+  filterSectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#831843',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  addFilterBtn: {
+    backgroundColor: '#BE185D',
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addFilterBtnText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  filterRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#F3E8FF',
+  },
+  filterRowItemName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  filterRowItemSub: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  editFilterBtn: {
+    backgroundColor: '#FCE7F3',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FBCFE8',
+  },
+  editFilterBtnText: {
+    color: '#BE185D',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  deleteFilterBtn: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.25)',
+  },
+  deleteFilterBtnText: {
+    color: '#DC2626',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  saveFilterNameBtn: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  saveFilterNameBtnText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  cancelFilterNameBtn: {
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  cancelFilterNameBtnText: {
+    color: '#DC2626',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });

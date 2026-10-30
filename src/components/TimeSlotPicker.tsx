@@ -149,7 +149,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 2, color: isBarber ? '#E5E7EB' : '#374151' }}>
                 {absenceInfo?.isAbsent ? (
                   <Text style={{ color: '#EF4444', fontWeight: '900' }}>
-                    {absenceInfo.type === 'vacation' ? '🏖 EM PERÍODO DE FÉRIAS' : '⚠ EM BAIXA MÉDICA'}
+                    ✕ TEMPORARIAMENTE INDISPONÍVEL
                   </Text>
                 ) : shiftType === 'morning_only' ? (
                   <Text style={{ color: isBarber ? '#FBBF24' : '#D97706', fontWeight: '800' }}>
@@ -282,38 +282,31 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         </View>
       ) : (
         <>
-          {/* Se o profissional estiver temporariamente de baixa ou férias nesta data */}
+          {/* Se o profissional estiver temporariamente de baixa ou ausente nesta data */}
           {absenceInfo?.isAbsent ? (
             <View
               style={[
                 styles.closedNoticeBox,
                 isBarber ? styles.closedBoxBarber : styles.closedBoxBeauty,
                 {
-                  borderColor: absenceInfo.type === 'vacation' ? '#3B82F6' : '#F59E0B',
+                  borderColor: '#EF4444',
                   marginBottom: 16,
                   backgroundColor: isBarber
-                    ? absenceInfo.type === 'vacation'
-                      ? 'rgba(59, 130, 246, 0.12)'
-                      : 'rgba(245, 158, 11, 0.12)'
-                    : absenceInfo.type === 'vacation'
-                    ? '#EFF6FF'
-                    : '#FFFBEB',
+                    ? 'rgba(239, 68, 68, 0.12)'
+                    : '#FEF2F2',
                 },
               ]}
             >
               <Text
                 style={[
                   styles.closedNoticeTitle,
-                  { color: absenceInfo.type === 'vacation' ? '#3B82F6' : '#D97706' },
+                  { color: '#EF4444' },
                 ]}
               >
-                {absenceInfo.type === 'vacation' ? '🏖 Profissional em Período de Férias' : '⚠ Profissional de Baixa Médica'}
+                ✕ Profissional Indisponível nesta data
               </Text>
               <Text style={[styles.closedNoticeSub, { color: isBarber ? '#F3F4F6' : '#1F2937', fontWeight: '800', marginTop: 4 }]}>
                 {targetStaffName} encontra-se ausente nesta data.
-              </Text>
-              <Text style={[styles.closedNoticeSub, { color: isBarber ? '#D1D5DB' : '#4B5563', marginTop: 3 }]}>
-                Motivo: &quot;{absenceInfo.reason}&quot;
               </Text>
               {absenceInfo.periodText ? (
                 <Text style={[styles.closedNoticeSub, { color: isBarber ? '#E5E7EB' : '#1F2937', fontWeight: '700', marginTop: 4 }]}>

@@ -70,16 +70,16 @@ export const StaffCard: React.FC<StaffCardProps> = ({
               <View
                 style={[
                   styles.absenceBadgePill,
-                  absenceInfo.type === 'vacation' ? styles.badgeVacation : styles.badgeLeave,
+                  styles.badgeLeave,
                 ]}
               >
                 <Text
                   style={[
                     styles.absenceBadgePillText,
-                    { color: absenceInfo.type === 'vacation' ? '#3B82F6' : '#F59E0B' },
+                    { color: isBarber ? '#F87171' : '#DC2626' },
                   ]}
                 >
-                  {absenceInfo.type === 'vacation' ? '🏖 Em Férias' : '⚠ Baixa Médica'}
+                  ✕ Indisponível
                 </Text>
               </View>
             )}
@@ -119,11 +119,8 @@ export const StaffCard: React.FC<StaffCardProps> = ({
           {/* Caixa de Ausência Informativa para o Cliente */}
           {absenceInfo?.isAbsent && (
             <View style={[styles.absenceBox, isBarber ? styles.absenceBoxBarber : styles.absenceBoxBeauty]}>
-              <Text style={[styles.absenceBoxTitle, { color: absenceInfo.type === 'vacation' ? '#60A5FA' : '#F59E0B' }]}>
-                {absenceInfo.type === 'vacation' ? '🏖 FÉRIAS REGULAMENTARES' : '⚠ BAIXA MÉDICA'}
-              </Text>
-              <Text style={[styles.absenceBoxReason, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
-                Motivo: &quot;{absenceInfo.reason}&quot;
+              <Text style={[styles.absenceBoxTitle, { color: isBarber ? '#F87171' : '#DC2626' }]}>
+                ✕ PROFISSIONAL INDISPONÍVEL
               </Text>
               {absenceInfo.periodText ? (
                 <Text style={[styles.absenceBoxPeriod, { color: isBarber ? '#D1D5DB' : '#4B5563' }]}>

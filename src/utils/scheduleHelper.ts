@@ -79,28 +79,13 @@ export const getStaffAbsenceInfoForDate = (
       return { isAbsent: false, type: 'none', label: 'Disponível' };
     }
   } else {
-    if (staff.status !== 'leave' && staff.status !== 'vacation' && staff.status !== 'inactive') {
+    if (staff.status !== 'inactive' && staff.status !== 'leave' && staff.status !== 'vacation') {
       return { isAbsent: false, type: 'none', label: 'Disponível' };
     }
   }
 
-  const type =
-    staff.status === 'vacation'
-      ? 'vacation'
-      : staff.status === 'leave'
-      ? 'leave'
-      : staff.status === 'inactive'
-      ? 'inactive'
-      : 'leave';
-
-  const label = type === 'vacation' ? 'Férias' : type === 'leave' ? 'Baixa Médica' : 'Indisponível';
-  const reason =
-    staff.absenceNote ||
-    (type === 'vacation'
-      ? 'Período de férias regulamentar'
-      : type === 'leave'
-      ? 'Baixa médica / motivo de saúde'
-      : 'Profissional temporariamente indisponível');
+  const type = staff.status === 'inactive' ? 'inactive' : 'leave';
+  const label = 'Indisponível';
 
   let periodText: string | undefined;
   let returnDate: string | undefined;
@@ -140,7 +125,6 @@ export const getStaffAbsenceInfoForDate = (
     isAbsent: true,
     type,
     label,
-    reason,
     periodText,
     returnDate,
   };

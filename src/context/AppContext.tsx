@@ -68,6 +68,8 @@ interface AppContextType {
   addService: (newService: Omit<Service, 'id'>) => Promise<Service>;
   updateService: (updatedService: Service) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
+  renameCategory: (branch: SalonBranch, oldCategory: string, newCategory: string) => Promise<void>;
+  deleteCategory: (branch: SalonBranch, categoryToDelete: string, fallbackCategory?: string) => Promise<void>;
   updateConfig: (newConfig: BusinessConfig) => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -222,6 +224,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setServices(updated);
   };
 
+  const renameCategory = async (branch: SalonBranch, oldCategory: string, newCategory: string) => {
+    const trimmedOld = oldCategory.trim();
+    const trimmedNew = newCategory.trim();
+    if (!trimmedNew || trimmedOld.toLowerCase() === trimmedNew.toLowerCase()) return;
+    const updated = services.map(s => {
+      if (s.branch === branch && s.category.toLowerCase() === trimmedOld.toLowerCase()) {
+        return { ...s, category: trimmedNew };
+      }
+      return s;
+    });
+    await saveServices(updated);
+    setServices(updated);
+  };
+
+  const deleteCategory = async (branch: SalonBranch, categoryToDelete: string, fallbackCategory: string = 'Geral') => {
+    const trimmedDelete = categoryToDelete.trim();
+    const updated = services.map(s => {
+      if (s.branch === branch && s.category.toLowerCase() === trimmedDelete.toLowerCase()) {
+        return { ...s, category: fallbackCategory };
+      }
+      return s;
+    });
+    await saveServices(updated);
+    setServices(updated);
+  };
+
   const generateUniqueStaffPin = (branch: SalonBranch, currentStaff: StaffMember[]): string => {
     const existingPins = new Set(currentStaff.map(s => s.pin).filter(Boolean));
     const base = branch === 'barber' ? 1000 : 2000;
@@ -294,6 +322,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addService,
         updateService,
         deleteService,
+        renameCategory,
+        deleteCategory,
         updateStaffWorkingHours,
         updateStaffMember,
         addStaffMember,

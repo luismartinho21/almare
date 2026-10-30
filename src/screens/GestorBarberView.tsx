@@ -33,6 +33,8 @@ export const GestorBarberView: React.FC = () => {
     addService,
     updateService,
     deleteService,
+    renameCategory,
+    deleteCategory,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<GestorTab>('management');
@@ -57,6 +59,14 @@ export const GestorBarberView: React.FC = () => {
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
+  const [inlineExtraCat, setInlineExtraCat] = useState('Extras');
+
+  // Filter / Category customization states
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [manageFiltersModalVisible, setManageFiltersModalVisible] = useState(false);
+  const [newFilterInput, setNewFilterInput] = useState('');
+  const [editingFilterOldName, setEditingFilterOldName] = useState<string | null>(null);
+  const [editingFilterNewName, setEditingFilterNewName] = useState('');
 
   // Staff management & availability states
   const [staffModalVisible, setStaffModalVisible] = useState(false);
@@ -65,7 +75,7 @@ export const GestorBarberView: React.FC = () => {
   const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState('Barbeiro Especialista');
   const [staffPhone, setStaffPhone] = useState('+351 910 000 000');
-  const [staffStatus, setStaffStatus] = useState<'active' | 'leave' | 'vacation' | 'inactive'>('active');
+  const [staffStatus, setStaffStatus] = useState<'active' | 'inactive'>('active');
   const [staffAbsenceNote, setStaffAbsenceNote] = useState('');
   const [staffUnavailableDates, setStaffUnavailableDates] = useState<string[]>([]);
   const [absenceStartDate, setAbsenceStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -164,7 +174,7 @@ export const GestorBarberView: React.FC = () => {
     setStaffName(member.name);
     setStaffRole(member.roleTitle);
     setStaffPhone(member.phone || '+351 910 000 000');
-    setStaffStatus(member.status || 'active');
+    setStaffStatus(member.status === 'inactive' ? 'inactive' : 'active');
     setStaffAbsenceNote(member.absenceNote || '');
 
     const unDates = member.unavailableDates ? [...member.unavailableDates].sort() : [];
@@ -341,10 +351,83 @@ export const GestorBarberView: React.FC = () => {
 
   const barberCategories = useMemo(() => {
     const defaultCats = ['Cortes', 'Barbas', 'Signature', 'Extras'];
-    const dynamicCats = Array.from(new Set(barberServices.map(s => s.category)));
-    const merged = Array.from(new Set([...defaultCats, ...dynamicCats]));
+    const dynamicCats = Array.from(new Set(barberServices.map(s => s.category).filter(Boolean)));
+    const merged = Array.from(new Set([...defaultCats, ...dynamicCats, ...customCategories]));
     return ['TODOS', ...merged];
-  }, [barberServices]);
+  }, [barberServices, customCategories]);
+
+  const getCategoryCount = (cat: string) => {
+    if (cat === 'TODOS') return barberServices.length;
+    return barberServices.filter(s => s.category.toLowerCase() === cat.toLowerCase()).length;
+  };
+
+  const handleAddNewFilter = () => {
+    const name = newFilterInput.trim();
+    if (!name) {
+      Alert.alert('Atenção', 'Introduza o nome do filtro.');
+      return;
+    }
+    if (barberCategories.map(c => c.toLowerCase()).includes(name.toLowerCase())) {
+      Alert.alert('Atenção', 'Este filtro já existe.');
+      return;
+    }
+    setCustomCategories(prev => [...prev, name]);
+    setNewServCat(name);
+    setNewFilterInput('');
+    Alert.alert('Sucesso', `Filtro "${name}" criado com sucesso! Já o pode associar aos seus serviços e extras.`);
+  };
+
+  const handleSaveRenameFilter = async (oldName: string) => {
+    const newName = editingFilterNewName.trim();
+    if (!newName) {
+      Alert.alert('Atenção', 'O nome do filtro não pode estar vazio.');
+      return;
+    }
+    if (newName.toLowerCase() === oldName.toLowerCase()) {
+      setEditingFilterOldName(null);
+      return;
+    }
+    await renameCategory('barber', oldName, newName);
+    setCustomCategories(prev => prev.map(c => (c.toLowerCase() === oldName.toLowerCase() ? newName : c)));
+    if (catFilter.toLowerCase() === oldName.toLowerCase()) {
+      setCatFilter(newName);
+    }
+    if (newServCat.toLowerCase() === oldName.toLowerCase()) {
+      setNewServCat(newName);
+    }
+    setEditingFilterOldName(null);
+    setEditingFilterNewName('');
+    Alert.alert('Sucesso', `Filtro renomeado para "${newName}" com todos os serviços e extras associados atualizados!`);
+  };
+
+  const handleDeleteFilter = (filterName: string) => {
+    const count = getCategoryCount(filterName);
+    Alert.alert(
+      'Eliminar Filtro',
+      count > 0
+        ? `O filtro "${filterName}" tem ${count} serviço(s) associado(s). Ao eliminar, estes serviços passarão para a categoria "Cortes". Deseja continuar?`
+        : `Tem a certeza de que deseja eliminar o filtro "${filterName}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            if (count > 0) {
+              await deleteCategory('barber', filterName, 'Cortes');
+            }
+            setCustomCategories(prev => prev.filter(c => c.toLowerCase() !== filterName.toLowerCase()));
+            if (catFilter.toLowerCase() === filterName.toLowerCase()) {
+              setCatFilter('TODOS');
+            }
+            if (newServCat.toLowerCase() === filterName.toLowerCase()) {
+              setNewServCat('Cortes');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleToggleExtraId = (extraId: string) => {
     setSelectedExtraIds(prev =>
@@ -385,7 +468,7 @@ export const GestorBarberView: React.FC = () => {
     }
     const created = await addService({
       branch: 'barber',
-      category: 'Extras',
+      category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
       description: 'Extra opcional para barbearia.',
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
@@ -844,20 +927,29 @@ export const GestorBarberView: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Category Filter */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-              {barberCategories.map(cat => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.catFilterPill, catFilter === cat && styles.catFilterPillActive]}
-                  onPress={() => setCatFilter(cat)}
-                >
-                  <Text style={[styles.catFilterPillText, catFilter === cat && styles.catFilterPillTextActive]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {/* Category Filter & Manage Filters button */}
+            <View style={styles.catFilterContainerRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+                {barberCategories.map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.catFilterPill, catFilter === cat && styles.catFilterPillActive]}
+                    onPress={() => setCatFilter(cat)}
+                  >
+                    <Text style={[styles.catFilterPillText, catFilter === cat && styles.catFilterPillTextActive]}>
+                      {cat} ({getCategoryCount(cat)})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.manageFiltersTopBtn}
+                onPress={() => setManageFiltersModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.manageFiltersTopBtnText}>⚙️ Filtros</Text>
+              </TouchableOpacity>
+            </View>
 
             {filteredBarberServices.map(item => {
               const compatibleExtras = item.compatibleExtraIds && item.compatibleExtraIds.length > 0
@@ -1418,20 +1510,28 @@ export const GestorBarberView: React.FC = () => {
                 />
               </View>
 
-              {/* Categoria */}
+              {/* Categoria / Filtro */}
               <View style={styles.serviceFieldGroup}>
-                <Text style={styles.serviceFieldLabel}>Categoria</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.serviceFieldLabel}>Filtro / Categoria *</Text>
+                  <TouchableOpacity onPress={() => setManageFiltersModalVisible(true)}>
+                    <Text style={styles.manageFiltersLinkText}>⚙️ Gerir Filtros</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.modalFieldHint}>
+                  Define em que aba de filtro este serviço/extra vai aparecer para os clientes e na gestão.
+                </Text>
                 <View style={styles.categoryPillRow}>
-                  {['Cortes', 'Barbas', 'Signature', 'Extras'].map(cat => (
+                  {barberCategories.filter(c => c !== 'TODOS').map(cat => (
                     <TouchableOpacity
                       key={cat}
-                      style={[styles.categorySelectPill, newServCat === cat && styles.categorySelectPillActive]}
+                      style={[styles.categorySelectPill, newServCat.toLowerCase() === cat.toLowerCase() && styles.categorySelectPillActive]}
                       onPress={() => setNewServCat(cat)}
                     >
                       <Text
                         style={[
                           styles.categorySelectPillText,
-                          newServCat === cat && styles.categorySelectPillTextActive,
+                          newServCat.toLowerCase() === cat.toLowerCase() && styles.categorySelectPillTextActive,
                         ]}
                       >
                         {cat}
@@ -1443,7 +1543,7 @@ export const GestorBarberView: React.FC = () => {
                   style={[styles.serviceInput, { marginTop: 6 }]}
                   value={newServCat}
                   onChangeText={setNewServCat}
-                  placeholder="Ou escreva outra categoria..."
+                  placeholder="Ou digite outro filtro personalizado..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1572,6 +1672,32 @@ export const GestorBarberView: React.FC = () => {
                             value={inlineExtraName}
                             onChangeText={setInlineExtraName}
                           />
+
+                          {/* Filtro / Categoria do Extra */}
+                          <View style={{ marginTop: 8 }}>
+                            <Text style={styles.modalFieldLabelMini}>Filtro / Categoria do Extra:</Text>
+                            <View style={[styles.categoryPillRow, { marginTop: 4 }]}>
+                              {['Extras', 'Cortes', 'Barbas', 'Signature'].map(cat => (
+                                <TouchableOpacity
+                                  key={cat}
+                                  style={[styles.categorySelectPill, inlineExtraCat.toLowerCase() === cat.toLowerCase() && styles.categorySelectPillActive]}
+                                  onPress={() => setInlineExtraCat(cat)}
+                                >
+                                  <Text style={[styles.categorySelectPillText, inlineExtraCat.toLowerCase() === cat.toLowerCase() && styles.categorySelectPillTextActive]}>
+                                    {cat}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                            <TextInput
+                              style={[styles.serviceInput, { marginTop: 4 }]}
+                              placeholder="Categoria (Ex: Extras, Tratamentos...)"
+                              placeholderTextColor="#71717A"
+                              value={inlineExtraCat}
+                              onChangeText={setInlineExtraCat}
+                            />
+                          </View>
+
                           <View style={[styles.formGrid, { marginTop: 6 }]}>
                             <View style={styles.formCol}>
                               <Text style={styles.modalFieldLabelMini}>Preço (€)</Text>
@@ -1632,6 +1758,111 @@ export const GestorBarberView: React.FC = () => {
                 }}
               >
                 <Text style={styles.cancelModalBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal: Gerir Filtros e Categorias Barber */}
+      <Modal visible={manageFiltersModalVisible} transparent animationType="slide" onRequestClose={() => setManageFiltersModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setManageFiltersModalVisible(false)}>
+          <Pressable style={[styles.modalBody, { maxHeight: '88%' }]} onPress={e => e.stopPropagation()}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Gerir Filtros e Categorias</Text>
+              <Text style={styles.modalSub}>
+                Crie novos filtros ou renomeie filtros existentes. Ao renomear um filtro, todos os serviços e extras associados são atualizados automaticamente na aplicação.
+              </Text>
+
+              {/* Criar Novo Filtro */}
+              <View style={styles.addNewFilterBox}>
+                <Text style={styles.filterSectionLabel}>Criar Novo Filtro / Categoria:</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TextInput
+                    style={[styles.modalInput, { flex: 1 }]}
+                    value={newFilterInput}
+                    onChangeText={setNewFilterInput}
+                    placeholder="Ex: Noivos, Coloração..."
+                    placeholderTextColor="#71717A"
+                  />
+                  <TouchableOpacity
+                    style={styles.addFilterBtn}
+                    onPress={handleAddNewFilter}
+                  >
+                    <Text style={styles.addFilterBtnText}>+ Adicionar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Lista de Filtros Ativos */}
+              <Text style={[styles.filterSectionLabel, { marginTop: 18 }]}>Filtros Ativos do Catálogo:</Text>
+              {barberCategories.filter(c => c !== 'TODOS').map(cat => {
+                const count = getCategoryCount(cat);
+                const isEditingThis = editingFilterOldName === cat;
+
+                return (
+                  <View key={cat} style={styles.filterRowItem}>
+                    {isEditingThis ? (
+                      <View style={{ flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        <TextInput
+                          style={[styles.modalInput, { flex: 1 }]}
+                          value={editingFilterNewName}
+                          onChangeText={setEditingFilterNewName}
+                          placeholder="Novo nome do filtro"
+                          placeholderTextColor="#71717A"
+                          autoFocus
+                        />
+                        <TouchableOpacity
+                          style={styles.saveFilterNameBtn}
+                          onPress={() => handleSaveRenameFilter(cat)}
+                        >
+                          <Text style={styles.saveFilterNameBtnText}>Guardar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.cancelFilterNameBtn}
+                          onPress={() => setEditingFilterOldName(null)}
+                        >
+                          <Text style={styles.cancelFilterNameBtnText}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.filterRowItemName}>{cat}</Text>
+                          <Text style={styles.filterRowItemSub}>
+                            {count} {count === 1 ? 'item associado' : 'itens associados'}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                          <TouchableOpacity
+                            style={styles.editFilterBtn}
+                            onPress={() => {
+                              setEditingFilterOldName(cat);
+                              setEditingFilterNewName(cat);
+                            }}
+                          >
+                            <Text style={styles.editFilterBtnText}>Renomear</Text>
+                          </TouchableOpacity>
+                          {cat !== 'Extras' && cat !== 'Cortes' && (
+                            <TouchableOpacity
+                              style={styles.deleteFilterBtn}
+                              onPress={() => handleDeleteFilter(cat)}
+                            >
+                              <Text style={styles.deleteFilterBtnText}>Eliminar</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                );
+              })}
+
+              <TouchableOpacity
+                style={[styles.cancelModalBtn, { marginTop: 20 }]}
+                onPress={() => setManageFiltersModalVisible(false)}
+              >
+                <Text style={styles.cancelModalBtnText}>Concluir / Fechar</Text>
               </TouchableOpacity>
             </ScrollView>
           </Pressable>
@@ -2839,5 +3070,127 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginBottom: 6,
     lineHeight: 15,
+  },
+  catFilterContainerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 8,
+  },
+  manageFiltersTopBtn: {
+    backgroundColor: '#272732',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  manageFiltersTopBtnText: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  manageFiltersLinkText: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  addNewFilterBox: {
+    backgroundColor: '#1E1E26',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2F2F3C',
+    marginTop: 6,
+  },
+  filterSectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#E4E4E7',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  addFilterBtn: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addFilterBtnText: {
+    color: '#111',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  filterRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#181820',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#292936',
+  },
+  filterRowItemName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  filterRowItemSub: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  editFilterBtn: {
+    backgroundColor: '#2A2A38',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3D3D4E',
+  },
+  editFilterBtnText: {
+    color: '#D4AF37',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  deleteFilterBtn: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+  },
+  deleteFilterBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  saveFilterNameBtn: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  saveFilterNameBtnText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  cancelFilterNameBtn: {
+    backgroundColor: '#272732',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  cancelFilterNameBtnText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });
