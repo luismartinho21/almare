@@ -243,13 +243,6 @@ export const GestorBarberView: React.FC = () => {
     }
 
     setStaffUnavailableDates(dates);
-    if (staffStatus === 'active') {
-      setStaffStatus('leave');
-    }
-    if (!staffAbsenceNote.trim()) {
-      const daysCount = dates.length;
-      setStaffAbsenceNote(daysCount === 1 ? 'Ausência / Falta pontual' : `Baixa médica (${daysCount} dias)`);
-    }
   };
 
   const handleRemoveUnavailableDate = (date: string) => {
@@ -1042,15 +1035,8 @@ export const GestorBarberView: React.FC = () => {
             </View>
 
             {barberStaff.map(member => {
-              const isLeave = member.status === 'leave';
-              const isVacation = member.status === 'vacation';
               const isInactive = member.status === 'inactive';
-              const hasAbsenceNotice =
-                isLeave ||
-                isVacation ||
-                isInactive ||
-                (member.unavailableDates && member.unavailableDates.length > 0) ||
-                Boolean(member.absenceNote);
+              const hasBlockedDates = member.unavailableDates && member.unavailableDates.length > 0;
 
               return (
                 <View key={member.id} style={styles.scheduleConfigCard}>
@@ -1061,11 +1047,7 @@ export const GestorBarberView: React.FC = () => {
                         <View
                           style={[
                             styles.staffStatusBadge,
-                            isLeave
-                              ? styles.staffStatusBadgeLeave
-                              : isVacation
-                              ? styles.staffStatusBadgeVacation
-                              : isInactive
+                            isInactive
                               ? styles.staffStatusBadgeInactive
                               : styles.staffStatusBadgeActive,
                           ]}
@@ -1073,22 +1055,12 @@ export const GestorBarberView: React.FC = () => {
                           <Text
                             style={[
                               styles.staffStatusBadgeText,
-                              isLeave
-                                ? { color: '#F59E0B' }
-                                : isVacation
-                                ? { color: '#60A5FA' }
-                                : isInactive
+                              isInactive
                                 ? { color: '#A1A1AA' }
                                 : { color: '#10B981' },
                             ]}
                           >
-                            {isLeave
-                              ? '⚠ Baixa Médica'
-                              : isVacation
-                              ? '🏖 Em Férias'
-                              : isInactive
-                              ? '✕ Inativo'
-                              : '● No Ativo'}
+                            {isInactive ? '✕ Inativo' : '● Ativo'}
                           </Text>
                         </View>
                       </View>
@@ -1106,23 +1078,14 @@ export const GestorBarberView: React.FC = () => {
                     </View>
                   </View>
 
-                  {hasAbsenceNotice && (
+                  {hasBlockedDates && (
                     <View style={styles.staffAbsenceNoticeBox}>
                       <Text style={styles.staffAbsenceNoticeTitle}>
-                        {isLeave
-                          ? 'ALERTA: BAIXA MÉDICA / AUSÊNCIA ATIVA'
-                          : isVacation
-                          ? 'ALERTA: PERÍODO DE FÉRIAS'
-                          : 'AVISO DE INDISPONIBILIDADE'}
+                        AVISO: DATAS BLOQUEADAS ({member.unavailableDates!.length} {member.unavailableDates!.length === 1 ? 'dia' : 'dias'})
                       </Text>
-                      {member.absenceNote ? (
-                        <Text style={styles.staffAbsenceNoticeText}>&quot;{member.absenceNote}&quot;</Text>
-                      ) : null}
-                      {member.unavailableDates && member.unavailableDates.length > 0 ? (
-                        <Text style={styles.staffBlockedDatesText}>
-                          Datas de ausência bloqueadas ({member.unavailableDates.length}): {member.unavailableDates.join(', ')}
-                        </Text>
-                      ) : null}
+                      <Text style={styles.staffBlockedDatesText}>
+                        Datas: {member.unavailableDates!.join(', ')}
+                      </Text>
                       <Text style={styles.staffBlockedHint}>
                         (As vagas deste profissional nestas datas ficam inacessíveis para os clientes)
                       </Text>
@@ -1267,8 +1230,6 @@ export const GestorBarberView: React.FC = () => {
                 <View style={styles.categoryPillRow}>
                   {[
                     { key: 'active', label: '● Ativo' },
-                    { key: 'leave', label: '⚠ Baixa Médica' },
-                    { key: 'vacation', label: '🏖 Férias' },
                     { key: 'inactive', label: '✕ Inativo' },
                   ].map(st => (
                     <TouchableOpacity
@@ -1320,17 +1281,7 @@ export const GestorBarberView: React.FC = () => {
                   </View>
                 </View>
 
-                {/* Motivo de ausência */}
-                <View style={{ marginBottom: 10 }}>
-                  <Text style={styles.modalFieldLabelMini}>Motivo da Ausência / Baixa</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={staffAbsenceNote}
-                    onChangeText={setStaffAbsenceNote}
-                    placeholder="Ex: Baixa médica de 3 dias com atestado"
-                    placeholderTextColor="#71717A"
-                  />
-                </View>
+
 
                 {/* Botões de Ação para Ausência */}
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>

@@ -75,7 +75,7 @@ export const GestorBeautyView: React.FC = () => {
   const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState('Especialista Head-Spa');
   const [staffPhone, setStaffPhone] = useState('+351 910 000 000');
-  const [staffStatus, setStaffStatus] = useState<'active' | 'leave' | 'vacation' | 'inactive'>('active');
+  const [staffStatus, setStaffStatus] = useState<'active' | 'inactive'>('active');
   const [staffAbsenceNote, setStaffAbsenceNote] = useState('');
   const [staffUnavailableDates, setStaffUnavailableDates] = useState<string[]>([]);
   const [absenceStartDate, setAbsenceStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -325,7 +325,7 @@ export const GestorBeautyView: React.FC = () => {
     setStaffName(member.name);
     setStaffRole(member.roleTitle);
     setStaffPhone(member.phone || '+351 910 000 000');
-    setStaffStatus(member.status || 'active');
+    setStaffStatus(member.status === 'inactive' ? 'inactive' : 'active');
     setStaffAbsenceNote(member.absenceNote || '');
 
     const unDates = member.unavailableDates ? [...member.unavailableDates].sort() : [];
@@ -394,13 +394,6 @@ export const GestorBeautyView: React.FC = () => {
     }
 
     setStaffUnavailableDates(dates);
-    if (staffStatus === 'active') {
-      setStaffStatus('leave');
-    }
-    if (!staffAbsenceNote.trim()) {
-      const daysCount = dates.length;
-      setStaffAbsenceNote(daysCount === 1 ? 'Ausência / Falta pontual' : `Baixa médica (${daysCount} dias)`);
-    }
   };
 
   const handleRemoveUnavailableDate = (date: string) => {
@@ -1058,15 +1051,8 @@ export const GestorBeautyView: React.FC = () => {
             </View>
 
             {beautyStaff.map(member => {
-              const isLeave = member.status === 'leave';
-              const isVacation = member.status === 'vacation';
               const isInactive = member.status === 'inactive';
-              const hasAbsenceNotice =
-                isLeave ||
-                isVacation ||
-                isInactive ||
-                (member.unavailableDates && member.unavailableDates.length > 0) ||
-                Boolean(member.absenceNote);
+              const hasBlockedDates = member.unavailableDates && member.unavailableDates.length > 0;
 
               return (
                 <View key={member.id} style={styles.scheduleConfigCard}>
@@ -1077,11 +1063,7 @@ export const GestorBeautyView: React.FC = () => {
                         <View
                           style={[
                             styles.staffStatusBadge,
-                            isLeave
-                              ? styles.staffStatusBadgeLeave
-                              : isVacation
-                              ? styles.staffStatusBadgeVacation
-                              : isInactive
+                            isInactive
                               ? styles.staffStatusBadgeInactive
                               : styles.staffStatusBadgeActive,
                           ]}
@@ -1089,22 +1071,12 @@ export const GestorBeautyView: React.FC = () => {
                           <Text
                             style={[
                               styles.staffStatusBadgeText,
-                              isLeave
-                                ? { color: '#B45309' }
-                                : isVacation
-                                ? { color: '#1D4ED8' }
-                                : isInactive
+                              isInactive
                                 ? { color: '#6B7280' }
                                 : { color: '#047857' },
                             ]}
                           >
-                            {isLeave
-                              ? '⚠ Baixa Médica'
-                              : isVacation
-                              ? '🏖 Em Férias'
-                              : isInactive
-                              ? '✕ Inativa'
-                              : '● No Ativo'}
+                            {isInactive ? '✕ Inativa' : '● Ativa'}
                           </Text>
                         </View>
                       </View>
@@ -1122,23 +1094,14 @@ export const GestorBeautyView: React.FC = () => {
                     </View>
                   </View>
 
-                  {hasAbsenceNotice && (
+                  {hasBlockedDates && (
                     <View style={styles.staffAbsenceNoticeBox}>
                       <Text style={styles.staffAbsenceNoticeTitle}>
-                        {isLeave
-                          ? 'ALERTA: BAIXA MÉDICA / AUSÊNCIA ATIVA'
-                          : isVacation
-                          ? 'ALERTA: PERÍODO DE FÉRIAS'
-                          : 'AVISO DE INDISPONIBILIDADE'}
+                        AVISO: DATAS BLOQUEADAS ({member.unavailableDates!.length} {member.unavailableDates!.length === 1 ? 'dia' : 'dias'})
                       </Text>
-                      {member.absenceNote ? (
-                        <Text style={styles.staffAbsenceNoticeText}>&quot;{member.absenceNote}&quot;</Text>
-                      ) : null}
-                      {member.unavailableDates && member.unavailableDates.length > 0 ? (
-                        <Text style={styles.staffBlockedDatesText}>
-                          Datas de ausência bloqueadas ({member.unavailableDates.length}): {member.unavailableDates.join(', ')}
-                        </Text>
-                      ) : null}
+                      <Text style={styles.staffBlockedDatesText}>
+                        Datas: {member.unavailableDates!.join(', ')}
+                      </Text>
                       <Text style={styles.staffBlockedHint}>
                         (As vagas desta especialista nestas datas ficam inacessíveis para as clientes)
                       </Text>
@@ -1640,9 +1603,7 @@ export const GestorBeautyView: React.FC = () => {
                 <Text style={styles.label}>Estado / Disponibilidade Geral</Text>
                 <View style={styles.modalCatRow}>
                   {[
-                    { key: 'active', label: '● No Ativo' },
-                    { key: 'leave', label: '⚠ Baixa Médica' },
-                    { key: 'vacation', label: '🏖 Em Férias' },
+                    { key: 'active', label: '● Ativa' },
                     { key: 'inactive', label: '✕ Inativa' },
                   ].map(st => (
                     <TouchableOpacity
@@ -1694,17 +1655,7 @@ export const GestorBeautyView: React.FC = () => {
                   </View>
                 </View>
 
-                {/* Motivo de ausência */}
-                <View style={{ marginBottom: 10 }}>
-                  <Text style={styles.labelMini}>Motivo da Ausência / Baixa</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={staffAbsenceNote}
-                    onChangeText={setStaffAbsenceNote}
-                    placeholder="Ex: Baixa médica de 3 dias com atestado"
-                    placeholderTextColor="#71717A"
-                  />
-                </View>
+
 
                 {/* Botões de Ação para Ausência */}
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
