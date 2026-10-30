@@ -145,25 +145,9 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
             <Text style={[styles.durationBannerStaff, { color: accentColor }]}>
               {targetStaffName.toUpperCase()}
             </Text>
-            {!isNoPreference && staffMember && (
-              <Text style={{ fontSize: 11, fontWeight: '700', marginTop: 2, color: isBarber ? '#E5E7EB' : '#374151' }}>
-                {absenceInfo?.isAbsent ? (
-                  <Text style={{ color: '#EF4444', fontWeight: '900' }}>
-                    ✕ TEMPORARIAMENTE INDISPONÍVEL
-                  </Text>
-                ) : shiftType === 'morning_only' ? (
-                  <Text style={{ color: isBarber ? '#FBBF24' : '#D97706', fontWeight: '800' }}>
-                    TURNO: APENAS MANHÃ ({staffMember.workingHours?.start || '09:00'} ÀS {staffMember.workingHours?.end || '12:00'})
-                  </Text>
-                ) : shiftType === 'afternoon_only' ? (
-                  <Text style={{ color: isBarber ? '#60A5FA' : '#2563EB', fontWeight: '800' }}>
-                    TURNO: APENAS TARDE ({staffMember.workingHours?.start || '14:00'} ÀS {staffMember.workingHours?.end || '19:00'})
-                  </Text>
-                ) : (
-                  <Text style={{ color: isBarber ? '#A1A1AA' : '#6B7280' }}>
-                    TURNO: MANHÃ E TARDE (09:00 ÀS 19:00)
-                  </Text>
-                )}
+            {absenceInfo?.isAbsent && (
+              <Text style={{ fontSize: 11, fontWeight: '900', marginTop: 2, color: '#EF4444' }}>
+                ✕ TEMPORARIAMENTE INDISPONÍVEL
               </Text>
             )}
           </View>
@@ -348,23 +332,17 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
                 2. Manhã (09:00 às 12:00)
               </Text>
-              {shiftType === 'afternoon_only' ? (
-                <View style={[styles.shiftNoticeTag, { backgroundColor: isBarber ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE' }]}>
-                  <Text style={[styles.shiftNoticeTagText, { color: isBarber ? '#60A5FA' : '#2563EB' }]}>
-                    Turno da Tarde
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                  Vagas disponíveis para {durationMinutes} min
-                </Text>
-              )}
+              <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                {shiftType === 'afternoon_only'
+                  ? 'Sem vagas de manhã'
+                  : `Vagas disponíveis (${durationMinutes} min)`}
+              </Text>
             </View>
 
             {shiftType === 'afternoon_only' ? (
               <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
                 <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-                  {targetStaffName} atende exclusivamente no período da tarde ({staffMember?.workingHours?.start || '14:00'} às {staffMember?.workingHours?.end || '19:00'}).
+                  Não existem horários de atendimento disponíveis no período da manhã para esta seleção.
                 </Text>
               </View>
             ) : (
@@ -407,7 +385,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           {shiftType === 'all_day' && (
             <View style={styles.lunchNoticeRow}>
               <Text style={[styles.lunchNoticeText, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
-                Pausa de Almoço: 12:00 às 14:00
+                Intervalo de Almoço: 12:00 às 14:00
               </Text>
             </View>
           )}
@@ -418,23 +396,17 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
                 3. Tarde (14:00 às 19:00)
               </Text>
-              {shiftType === 'morning_only' ? (
-                <View style={[styles.shiftNoticeTag, { backgroundColor: isBarber ? 'rgba(212, 175, 55, 0.15)' : '#FEF3C7' }]}>
-                  <Text style={[styles.shiftNoticeTagText, { color: isBarber ? '#FBBF24' : '#D97706' }]}>
-                    Turno da Manhã
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                  Vagas disponíveis para {durationMinutes} min
-                </Text>
-              )}
+              <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                {shiftType === 'morning_only'
+                  ? 'Sem vagas de tarde'
+                  : `Vagas disponíveis (${durationMinutes} min)`}
+              </Text>
             </View>
 
             {shiftType === 'morning_only' ? (
               <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
                 <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-                  {targetStaffName} atende exclusivamente no período da manhã ({staffMember?.workingHours?.start || '09:00'} às {staffMember?.workingHours?.end || '12:00'}).
+                  Não existem horários de atendimento disponíveis no período da tarde para esta seleção.
                 </Text>
               </View>
             ) : (

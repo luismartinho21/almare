@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StaffMember, SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
-import { getStaffShiftType, getStaffAbsenceInfoForDate } from '../utils/scheduleHelper';
+import { getStaffAbsenceInfoForDate } from '../utils/scheduleHelper';
 
 interface StaffCardProps {
   staff?: StaffMember;
@@ -41,7 +41,6 @@ export const StaffCard: React.FC<StaffCardProps> = ({
     ? 'Horários Disponíveis (Equipa Completa)'
     : `Horários de ${staff?.name}`;
 
-  const shiftType = staff ? getStaffShiftType(staff) : 'all_day';
   const absenceInfo = staff && selectedDate ? getStaffAbsenceInfoForDate(staff, selectedDate) : null;
 
   return (
@@ -88,25 +87,6 @@ export const StaffCard: React.FC<StaffCardProps> = ({
           <Text style={[styles.role, { color: accentColor }]}>
             {isNoPreference ? 'Qualquer profissional disponível' : staff?.roleTitle}
           </Text>
-
-          {/* Turno de Atendimento */}
-          {!isNoPreference && staff && (
-            <View style={{ marginVertical: 3 }}>
-              {shiftType === 'morning_only' ? (
-                <Text style={[styles.shiftTagText, { color: isBarber ? '#FBBF24' : '#D97706' }]}>
-                  ⏰ Turno: Apenas Manhã ({staff.workingHours?.start || '09:00'} às {staff.workingHours?.end || '12:00'})
-                </Text>
-              ) : shiftType === 'afternoon_only' ? (
-                <Text style={[styles.shiftTagText, { color: isBarber ? '#60A5FA' : '#2563EB' }]}>
-                  ⏰ Turno: Apenas Tarde ({staff.workingHours?.start || '14:00'} às {staff.workingHours?.end || '19:00'})
-                </Text>
-              ) : (
-                <Text style={[styles.shiftTagText, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                  ⏰ Turno: Manhã e Tarde (09:00 às 19:00)
-                </Text>
-              )}
-            </View>
-          )}
 
           <Text style={[styles.desc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
             {isNoPreference
