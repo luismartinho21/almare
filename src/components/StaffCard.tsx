@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { StaffMember, SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
 import { getStaffAbsenceInfoForDate } from '../utils/scheduleHelper';
@@ -60,6 +60,27 @@ export const StaffCard: React.FC<StaffCardProps> = ({
         activeOpacity={0.8}
         style={styles.cardHeaderArea}
       >
+        {/* Foto do Funcionário */}
+        <View style={styles.avatarContainer}>
+          {isNoPreference ? (
+            <View style={[styles.avatarRound, { backgroundColor: isBarber ? '#22222A' : '#FCE7F3', borderColor: accentColor }]}>
+              <Text style={styles.avatarTeamIcon}>👥</Text>
+            </View>
+          ) : staff?.avatar ? (
+            <Image
+              source={{ uri: staff.avatar }}
+              style={[styles.avatarRound, { borderColor: accentColor }]}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.avatarRound, { backgroundColor: isBarber ? '#22222A' : '#FCE7F3', borderColor: accentColor }]}>
+              <Text style={[styles.avatarInitial, { color: accentColor }]}>
+                {staff?.name ? staff.name.charAt(0).toUpperCase() : 'P'}
+              </Text>
+            </View>
+          )}
+        </View>
+
         <View style={styles.info}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
             <Text style={[styles.name, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
@@ -202,6 +223,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  avatarContainer: {
+    marginRight: 12,
+  },
+  avatarRound: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarTeamIcon: {
+    fontSize: 22,
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: '900',
   },
   info: {
     flex: 1,

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Linking,
+  Image,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Appointment, StaffMember } from '../types';
@@ -225,9 +226,13 @@ export const StaffView: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.profileHeaderRow}>
           <View style={styles.profileAvatarBox}>
-            <Text style={[styles.profileAvatarText, { color: accentColor }]}>
-              {activeStaff.name.charAt(0).toUpperCase()}
-            </Text>
+            {activeStaff.avatar ? (
+              <Image source={{ uri: activeStaff.avatar }} style={styles.profileAvatarImg} resizeMode="cover" />
+            ) : (
+              <Text style={[styles.profileAvatarText, { color: accentColor }]}>
+                {activeStaff.name.charAt(0).toUpperCase()}
+              </Text>
+            )}
           </View>
 
           <View style={styles.profileInfoCol}>
@@ -253,7 +258,7 @@ export const StaffView: React.FC = () => {
 
           <View style={styles.hoursBadge}>
             <Text style={styles.hoursBadgeText}>
-              🕒 {activeStaff.workingHours?.start || '09:00'} - {activeStaff.workingHours?.end || '19:00'}
+              🕒 {activeStaff.workingHours?.start || '09:30'} - {activeStaff.workingHours?.end || '19:00'}
             </Text>
           </View>
         </View>
@@ -482,6 +487,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 2,
     borderColor: '#3F3F46',
+    overflow: 'hidden',
+  },
+  profileAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
   },
   profileAvatarText: {
     fontSize: 22,

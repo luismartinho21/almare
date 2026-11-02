@@ -190,7 +190,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           1. Escolha a Data
         </Text>
         <Text style={[styles.scheduleBadge, { color: accentColor }]}>
-          Ter a Sáb: 09:00-12:00 e 14:00-19:00
+          Ter a Sáb: 09:30-12:30 e 14:00-19:00
         </Text>
       </View>
 
@@ -260,7 +260,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         <View style={[styles.closedNoticeBox, isBarber ? styles.closedBoxBarber : styles.closedBoxBeauty]}>
           <Text style={styles.closedNoticeTitle}>Salão Encerrado nesta data</Text>
           <Text style={styles.closedNoticeSub}>
-            O salão encontra-se aberto de Terça a Sábado, das 09:00 às 12:00 e das 14:00 às 19:00.
+            O salão encontra-se aberto de Terça a Sábado, das 09:30 às 12:30 e das 14:00 às 19:00.
             Por favor, selecione uma data de Terça a Sábado acima.
           </Text>
         </View>
@@ -326,11 +326,11 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
             </View>
           ) : null}
 
-          {/* Section: Manhã (09:00 - 12:00) */}
+          {/* Section: Manhã (09:30 - 12:30) */}
           <View style={styles.shiftSection}>
             <View style={styles.shiftHeaderRow}>
               <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                2. Manhã (09:00 às 12:00)
+                2. Manhã (09:30 às 12:30)
               </Text>
               <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
                 {shiftType === 'afternoon_only'
@@ -385,7 +385,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           {shiftType === 'all_day' && (
             <View style={styles.lunchNoticeRow}>
               <Text style={[styles.lunchNoticeText, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
-                Intervalo de Almoço: 12:00 às 14:00
+                Intervalo de Almoço: 12:30 às 14:00
               </Text>
             </View>
           )}

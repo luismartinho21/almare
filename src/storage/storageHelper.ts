@@ -148,12 +148,24 @@ export const loadStaff = async (): Promise<StaffMember[]> => {
     const list: StaffMember[] = JSON.parse(json);
     let updated = false;
     const patched = list.map((s, idx) => {
-      if (!s.pin) {
+      let member = { ...s };
+      if (!member.pin) {
         updated = true;
-        const base = s.branch === 'barber' ? 1000 : 2000;
-        return { ...s, pin: String(base + idx + 1) };
+        const base = member.branch === 'barber' ? 1000 : 2000;
+        member.pin = String(base + idx + 1);
       }
-      return s;
+      // Migrate default hours to 09:30/12:30 & 14:00/19:00
+      if (member.workingHours?.start === '09:00' || member.workingHours?.lunchStart === '12:00') {
+        updated = true;
+        member.workingHours = {
+          ...member.workingHours,
+          start: '09:30',
+          lunchStart: '12:30',
+          lunchEnd: '14:00',
+          end: '19:00',
+        };
+      }
+      return member;
     });
     if (updated) {
       await saveStaff(patched);
@@ -201,14 +213,17 @@ export const loadBusinessConfig = async (): Promise<BusinessConfig> => {
   }
   try {
     const parsed = JSON.parse(json);
-    return {
+    const updatedConfig: BusinessConfig = {
       ...INITIAL_BUSINESS_CONFIG,
       ...parsed,
+      barberOpenDays: (parsed.barberOpenDays || INITIAL_BUSINESS_CONFIG.barberOpenDays).replace('09:00 - 12:00', '09:30 - 12:30'),
+      beautyOpenDays: (parsed.beautyOpenDays || INITIAL_BUSINESS_CONFIG.beautyOpenDays).replace('09:00 - 12:00', '09:30 - 12:30'),
       pins: {
         ...INITIAL_ROLE_PINS,
         ...(parsed.pins || {}),
       },
     };
+    return updatedConfig;
   } catch (e) {
     return INITIAL_BUSINESS_CONFIG;
   }

@@ -1,6 +1,6 @@
 import { Appointment, StaffMember } from '../types';
 
-export const MORNING_SLOTS = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
+export const MORNING_SLOTS = ['09:30', '10:00', '10:30', '11:00', '11:30', '12:00'];
 export const AFTERNOON_SLOTS = [
   '14:00',
   '14:30',
@@ -38,9 +38,9 @@ export type StaffShiftType = 'all_day' | 'morning_only' | 'afternoon_only' | 'of
  * Determina o tipo de turno de trabalho de um profissional (Apenas Manhã, Apenas Tarde, ou Dia Completo).
  */
 export const getStaffShiftType = (staff: StaffMember): StaffShiftType => {
-  const startMins = timeToMinutes(staff.workingHours?.start || '09:00');
+  const startMins = timeToMinutes(staff.workingHours?.start || '09:30');
   const endMins = timeToMinutes(staff.workingHours?.end || '19:00');
-  const lunchStartMins = staff.workingHours?.lunchStart ? timeToMinutes(staff.workingHours.lunchStart) : 720;
+  const lunchStartMins = staff.workingHours?.lunchStart ? timeToMinutes(staff.workingHours.lunchStart) : 750;
   const lunchEndMins = staff.workingHours?.lunchEnd ? timeToMinutes(staff.workingHours.lunchEnd) : 840;
 
   const morningEnd = Math.min(endMins, lunchStartMins);
@@ -178,9 +178,9 @@ export const isStaffAvailableForInterval = (
   const slotEnd = slotStart + duration;
 
   // Horários de trabalho do profissional e pausa de almoço
-  const startMins = timeToMinutes(staff.workingHours?.start || '09:00');
+  const startMins = timeToMinutes(staff.workingHours?.start || '09:30');
   const endMins = timeToMinutes(staff.workingHours?.end || '19:00');
-  const lunchStartMins = staff.workingHours?.lunchStart ? timeToMinutes(staff.workingHours.lunchStart) : 720;
+  const lunchStartMins = staff.workingHours?.lunchStart ? timeToMinutes(staff.workingHours.lunchStart) : 750;
   const lunchEndMins = staff.workingHours?.lunchEnd ? timeToMinutes(staff.workingHours.lunchEnd) : 840;
 
   // Turno da Manhã: desde startMins até ao fim da manhã (min entre endMins e lunchStartMins)
