@@ -10,6 +10,8 @@ import {
   Modal,
   Pressable,
   Alert,
+  Image,
+  Platform,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { StaffMember, Service } from '../types';
@@ -19,6 +21,16 @@ import { FinancialDashboard } from '../components/FinancialDashboard';
 
 type GestorTab = 'management' | 'services' | 'staff';
 type ManagementSubTab = 'appointments' | 'finance';
+
+const DEFAULT_BARBER_AVATAR = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200';
+const BARBER_AVATAR_PRESETS = [
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200',
+  'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+];
 
 export const GestorBarberView: React.FC = () => {
   const {
@@ -68,10 +80,20 @@ export const GestorBarberView: React.FC = () => {
   const [editingFilterOldName, setEditingFilterOldName] = useState<string | null>(null);
   const [editingFilterNewName, setEditingFilterNewName] = useState('');
 
+  // Confirmation modal states for deletions (100% reliable on web & mobile)
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmData, setConfirmData] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+
   // Staff management & availability states
   const [staffModalVisible, setStaffModalVisible] = useState(false);
   const [editingStaffMember, setEditingStaffMember] = useState<StaffMember | null>(null);
   const [staffPin, setStaffPin] = useState('');
+  const [staffAvatar, setStaffAvatar] = useState(DEFAULT_BARBER_AVATAR);
   const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState('Barbeiro Especialista');
   const [staffPhone, setStaffPhone] = useState('+351 910 000 000');
@@ -81,10 +103,10 @@ export const GestorBarberView: React.FC = () => {
   const [absenceStartDate, setAbsenceStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [absenceEndDate, setAbsenceEndDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Staff working hours & schedule
-  const [staffStart, setStaffStart] = useState('09:00');
+  // Staff working hours & schedule (padrão: 09:30 - 12:30 e 14:00 - 19:00)
+  const [staffStart, setStaffStart] = useState('09:30');
   const [staffEnd, setStaffEnd] = useState('19:00');
-  const [staffLunchStart, setStaffLunchStart] = useState('12:00');
+  const [staffLunchStart, setStaffLunchStart] = useState('12:30');
   const [staffLunchEnd, setStaffLunchEnd] = useState('14:00');
   const [staffWorkDays, setStaffWorkDays] = useState('Terça a Sábado');
   const [staffFeedbackMsg, setStaffFeedbackMsg] = useState('');
@@ -145,22 +167,46 @@ export const GestorBarberView: React.FC = () => {
     };
   }, [barberAppointments]);
 
+  const handlePickAvatarFile = () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const result = event.target?.result as string;
+            if (result) {
+              setStaffAvatar(result);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      Alert.alert('Carregar Foto', 'Introduza o link da imagem no campo abaixo.');
+    }
+  };
+
   const handleOpenCreateStaff = () => {
     const today = new Date().toISOString().split('T')[0];
     const nextPin = generateStaffPin('barber');
     setEditingStaffMember(null);
     setStaffPin(nextPin);
+    setStaffAvatar(DEFAULT_BARBER_AVATAR);
     setStaffName('');
     setStaffRole('Barbeiro Especialista');
-    setStaffPhone('+351 910 000 000');
     setStaffStatus('active');
     setStaffAbsenceNote('');
     setStaffUnavailableDates([]);
     setAbsenceStartDate(today);
     setAbsenceEndDate(today);
-    setStaffStart('09:00');
+    setStaffStart('09:30');
     setStaffEnd('19:00');
-    setStaffLunchStart('12:00');
+    setStaffLunchStart('12:30');
     setStaffLunchEnd('14:00');
     setStaffWorkDays('Terça a Sábado');
     setStaffFeedbackMsg('');
@@ -171,9 +217,9 @@ export const GestorBarberView: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
     setEditingStaffMember(member);
     setStaffPin(member.pin || generateStaffPin('barber'));
+    setStaffAvatar(member.avatar || DEFAULT_BARBER_AVATAR);
     setStaffName(member.name);
     setStaffRole(member.roleTitle);
-    setStaffPhone(member.phone || '+351 910 000 000');
     setStaffStatus(member.status === 'inactive' ? 'inactive' : 'active');
     setStaffAbsenceNote(member.absenceNote || '');
 
@@ -187,9 +233,9 @@ export const GestorBarberView: React.FC = () => {
       setAbsenceEndDate(today);
     }
 
-    setStaffStart(member.workingHours?.start || '09:00');
+    setStaffStart(member.workingHours?.start || '09:30');
     setStaffEnd(member.workingHours?.end || '19:00');
-    setStaffLunchStart(member.workingHours?.lunchStart || '12:00');
+    setStaffLunchStart(member.workingHours?.lunchStart || '12:30');
     setStaffLunchEnd(member.workingHours?.lunchEnd || '14:00');
     setStaffWorkDays(member.workDays || 'Terça a Sábado');
     setStaffFeedbackMsg('');
@@ -198,16 +244,16 @@ export const GestorBarberView: React.FC = () => {
 
   const handleApplyWorkingHoursPreset = (preset: 'standard' | 'morning' | 'afternoon') => {
     if (preset === 'standard') {
-      setStaffStart('09:00');
+      setStaffStart('09:30');
       setStaffEnd('19:00');
-      setStaffLunchStart('12:00');
+      setStaffLunchStart('12:30');
       setStaffLunchEnd('14:00');
       setStaffWorkDays('Terça a Sábado');
     } else if (preset === 'morning') {
-      setStaffStart('09:00');
-      setStaffEnd('12:00');
-      setStaffLunchStart('12:00');
-      setStaffLunchEnd('12:00');
+      setStaffStart('09:30');
+      setStaffEnd('12:30');
+      setStaffLunchStart('12:30');
+      setStaffLunchEnd('12:30');
       setStaffWorkDays('Terça a Sábado');
     } else if (preset === 'afternoon') {
       setStaffStart('14:00');
@@ -265,17 +311,18 @@ export const GestorBarberView: React.FC = () => {
       await updateStaffMember({
         ...editingStaffMember,
         pin: staffPin.trim() || editingStaffMember.pin,
+        avatar: staffAvatar.trim() || DEFAULT_BARBER_AVATAR,
         name: staffName.trim(),
         roleTitle: staffRole.trim() || 'Barbeiro Especialista',
-        phone: staffPhone.trim() || '+351 910 000 000',
+        phone: '',
         status: staffStatus,
         absenceNote: staffAbsenceNote.trim(),
         unavailableDates: staffUnavailableDates,
         workDays: staffWorkDays.trim() || 'Terça a Sábado',
         workingHours: {
-          start: staffStart.trim() || '09:00',
+          start: staffStart.trim() || '09:30',
           end: staffEnd.trim() || '19:00',
-          lunchStart: staffLunchStart.trim() || '12:00',
+          lunchStart: staffLunchStart.trim() || '12:30',
           lunchEnd: staffLunchEnd.trim() || '14:00',
         },
       });
@@ -286,8 +333,8 @@ export const GestorBarberView: React.FC = () => {
         pin: staffPin.trim() || undefined,
         name: staffName.trim(),
         roleTitle: staffRole.trim() || 'Barbeiro Especialista',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-        phone: staffPhone.trim() || '+351 910 000 000',
+        avatar: staffAvatar.trim() || DEFAULT_BARBER_AVATAR,
+        phone: '',
         rating: 5.0,
         specialties: ['Corte Clássico', 'Barba Terapia', 'Degradê'],
         status: staffStatus,
@@ -295,9 +342,9 @@ export const GestorBarberView: React.FC = () => {
         unavailableDates: staffUnavailableDates,
         workDays: staffWorkDays.trim() || 'Terça a Sábado',
         workingHours: {
-          start: staffStart.trim() || '09:00',
+          start: staffStart.trim() || '09:30',
           end: staffEnd.trim() || '19:00',
-          lunchStart: staffLunchStart.trim() || '12:00',
+          lunchStart: staffLunchStart.trim() || '12:30',
           lunchEnd: staffLunchEnd.trim() || '14:00',
         },
       });
@@ -312,20 +359,15 @@ export const GestorBarberView: React.FC = () => {
   };
 
   const handleDeleteStaff = (member: StaffMember) => {
-    Alert.alert(
-      'Eliminar Funcionário',
-      `Tem a certeza de que deseja remover "${member.name}" da equipa de barbeiros? As marcações existentes serão mantidas no histórico.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteStaffMember(member.id);
-          },
-        },
-      ]
-    );
+    setConfirmData({
+      title: 'Eliminar Barbeiro',
+      message: `Tem a certeza de que deseja remover "${member.name}" da equipa de barbeiros? As marcações existentes serão mantidas no histórico.`,
+      confirmLabel: 'Eliminar Barbeiro',
+      onConfirm: async () => {
+        await deleteStaffMember(member.id);
+      },
+    });
+    setConfirmModalVisible(true);
   };
 
   // Barber services and extras
@@ -395,31 +437,26 @@ export const GestorBarberView: React.FC = () => {
 
   const handleDeleteFilter = (filterName: string) => {
     const count = getCategoryCount(filterName);
-    Alert.alert(
-      'Eliminar Filtro',
-      count > 0
+    setConfirmData({
+      title: 'Eliminar Filtro',
+      message: count > 0
         ? `O filtro "${filterName}" tem ${count} serviço(s) associado(s). Ao eliminar, estes serviços passarão para a categoria "Cortes". Deseja continuar?`
         : `Tem a certeza de que deseja eliminar o filtro "${filterName}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            if (count > 0) {
-              await deleteCategory('barber', filterName, 'Cortes');
-            }
-            setCustomCategories(prev => prev.filter(c => c.toLowerCase() !== filterName.toLowerCase()));
-            if (catFilter.toLowerCase() === filterName.toLowerCase()) {
-              setCatFilter('TODOS');
-            }
-            if (newServCat.toLowerCase() === filterName.toLowerCase()) {
-              setNewServCat('Cortes');
-            }
-          },
-        },
-      ]
-    );
+      confirmLabel: 'Eliminar Filtro',
+      onConfirm: async () => {
+        if (count > 0) {
+          await deleteCategory('barber', filterName, 'Cortes');
+        }
+        setCustomCategories(prev => prev.filter(c => c.toLowerCase() !== filterName.toLowerCase()));
+        if (catFilter.toLowerCase() === filterName.toLowerCase()) {
+          setCatFilter('TODOS');
+        }
+        if (newServCat.toLowerCase() === filterName.toLowerCase()) {
+          setNewServCat('Cortes');
+        }
+      },
+    });
+    setConfirmModalVisible(true);
   };
 
   const handleToggleExtraId = (extraId: string) => {
@@ -510,20 +547,16 @@ export const GestorBarberView: React.FC = () => {
   };
 
   const handleDeleteService = (service: Service) => {
-    Alert.alert(
-      'Eliminar Serviço',
-      `Tem a certeza de que deseja eliminar o serviço "${service.name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteService(service.id);
-          },
-        },
-      ]
-    );
+    const isExtra = service.category.toLowerCase() === 'extras';
+    setConfirmData({
+      title: isExtra ? 'Eliminar Extra' : 'Eliminar Serviço',
+      message: `Tem a certeza de que deseja eliminar "${service.name}"?`,
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        await deleteService(service.id);
+      },
+    });
+    setConfirmModalVisible(true);
   };
 
   return (
@@ -1027,7 +1060,7 @@ export const GestorBarberView: React.FC = () => {
             <View style={styles.standardScheduleBanner}>
               <Text style={styles.standardScheduleLabel}>HORÁRIO GERAL DO SALÃO DEFINIDO</Text>
               <Text style={styles.standardScheduleTitle}>
-                Terça a Sábado das 09:00 às 12:00 e das 14:00 às 19:00
+                Terça a Sábado das 09:30 às 12:30 e das 14:00 às 19:00
               </Text>
               <Text style={styles.standardScheduleSub}>
                 Baixas médicas ou faltas registadas bloqueiam automaticamente a marcação de clientes online.
@@ -1041,6 +1074,17 @@ export const GestorBarberView: React.FC = () => {
               return (
                 <View key={member.id} style={styles.scheduleConfigCard}>
                   <View style={styles.scheduleConfigHeader}>
+                    {/* Foto de Rosto do Barbeiro */}
+                    <View style={styles.managerStaffAvatarContainer}>
+                      {member.avatar ? (
+                        <Image source={{ uri: member.avatar }} style={styles.managerStaffAvatarImg} resizeMode="cover" />
+                      ) : (
+                        <View style={styles.managerStaffAvatarPlaceholder}>
+                          <Text style={styles.managerStaffAvatarInitial}>{member.name.charAt(0).toUpperCase()}</Text>
+                        </View>
+                      )}
+                    </View>
+
                     <View style={{ flex: 1, marginRight: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                         <Text style={styles.scheduleConfigName}>{member.name}</Text>
@@ -1065,7 +1109,6 @@ export const GestorBarberView: React.FC = () => {
                         </View>
                       </View>
                       <Text style={styles.scheduleConfigRole}>{member.roleTitle}</Text>
-                      <Text style={styles.staffPhoneSub}>Tel: {member.phone || 'Sem contacto'}</Text>
                       
                       {/* Código de Acesso PIN */}
                       <View style={styles.staffPinDisplayBadge}>
@@ -1101,7 +1144,7 @@ export const GestorBarberView: React.FC = () => {
                     <View style={styles.scheduleValueCol}>
                       <Text style={styles.scheduleValueLabel}>Manhã</Text>
                       <Text style={styles.scheduleValueText}>
-                        {member.workingHours?.start || '09:00'} - {member.workingHours?.lunchStart || '12:00'}
+                        {member.workingHours?.start || '09:30'} - {member.workingHours?.lunchStart || '12:30'}
                       </Text>
                     </View>
 
@@ -1114,7 +1157,7 @@ export const GestorBarberView: React.FC = () => {
                   </View>
 
                   <Text style={styles.schedulePauseHint}>
-                    Pausa de almoço: {member.workingHours?.lunchStart || '12:00'} às{' '}
+                    Pausa de almoço: {member.workingHours?.lunchStart || '12:30'} às{' '}
                     {member.workingHours?.lunchEnd || '14:00'}
                   </Text>
 
@@ -1211,16 +1254,55 @@ export const GestorBarberView: React.FC = () => {
                 />
               </View>
 
-              {/* Telefone */}
+              {/* Foto de Perfil / Rosto */}
               <View style={styles.modalField}>
-                <Text style={styles.modalLabel}>Contacto Telefónico</Text>
+                <Text style={styles.modalLabel}>Foto de Rosto do Barbeiro</Text>
+                <Text style={styles.modalFieldHint}>
+                  A foto será visível pelos clientes ao escolher o profissional e no perfil do colaborador.
+                </Text>
+
+                <View style={styles.avatarPickerContainer}>
+                  <View style={styles.avatarPreviewBox}>
+                    {staffAvatar ? (
+                      <Image source={{ uri: staffAvatar }} style={styles.avatarPreviewImg} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.avatarPreviewPlaceholder}>
+                        <Text style={styles.avatarPreviewInitial}>
+                          {staffName ? staffName.charAt(0).toUpperCase() : 'B'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <TouchableOpacity style={styles.uploadPhotoBtn} onPress={handlePickAvatarFile}>
+                      <Text style={styles.uploadPhotoBtnText}>📷 Carregar Foto do Dispositivo</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.modalFieldLabelMini}>Ou escolha uma sugestão:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      {BARBER_AVATAR_PRESETS.map((preset, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => setStaffAvatar(preset)}
+                          style={[
+                            styles.avatarPresetThumbBtn,
+                            staffAvatar === preset && styles.avatarPresetThumbBtnActive,
+                          ]}
+                        >
+                          <Image source={{ uri: preset }} style={styles.avatarPresetThumbImg} resizeMode="cover" />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                </View>
+
                 <TextInput
-                  style={styles.modalInput}
-                  value={staffPhone}
-                  onChangeText={setStaffPhone}
-                  placeholder="+351 910 000 000"
+                  style={[styles.modalInput, { marginTop: 8, fontSize: 12 }]}
+                  value={staffAvatar}
+                  onChangeText={setStaffAvatar}
+                  placeholder="Ou cole aqui o link (URL) da imagem..."
                   placeholderTextColor="#71717A"
-                  keyboardType="phone-pad"
                 />
               </View>
 
@@ -1336,13 +1418,13 @@ export const GestorBarberView: React.FC = () => {
                   style={styles.presetBtn}
                   onPress={() => handleApplyWorkingHoursPreset('standard')}
                 >
-                  <Text style={styles.presetBtnText}>Padrão (09:00-12:00 / 14:00-19:00)</Text>
+                  <Text style={styles.presetBtnText}>Padrão (09:30-12:30 / 14:00-19:00)</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.presetBtn}
                   onPress={() => handleApplyWorkingHoursPreset('morning')}
                 >
-                  <Text style={styles.presetBtnText}>Só Manhã (09:00-12:00)</Text>
+                  <Text style={styles.presetBtnText}>Só Manhã (09:30-12:30)</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.presetBtn}
@@ -1359,7 +1441,7 @@ export const GestorBarberView: React.FC = () => {
                     style={styles.modalInput}
                     value={staffStart}
                     onChangeText={setStaffStart}
-                    placeholder="09:00"
+                    placeholder="09:30"
                     placeholderTextColor="#71717A"
                   />
                 </View>
@@ -1383,7 +1465,7 @@ export const GestorBarberView: React.FC = () => {
                     style={styles.modalInput}
                     value={staffLunchStart}
                     onChangeText={setStaffLunchStart}
-                    placeholder="12:00"
+                    placeholder="12:30"
                     placeholderTextColor="#71717A"
                   />
                 </View>
@@ -1816,6 +1898,35 @@ export const GestorBarberView: React.FC = () => {
                 <Text style={styles.cancelModalBtnText}>Concluir / Fechar</Text>
               </TouchableOpacity>
             </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal de Confirmação In-App Universal (Compatível com Web/Android/iOS) */}
+      <Modal visible={confirmModalVisible && !!confirmData} transparent animationType="fade" onRequestClose={() => setConfirmModalVisible(false)}>
+        <Pressable style={styles.confirmModalOverlay} onPress={() => setConfirmModalVisible(false)}>
+          <Pressable style={styles.confirmModalBox} onPress={e => e.stopPropagation()}>
+            <Text style={styles.confirmModalTitle}>{confirmData?.title || ''}</Text>
+            <Text style={styles.confirmModalMessage}>{confirmData?.message || ''}</Text>
+            <View style={styles.confirmModalActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={() => setConfirmModalVisible(false)}
+              >
+                <Text style={styles.confirmCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmDeleteBtn}
+                onPress={async () => {
+                  setConfirmModalVisible(false);
+                  if (confirmData?.onConfirm) {
+                    await confirmData.onConfirm();
+                  }
+                }}
+              >
+                <Text style={styles.confirmDeleteBtnText}>{confirmData?.confirmLabel || 'Eliminar'}</Text>
+              </TouchableOpacity>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -3143,5 +3254,146 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 12,
     fontWeight: '900',
+  },
+  managerStaffAvatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: '#D4AF37',
+    backgroundColor: '#272732',
+  },
+  managerStaffAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  managerStaffAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#272732',
+  },
+  managerStaffAvatarInitial: {
+    color: '#D4AF37',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  avatarPickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 8,
+  },
+  avatarPreviewBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#D4AF37',
+    backgroundColor: '#272732',
+  },
+  avatarPreviewImg: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPreviewPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarPreviewInitial: {
+    color: '#D4AF37',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  uploadPhotoBtn: {
+    backgroundColor: 'rgba(212,175,55,0.15)',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  uploadPhotoBtnText: {
+    color: '#D4AF37',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  avatarPresetThumbBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1.5,
+    borderColor: '#3F3F46',
+    overflow: 'hidden',
+  },
+  avatarPresetThumbBtnActive: {
+    borderColor: '#D4AF37',
+    borderWidth: 2.5,
+  },
+  avatarPresetThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  confirmModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmModalBox: {
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+    borderRadius: 14,
+    padding: 20,
+    width: '100%',
+    maxWidth: 420,
+  },
+  confirmModalTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  confirmModalMessage: {
+    color: '#A1A1AA',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  confirmModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  confirmCancelBtn: {
+    backgroundColor: '#272732',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  confirmCancelBtnText: {
+    color: '#D4D4D8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  confirmDeleteBtn: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  confirmDeleteBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });
