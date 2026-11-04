@@ -173,7 +173,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
       )}
 
       <Animated.View style={[styles.cardsRow, { opacity: buttonsFadeAnim }]}>
-        {/* BEAUTY — ESQUERDA (Branco com silhueta feminina de corpo inteiro e interior Bege) */}
+        {/* BEAUTY — ESQUERDA (Bege com silhueta feminina de corpo inteiro) */}
         <Animated.View
           style={[
             styles.cardWrapper,
@@ -320,10 +320,10 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
 
-  /* BEAUTY — esquerda: fundo branco limpo sem qualquer rebordo */
+  /* BEAUTY — esquerda: fundo bege limpo sem qualquer rebordo */
   beautyCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAF7F2',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0,
