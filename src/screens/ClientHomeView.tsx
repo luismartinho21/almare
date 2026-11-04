@@ -11,7 +11,6 @@ import {
   StatusBar,
 } from 'react-native';
 import { SalonBranch } from '../types';
-import { Theme } from '../constants/theme';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
@@ -19,16 +18,15 @@ interface ClientHomeViewProps {
 }
 
 const { width } = Dimensions.get('window');
-const halfWidth = width / 2;
 
 export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, onOpenPinModal }) => {
-  // Lado atualmente a folhear ('beauty' ou 'barber') para passar garantidamente por cima
+  // Lado atualmente a folhear ('beauty' ou 'barber')
   const [turningBranch, setTurningBranch] = useState<'beauty' | 'barber' | null>(null);
 
-  // Fade in de entrada dos botões e silhuetas
+  // Fade in de entrada inicial
   const buttonsFadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Valor de animação de 0 a 1 para o efeito livro rodando para dentro (fechar/folhear em direção ao centro)
+  // Valor de animação de 0 a 1 para o fecho tipo livro
   const beautyBookAnim = useRef(new Animated.Value(0)).current;
   const barberBookAnim = useRef(new Animated.Value(0)).current;
 
@@ -67,75 +65,73 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
     });
   };
 
-  // BEAUTY INTERPOLATIONS (virar 180° ancorado na lombada como folha de livro)
+  // BEAUTY INTERPOLATIONS
   const beautyRotateY = beautyBookAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '180deg'],
   });
 
-  // O conteúdo frontal (textos e silhueta) dissolve-se suavemente à medida que a capa vira de costas
   const beautyFrontContentOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.42, 0.54, 1],
+    inputRange: [0, 0.38, 0.5, 1],
     outputRange: [1, 0.1, 0, 0],
   });
 
-  // Camada que fecha completamente o lado direito a bege/branco (#FAF7F2) à medida que a folha aterra
-  const beautyCoverRightOpacity = beautyBookAnim.interpolate({
-    inputRange: [0, 0.48, 0.95, 1],
-    outputRange: [0, 0, 1, 1],
+  // Transição do lado oposto (Barber) para o tom Bege quando Beauty roda,
+  // eliminando qualquer linha divisória ou contraste a meio
+  const beautyUnderlayFade = beautyBookAnim.interpolate({
+    inputRange: [0, 0.45],
+    outputRange: [0, 1],
   });
 
-  // Símbolo Almare no meio ao fechar a folha (simétrico em ambos)
+  // BARBER INTERPOLATIONS
+  const barberRotateY = barberBookAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-180deg'],
+  });
+
+  const barberFrontContentOpacity = barberBookAnim.interpolate({
+    inputRange: [0, 0.38, 0.5, 1],
+    outputRange: [1, 0.1, 0, 0],
+  });
+
+  // Transição do lado oposto (Beauty) para o tom Preto quando Barber roda,
+  // eliminando qualquer linha divisória ou contraste a meio
+  const barberUnderlayFade = barberBookAnim.interpolate({
+    inputRange: [0, 0.45],
+    outputRange: [0, 1],
+  });
+
+  // Símbolo Almare no centro da capa fechada
   const emblemOpacity = turningBranch === 'barber'
     ? barberBookAnim.interpolate({
-        inputRange: [0, 0.44, 0.88, 1],
+        inputRange: [0, 0.45, 0.85, 1],
         outputRange: [0, 0, 1, 1],
       })
     : turningBranch === 'beauty'
     ? beautyBookAnim.interpolate({
-        inputRange: [0, 0.44, 0.88, 1],
+        inputRange: [0, 0.45, 0.85, 1],
         outputRange: [0, 0, 1, 1],
       })
     : 0;
 
   const emblemScale = turningBranch === 'barber'
     ? barberBookAnim.interpolate({
-        inputRange: [0, 0.44, 0.88, 1],
-        outputRange: [0.82, 0.82, 1, 1],
+        inputRange: [0, 0.45, 0.85, 1],
+        outputRange: [0.85, 0.85, 1, 1],
       })
     : turningBranch === 'beauty'
     ? beautyBookAnim.interpolate({
-        inputRange: [0, 0.44, 0.88, 1],
-        outputRange: [0.82, 0.82, 1, 1],
+        inputRange: [0, 0.45, 0.85, 1],
+        outputRange: [0.85, 0.85, 1, 1],
       })
     : 1;
-
-  // BARBER INTERPOLATIONS (virar -180° ancorado na lombada como folha de livro)
-  const barberRotateY = barberBookAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-180deg'],
-  });
-
-  // O conteúdo frontal (textos e silhueta) dissolve-se suavemente à medida que a capa vira de costas
-  const barberFrontContentOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.42, 0.54, 1],
-    outputRange: [1, 0.1, 0, 0],
-  });
-
-  // Camada que fecha completamente o lado esquerdo a preto (#111116) à medida que a folha aterra
-  const barberCoverLeftOpacity = barberBookAnim.interpolate({
-    inputRange: [0, 0.48, 0.95, 1],
-    outputRange: [0, 0, 1, 1],
-  });
 
   return (
     <View style={styles.homeContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#0D0D11" />
 
-      {/* Camada de fundo interior do livro ao abrir:
-          Quando Beauty roda, fundo é 100% bege (#FAF7F2).
-          Quando Barber roda, fundo é 100% preto (#111116).
-          Sem divisão nem dobra a meio. */}
+      {/* Camada de fundo global unificada ao rodar:
+          Sem divisão nem dobra a meio */}
       <View
         style={[
           StyleSheet.absoluteFill,
@@ -146,28 +142,6 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
                 : turningBranch === 'barber'
                 ? '#111116'
                 : '#0D0D11',
-          },
-        ]}
-        pointerEvents="none"
-      />
-
-      {/* Camada que fecha completamente o lado esquerdo a preto quando Barber é selecionado */}
-      <Animated.View
-        style={[
-          styles.leftCoverOverlay,
-          {
-            opacity: barberCoverLeftOpacity,
-          },
-        ]}
-        pointerEvents="none"
-      />
-
-      {/* Camada que fecha completamente o lado direito a branco/bege quando Beauty é selecionado */}
-      <Animated.View
-        style={[
-          styles.rightCoverOverlay,
-          {
-            opacity: beautyCoverRightOpacity,
           },
         ]}
         pointerEvents="none"
@@ -206,14 +180,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             {
               backgroundColor: '#FAF7F2',
               zIndex: turningBranch === 'beauty' ? 50 : 1,
-              elevation: turningBranch === 'beauty' ? 50 : 1,
               transformOrigin: 'right center' as any,
               transform: [
                 { perspective: 1800 },
                 { rotateY: beautyRotateY },
               ],
             },
-            turningBranch === 'beauty' && styles.cardTurningBeauty,
           ]}
         >
           <TouchableOpacity
@@ -223,7 +195,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             delayLongPress={1200}
             activeOpacity={0.88}
           >
-            {/* Silhueta feminina de corpo inteiro subentendida de vestido */}
+            {/* Silhueta feminina de corpo inteiro */}
             <Animated.View
               style={[
                 styles.silhouetteWrapper,
@@ -244,6 +216,19 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
               <Text style={styles.beautySubtitle}>ESTÉTICA</Text>
               <View style={styles.beautyLine} />
             </Animated.View>
+
+            {/* Overlay que unifica o fundo da capa estacionária ao virar, eliminando qualquer dobra ou contraste divisório */}
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: '#111116',
+                  opacity: barberUnderlayFade,
+                  zIndex: 3,
+                },
+              ]}
+              pointerEvents="none"
+            />
           </TouchableOpacity>
         </Animated.View>
 
@@ -254,14 +239,12 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             {
               backgroundColor: '#111116',
               zIndex: turningBranch === 'barber' ? 50 : 1,
-              elevation: turningBranch === 'barber' ? 50 : 1,
               transformOrigin: 'left center' as any,
               transform: [
                 { perspective: 1800 },
                 { rotateY: barberRotateY },
               ],
             },
-            turningBranch === 'barber' && styles.cardTurningBarber,
           ]}
         >
           <TouchableOpacity
@@ -271,7 +254,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             delayLongPress={1200}
             activeOpacity={0.88}
           >
-            {/* Silhueta masculina de corpo inteiro subentendida de frente */}
+            {/* Silhueta masculina de corpo inteiro */}
             <Animated.View
               style={[
                 styles.silhouetteWrapper,
@@ -292,17 +275,22 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
               <Text style={styles.barberSubtitle}>BARBER</Text>
               <View style={styles.barberLine} />
             </Animated.View>
+
+            {/* Overlay que unifica o fundo da capa estacionária ao virar, eliminando qualquer dobra ou contraste divisório */}
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: '#FAF7F2',
+                  opacity: beautyUnderlayFade,
+                  zIndex: 3,
+                },
+              ]}
+              pointerEvents="none"
+            />
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
-
-      {/* Lombada central sutil antes de escolher — desaparece IMEDIATAMENTE ao virar a página para não se ver qualquer dobra */}
-      {!turningBranch && (
-        <Animated.View
-          style={[styles.spineDivider, { opacity: buttonsFadeAnim }]}
-          pointerEvents="none"
-        />
-      )}
     </View>
   );
 };
@@ -311,24 +299,6 @@ const styles = StyleSheet.create({
   homeContainer: {
     flex: 1,
     backgroundColor: '#0D0D11',
-  },
-  leftCoverOverlay: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: halfWidth + 2,
-    backgroundColor: '#111116',
-    zIndex: 35,
-  },
-  rightCoverOverlay: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: halfWidth + 2,
-    backgroundColor: '#FAF7F2',
-    zIndex: 35,
   },
   centerEmblemWrapper: {
     alignItems: 'center',
@@ -350,24 +320,24 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
 
-  /* BEAUTY — esquerda: fundo branco */
+  /* BEAUTY — esquerda: fundo branco limpo sem qualquer rebordo */
   beautyCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRightWidth: 0,
+    borderWidth: 0,
     position: 'relative',
     overflow: 'hidden',
   },
 
-  /* BARBER — direita: fundo carvão/preto premium */
+  /* BARBER — direita: fundo carvão/preto premium sem qualquer rebordo */
   barberCard: {
     flex: 1,
     backgroundColor: '#111116',
     alignItems: 'center',
     justifyContent: 'center',
-    borderLeftWidth: 0,
+    borderWidth: 0,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -443,32 +413,5 @@ const styles = StyleSheet.create({
     width: 32,
     height: 1.5,
     backgroundColor: '#D4AF37',
-  },
-
-  cardTurningBeauty: {
-    shadowColor: '#000',
-    shadowOffset: { width: 10, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 20,
-  },
-  cardTurningBarber: {
-    shadowColor: '#000',
-    shadowOffset: { width: -10, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 20,
-  },
-
-  /* Lombada central sutil antes do clique — posicionada de forma absoluta */
-  spineDivider: {
-    position: 'absolute',
-    left: halfWidth - 0.75,
-    top: 0,
-    bottom: 0,
-    width: 1.5,
-    backgroundColor: '#D4AF37',
-    opacity: 0.6,
-    zIndex: 10,
   },
 });
