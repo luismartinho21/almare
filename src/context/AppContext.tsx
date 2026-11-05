@@ -14,6 +14,7 @@ import {
   saveAppointments,
   loadServices,
   saveServices,
+  trackDeletedServiceId,
   loadStaff,
   saveStaff,
   loadClientHistory,
@@ -219,6 +220,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteService = async (id: string) => {
+    await trackDeletedServiceId(id);
     const updated = services.filter(s => s.id !== id);
     await saveServices(updated);
     setServices(updated);

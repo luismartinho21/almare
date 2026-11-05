@@ -18,6 +18,7 @@ import { StaffMember, Service } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
+import { compressImageFile } from '../utils/imageHelper';
 
 type GestorTab = 'management' | 'services' | 'staff';
 type ManagementSubTab = 'appointments' | 'finance';
@@ -172,17 +173,19 @@ export const GestorBarberView: React.FC = () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
-      input.onchange = (e: any) => {
+      input.onchange = async (e: any) => {
         const file = e.target?.files?.[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const result = event.target?.result as string;
-            if (result) {
-              setStaffAvatar(result);
+          try {
+            // Compress and resize to 240x240 thumbnail (~15-25KB) to prevent storage quota issues
+            const compressed = await compressImageFile(file, 240, 240, 0.82);
+            if (compressed) {
+              setStaffAvatar(compressed);
             }
-          };
-          reader.readAsDataURL(file);
+          } catch (err) {
+            console.error('Error compressing avatar image:', err);
+            Alert.alert('Erro', 'Não foi possível carregar a imagem selecionada.');
+          }
         }
       };
       input.click();

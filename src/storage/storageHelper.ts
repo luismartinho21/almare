@@ -6,6 +6,7 @@ const KEYS = {
   APPOINTMENTS: '@almare_appointments',
   SERVICES: '@almare_services_v3',
   SERVICES_LEGACY: '@almare_services',
+  DELETED_SERVICES: '@almare_deleted_services',
   STAFF: '@almare_staff',
   CLIENT_HISTORY: '@almare_client_history',
   CONFIG: '@almare_business_config',
@@ -18,23 +19,42 @@ const getItem = async (key: string): Promise<string | null> => {
   try {
     const val = await AsyncStorage.getItem(key);
     if (val !== null) return val;
-    return memoryStore[key] || null;
   } catch (err) {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem(key);
-    }
-    return memoryStore[key] || null;
+    // AsyncStorage failed, fall through to window.localStorage
   }
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const val = window.localStorage.getItem(key);
+      if (val !== null) return val;
+    } catch (e) {
+      // LocalStorage access restricted
+    }
+  }
+  return memoryStore[key] || null;
 };
 
 const setItem = async (key: string, value: string): Promise<void> => {
+  // Always update memory store immediately
+  memoryStore[key] = value;
+
   try {
     await AsyncStorage.setItem(key, value);
   } catch (err) {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    console.warn(`[storageHelper] AsyncStorage.setItem failed for key ${key}:`, err);
+  }
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
       window.localStorage.setItem(key, value);
+    } catch (err) {
+      console.warn(`[storageHelper] window.localStorage.setItem failed for key ${key}:`, err);
+      // If QuotaExceededError occurs, clean legacy keys
+      try {
+        window.localStorage.removeItem(KEYS.SERVICES_LEGACY);
+      } catch (cleanErr) {
+        // ignore
+      }
     }
-    memoryStore[key] = value;
   }
 };
 
@@ -69,6 +89,29 @@ export const addAppointment = async (appointment: Appointment): Promise<Appointm
   const updated = [appointment, ...existing];
   await saveAppointments(updated);
   return updated;
+};
+
+// Track IDs of user-deleted services to prevent them from resurrecting
+export const trackDeletedServiceId = async (id: string): Promise<void> => {
+  try {
+    const raw = await getItem(KEYS.DELETED_SERVICES);
+    const set: string[] = raw ? JSON.parse(raw) : [];
+    if (!set.includes(id)) {
+      set.push(id);
+      await setItem(KEYS.DELETED_SERVICES, JSON.stringify(set));
+    }
+  } catch (e) {
+    // ignore
+  }
+};
+
+export const getDeletedServiceIds = async (): Promise<Set<string>> => {
+  try {
+    const raw = await getItem(KEYS.DELETED_SERVICES);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch (e) {
+    return new Set();
+  }
 };
 
 // --- SERVICES ---
@@ -116,9 +159,10 @@ export const loadServices = async (): Promise<Service[]> => {
       return s;
     });
 
-    // Ensure any newly added initial services (like extras) exist
+    // Ensure any newly added initial services exist, BUT exclude any explicitly deleted by the user
+    const deletedIds = await getDeletedServiceIds();
     const storedIds = new Set(stored.map(s => s.id));
-    const missing = INITIAL_SERVICES.filter(s => !storedIds.has(s.id));
+    const missing = INITIAL_SERVICES.filter(s => !storedIds.has(s.id) && !deletedIds.has(s.id));
     if (missing.length > 0) {
       stored = [...stored, ...missing];
       changed = true;
@@ -165,14 +209,27 @@ export const loadStaff = async (): Promise<StaffMember[]> => {
           end: '19:00',
         };
       }
+      // Auto-heal: If member has an oversized raw base64 avatar (> 75KB), sanitize it to avoid QuotaExceededError
+      if (member.avatar && member.avatar.startsWith('data:image') && member.avatar.length > 75000) {
+        updated = true;
+        const defaultAv =
+          member.branch === 'barber'
+            ? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200'
+            : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
+        member.avatar = defaultAv;
+      }
       return member;
     });
     if (updated) {
-      await saveStaff(patched);
-      return patched;
+      try {
+        await saveStaff(patched);
+      } catch (e) {
+        console.warn('Could not auto-save patched staff:', e);
+      }
     }
-    return list;
+    return patched;
   } catch (e) {
+    console.error('Failed to parse staff from storage:', e);
     return INITIAL_STAFF;
   }
 };
