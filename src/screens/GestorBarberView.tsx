@@ -48,6 +48,7 @@ export const GestorBarberView: React.FC = () => {
     deleteService,
     renameCategory,
     deleteCategory,
+    cloudConnected,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<GestorTab>('management');
@@ -566,9 +567,12 @@ export const GestorBarberView: React.FC = () => {
     <View style={styles.container}>
       {/* Dashboard Top Header */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={styles.headerTitle}>PAINEL DE GESTÃO - BARBER</Text>
           <Text style={styles.headerSub}>Almare Barber Shop • Acesso Exclusivo Gestor</Text>
+        </View>
+        <View style={[styles.cloudBadge, cloudConnected ? styles.cloudBadgeConnected : styles.cloudBadgeLocal]}>
+          <Text style={styles.cloudBadgeText}>{cloudConnected ? '🟢 Nuvem Ativa' : '🟡 Modo Local'}</Text>
         </View>
       </View>
 
@@ -1948,6 +1952,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#18181C',
     borderBottomWidth: 1,
     borderBottomColor: '#27272A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cloudBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  cloudBadgeConnected: {
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    borderColor: '#10B981',
+  },
+  cloudBadgeLocal: {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderColor: '#F59E0B',
+  },
+  cloudBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#E4E4E7',
   },
   headerTitle: {
     color: Theme.colors.barber.accent,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { useApp } from '../context/AppContext';
 import { SalonBranch, Service, Appointment } from '../types';
 import { Theme } from '../constants/theme';
 import { FinancialDashboard } from '../components/FinancialDashboard';
+import { loadStoredFirebaseConfig } from '../config/firebaseConfig';
 
 export const AdminConfigView: React.FC = () => {
   const {
@@ -26,9 +27,99 @@ export const AdminConfigView: React.FC = () => {
     addStaffMember,
     deleteStaffMember,
     appointments,
+    cloudConnected,
+    cloudProjectId,
+    syncWithCloudNow,
+    connectCloudWithCredentials,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'revenue' | 'general' | 'services' | 'staff'>('revenue');
+  const [activeTab, setActiveTab] = useState<'revenue' | 'general' | 'services' | 'staff' | 'sync'>('revenue');
+
+  // Cloud Config State
+  const [fbApiKey, setFbApiKey] = useState('');
+  const [fbProjectId, setFbProjectId] = useState(cloudProjectId || '');
+  const [fbAuthDomain, setFbAuthDomain] = useState('');
+  const [fbStorageBucket, setFbStorageBucket] = useState('');
+  const [fbSenderId, setFbSenderId] = useState('');
+  const [fbAppId, setFbAppId] = useState('');
+  const [fbSnippet, setFbSnippet] = useState('');
+  const [cloudMsg, setCloudMsg] = useState('');
+  const [cloudLoading, setCloudLoading] = useState(false);
+
+  useEffect(() => {
+    loadStoredFirebaseConfig().then(creds => {
+      if (creds) {
+        setFbApiKey(creds.apiKey || '');
+        setFbProjectId(creds.projectId || '');
+        setFbAuthDomain(creds.authDomain || '');
+        setFbStorageBucket(creds.storageBucket || '');
+        setFbSenderId(creds.messagingSenderId || '');
+        setFbAppId(creds.appId || '');
+      }
+    });
+  }, []);
+
+  const handleParseSnippet = (text: string) => {
+    setFbSnippet(text);
+    const extract = (pattern: RegExp) => {
+      const match = text.match(pattern);
+      return match ? match[1] : '';
+    };
+    const apiKey = extract(/apiKey:\s*["']([^"']+)["']/);
+    const projectId = extract(/projectId:\s*["']([^"']+)["']/);
+    const authDomain = extract(/authDomain:\s*["']([^"']+)["']/);
+    const storageBucket = extract(/storageBucket:\s*["']([^"']+)["']/);
+    const messagingSenderId = extract(/messagingSenderId:\s*["']([^"']+)["']/);
+    const appId = extract(/appId:\s*["']([^"']+)["']/);
+
+    if (apiKey) setFbApiKey(apiKey);
+    if (projectId) setFbProjectId(projectId);
+    if (authDomain) setFbAuthDomain(authDomain);
+    if (storageBucket) setFbStorageBucket(storageBucket);
+    if (messagingSenderId) setFbSenderId(messagingSenderId);
+    if (appId) setFbAppId(appId);
+  };
+
+  const handleSaveAndConnectCloud = async () => {
+    if (!fbProjectId.trim() || !fbApiKey.trim()) {
+      alert('Por favor preencha pelo menos o Project ID e a API Key.');
+      return;
+    }
+    setCloudLoading(true);
+    setCloudMsg('A ligar à base de dados na nuvem...');
+    try {
+      const success = await connectCloudWithCredentials({
+        apiKey: fbApiKey.trim(),
+        projectId: fbProjectId.trim(),
+        authDomain: fbAuthDomain.trim() || `${fbProjectId.trim()}.firebaseapp.com`,
+        storageBucket: fbStorageBucket.trim() || `${fbProjectId.trim()}.appspot.com`,
+        messagingSenderId: fbSenderId.trim(),
+        appId: fbAppId.trim(),
+      });
+      if (success) {
+        setCloudMsg('Base de dados ligada e sincronizada com sucesso!');
+        alert('Sucesso! A base de dados na nuvem está ativa. Telemóvel e PC sincronizam agora automaticamente em tempo real!');
+      } else {
+        setCloudMsg('Não foi possível inicializar. Verifique os dados introduzidos.');
+        alert('Não foi possível ligar ao Firebase. Confirme se o Project ID e a API Key estão corretos.');
+      }
+    } catch (e: any) {
+      setCloudMsg(`Erro: ${e.message}`);
+    } finally {
+      setCloudLoading(false);
+    }
+  };
+
+  const handleForceSync = async () => {
+    setCloudLoading(true);
+    const res = await syncWithCloudNow();
+    setCloudLoading(false);
+    if (res.success) {
+      alert(`Sincronização concluída! ${res.count} registos enviados para a nuvem.`);
+    } else {
+      alert(res.error || 'Não foi possível sincronizar com a nuvem.');
+    }
+  };
 
   // General Config State
   const [barberName, setBarberName] = useState(config.barberShopName);
@@ -280,6 +371,15 @@ export const AdminConfigView: React.FC = () => {
         >
           <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextActive]}>
             Equipa ({staff.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'sync' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('sync')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'sync' && styles.tabBtnTextActive]}>
+            {cloudConnected ? '🟢 Nuvem' : '☁️ Nuvem'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -553,7 +653,7 @@ export const AdminConfigView: React.FC = () => {
               );
             })}
           </View>
-        ) : (
+        ) : activeTab === 'staff' ? (
           /* STAFF CONFIG */
           <View>
             <View style={styles.actionHeaderRow}>
@@ -585,6 +685,164 @@ export const AdminConfigView: React.FC = () => {
                 </TouchableOpacity>
               </View>
             ))}
+          </View>
+        ) : (
+          /* CLOUD SYNC CONFIG */
+          <View>
+            {/* Status Banner */}
+            <View
+              style={[
+                styles.cloudStatusBanner,
+                cloudConnected ? styles.cloudStatusBannerConnected : styles.cloudStatusBannerDisconnected,
+              ]}
+            >
+              <Text style={styles.cloudStatusBannerIcon}>{cloudConnected ? '🟢' : '🟡'}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cloudStatusBannerTitle}>
+                  {cloudConnected ? 'Base de Dados na Nuvem Conectada' : 'Modo Local Ativo (Sem Nuvem)'}
+                </Text>
+                <Text style={styles.cloudStatusBannerSub}>
+                  {cloudConnected
+                    ? `Projeto: ${cloudProjectId || 'Ativo'} • Telemóvel e PC sincronizados em tempo real em menos de 1 segundo.`
+                    : 'A aplicação está a gravar apenas na memória deste dispositivo. Introduza a configuração do Firebase para sincronizar em tempo real com o telemóvel.'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Force Sync Action */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Sincronização Forçada</Text>
+              <Text style={styles.sectionCardDesc}>
+                Envie todos os dados atuais deste dispositivo (marcações, serviços, equipa e horários) para a nuvem de forma a atualizar todos os aparelhos.
+              </Text>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: '#10B981', marginTop: 10 }]}
+                onPress={handleForceSync}
+                disabled={cloudLoading}
+              >
+                <Text style={[styles.saveBtnText, { color: '#FFF' }]}>
+                  {cloudLoading ? 'A sincronizar...' : '🔄 Forçar Sincronização Geral para a Nuvem'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Cloud Credentials Form */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Configurar Projeto Firebase (Google Cloud)</Text>
+              <Text style={styles.sectionCardDesc}>
+                Para sincronização em tempo real 100% gratuita sem servidores adicionais.
+              </Text>
+
+              {/* Quick Paste Snippet */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Colar Snippet do Firebase (Preenchimento Automático)</Text>
+                <Text style={styles.fieldHint}>
+                  Cole o código gerado no Firebase Console (`const firebaseConfig = ...`) para preencher automaticamente os campos abaixo:
+                </Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 70, textAlignVertical: 'top' }]}
+                  multiline
+                  value={fbSnippet}
+                  onChangeText={handleParseSnippet}
+                  placeholder="Cole aqui o firebaseConfig = { ... } copiado do Firebase Console"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Project ID *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fbProjectId}
+                  onChangeText={setFbProjectId}
+                  placeholder="Ex: almare-salon-app"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>API Key *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fbApiKey}
+                  onChangeText={setFbApiKey}
+                  placeholder="Ex: AIzaSyB..."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Auth Domain</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fbAuthDomain}
+                  onChangeText={setFbAuthDomain}
+                  placeholder="Ex: almare-salon-app.firebaseapp.com"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Storage Bucket</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fbStorageBucket}
+                  onChangeText={setFbStorageBucket}
+                  placeholder="Ex: almare-salon-app.appspot.com"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Messaging Sender ID</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fbSenderId}
+                  onChangeText={setFbSenderId}
+                  placeholder="Ex: 1234567890"
+                  placeholderTextColor="#71717A"
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>App ID</Text>
+                <TextInput
+                  style={styles.input}
+                  value={fbAppId}
+                  onChangeText={setFbAppId}
+                  placeholder="Ex: 1:1234567890:web:abcdef"
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {cloudMsg ? (
+                <Text style={[styles.feedbackText, { color: cloudConnected ? '#10B981' : '#F59E0B' }]}>
+                  {cloudMsg}
+                </Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { marginTop: 12 }]}
+                onPress={handleSaveAndConnectCloud}
+                disabled={cloudLoading}
+              >
+                <Text style={styles.saveBtnText}>
+                  {cloudLoading ? 'A ligar...' : '💾 Ligar à Nuvem e Ativar Sincronização'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Tutorial */}
+            <View style={[styles.sectionCard, { backgroundColor: '#18181F' }]}>
+              <Text style={[styles.sectionTitle, { color: '#E4E4E7' }]}>Como obter o Firebase Gratuito em 2 minutos:</Text>
+              <Text style={styles.tutorialStep}>1. Aceda a <Text style={{ color: '#D4AF37' }}>console.firebase.google.com</Text> com a sua conta Google.</Text>
+              <Text style={styles.tutorialStep}>2. Clique em <Text style={{ fontWeight: '700', color: '#FFF' }}>"Adicionar projeto"</Text> e dê o nome "Almare".</Text>
+              <Text style={styles.tutorialStep}>3. No menu esquerdo, vá a <Text style={{ fontWeight: '700', color: '#FFF' }}>Firestore Database</Text> ➔ <Text style={{ fontWeight: '700', color: '#FFF' }}>Criar base de dados</Text> ➔ escolha "Modo de teste".</Text>
+              <Text style={styles.tutorialStep}>4. Nas Definições do Projeto (ícone de engrenagem), clique no ícone Web <Text style={{ color: '#D4AF37' }}>&lt;/&gt;</Text> para ver as credenciais.</Text>
+              <Text style={styles.tutorialStep}>5. Copie e cole aqui o código. O telemóvel e o PC passam a estar instantaneamente sincronizados!</Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -1682,5 +1940,60 @@ const styles = StyleSheet.create({
     color: '#E2B755',
     fontSize: 16,
     fontWeight: '900',
+  },
+  cloudStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+  },
+  cloudStatusBannerConnected: {
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    borderColor: '#10B981',
+  },
+  cloudStatusBannerDisconnected: {
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderColor: '#F59E0B',
+  },
+  cloudStatusBannerIcon: {
+    fontSize: 24,
+  },
+  cloudStatusBannerTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  cloudStatusBannerSub: {
+    color: '#D4D4D8',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  sectionCardDesc: {
+    color: '#A1A1AA',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  fieldHint: {
+    color: '#71717A',
+    fontSize: 11,
+    marginBottom: 6,
+    lineHeight: 15,
+  },
+  feedbackText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  tutorialStep: {
+    color: '#A1A1AA',
+    fontSize: 12,
+    lineHeight: 20,
+    marginBottom: 6,
   },
 });

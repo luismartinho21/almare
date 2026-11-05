@@ -24,6 +24,25 @@ import {
 } from '../storage/storageHelper';
 import { INITIAL_BUSINESS_CONFIG } from '../constants/mockData';
 import { scheduleTwoHourReminder, checkAndTriggerDueReminders } from '../utils/reminderHelper';
+import {
+  initFirebaseCloud,
+  subscribeToCloudAppointments,
+  subscribeToCloudServices,
+  subscribeToCloudStaff,
+  subscribeToCloudConfig,
+  cloudSaveAppointment,
+  cloudSaveService,
+  cloudDeleteService,
+  cloudSaveStaffMember,
+  cloudDeleteStaffMember,
+  cloudSaveConfig,
+  syncAllLocalToCloud,
+  onCloudStatusChange,
+} from '../services/firebaseService';
+import {
+  FirebaseCredentials,
+  saveStoredFirebaseConfig,
+} from '../config/firebaseConfig';
 
 interface AppContextType {
   role: UserRole;
@@ -36,6 +55,12 @@ interface AppContextType {
   appointments: Appointment[];
   clientHistory: ClientHistoryNote[];
   config: BusinessConfig;
+
+  // Cloud Real-Time Sync Status
+  cloudConnected: boolean;
+  cloudProjectId: string;
+  syncWithCloudNow: () => Promise<{ success: boolean; count: number; error?: string }>;
+  connectCloudWithCredentials: (creds: FirebaseCredentials) => Promise<boolean>;
 
   // Multi-service appointment creation
   createAppointment: (
@@ -88,6 +113,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clientHistory, setClientHistory] = useState<ClientHistoryNote[]>([]);
   const [config, setConfig] = useState<BusinessConfig>(INITIAL_BUSINESS_CONFIG);
 
+  // Cloud Realtime State
+  const [cloudConnected, setCloudConnected] = useState<boolean>(false);
+  const [cloudProjectId, setCloudProjectId] = useState<string>('');
+
   const currentStaffMember = useMemo(() => {
     if (!currentStaffId) return null;
     return staff.find(s => s.id === currentStaffId) || null;
@@ -132,8 +161,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     runReminderCheck();
     const interval = setInterval(runReminderCheck, 45000); // Check every 45s
-    return () => clearInterval(interval);
+
+    // Real-time Cloud Listeners cleanup refs
+    let unsubApps: (() => void) | null = null;
+    let unsubServs: (() => void) | null = null;
+    let unsubStaff: (() => void) | null = null;
+    let unsubConf: (() => void) | null = null;
+
+    const setupCloudListeners = async () => {
+      const currentApps = await loadAppointments();
+      const currentServs = await loadServices();
+      const currentStaff = await loadStaff();
+      const currentConf = await loadBusinessConfig();
+
+      unsubApps = subscribeToCloudAppointments(items => setAppointments(items), currentApps);
+      unsubServs = subscribeToCloudServices(items => setServices(items), currentServs);
+      unsubStaff = subscribeToCloudStaff(items => setStaff(items), currentStaff);
+      unsubConf = subscribeToCloudConfig(c => setConfig(c), currentConf);
+    };
+
+    const unsubStatus = onCloudStatusChange(status => {
+      setCloudConnected(status.connected);
+      setCloudProjectId(status.projectId);
+      if (status.connected) {
+        setupCloudListeners();
+      }
+    });
+
+    initFirebaseCloud().then(connected => {
+      if (connected) {
+        setupCloudListeners();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubStatus();
+      if (unsubApps) unsubApps();
+      if (unsubServs) unsubServs();
+      if (unsubStaff) unsubStaff();
+      if (unsubConf) unsubConf();
+    };
   }, []);
+
+  const syncWithCloudNow = async () => {
+    return await syncAllLocalToCloud(appointments, services, staff, config);
+  };
+
+  const connectCloudWithCredentials = async (creds: FirebaseCredentials) => {
+    await saveStoredFirebaseConfig(creds);
+    const success = await initFirebaseCloud();
+    if (success) {
+      await syncAllLocalToCloud(appointments, services, staff, config);
+      await refreshData();
+    }
+    return success;
+  };
 
   const createAppointment = async (
     branch: SalonBranch,
@@ -174,6 +257,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = await addAppointment(newBooking);
     setAppointments(updated);
 
+    // Save to Cloud in real-time
+    await cloudSaveAppointment(newBooking);
+
     // Always schedule notification 2 hours before the appointment
     const shopName = branch === 'barber' ? config.barberShopName : config.beautyShopName;
     scheduleTwoHourReminder(newBooking, shopName).catch(err => {
@@ -187,12 +273,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = appointments.map(app => (app.id === id ? { ...app, status } : app));
     await saveAppointments(updated);
     setAppointments(updated);
+
+    const changedItem = updated.find(a => a.id === id);
+    if (changedItem) {
+      await cloudSaveAppointment(changedItem);
+    }
   };
 
   const updateAppointmentReminder = async (id: string, reminderEnabled: boolean) => {
     const updated = appointments.map(app => (app.id === id ? { ...app, reminderEnabled } : app));
     await saveAppointments(updated);
     setAppointments(updated);
+
+    const changedItem = updated.find(a => a.id === id);
+    if (changedItem) {
+      await cloudSaveAppointment(changedItem);
+    }
   };
 
   const addStaffNoteForClient = async (noteData: Omit<ClientHistoryNote, 'id' | 'createdAt'>) => {
@@ -210,6 +306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...services, created];
     await saveServices(updated);
     setServices(updated);
+    await cloudSaveService(created);
     return created;
   };
 
@@ -217,6 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = services.map(s => (s.id === updatedService.id ? updatedService : s));
     await saveServices(updated);
     setServices(updated);
+    await cloudSaveService(updatedService);
   };
 
   const deleteService = async (id: string) => {
@@ -224,6 +322,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = services.filter(s => s.id !== id);
     await saveServices(updated);
     setServices(updated);
+    await cloudDeleteService(id);
   };
 
   const renameCategory = async (branch: SalonBranch, oldCategory: string, newCategory: string) => {
@@ -232,7 +331,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!trimmedNew || trimmedOld.toLowerCase() === trimmedNew.toLowerCase()) return;
     const updated = services.map(s => {
       if (s.branch === branch && s.category.toLowerCase() === trimmedOld.toLowerCase()) {
-        return { ...s, category: trimmedNew };
+        const renamed = { ...s, category: trimmedNew };
+        cloudSaveService(renamed);
+        return renamed;
       }
       return s;
     });
@@ -244,7 +345,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const trimmedDelete = categoryToDelete.trim();
     const updated = services.map(s => {
       if (s.branch === branch && s.category.toLowerCase() === trimmedDelete.toLowerCase()) {
-        return { ...s, category: fallbackCategory };
+        const modified = { ...s, category: fallbackCategory };
+        cloudSaveService(modified);
+        return modified;
       }
       return s;
     });
@@ -270,6 +373,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = [...staff, created];
     await saveStaff(updated);
     setStaff(updated);
+    await cloudSaveStaffMember(created);
     return created;
   };
 
@@ -280,23 +384,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     await saveStaff(updated);
     setStaff(updated);
+    await cloudDeleteStaffMember(id);
   };
 
   const updateStaffWorkingHours = async (id: string, workingHours: { start: string; end: string; lunchStart?: string; lunchEnd?: string }) => {
     const updated = staff.map(s => (s.id === id ? { ...s, workingHours } : s));
     await saveStaff(updated);
     setStaff(updated);
+    const changed = updated.find(s => s.id === id);
+    if (changed) {
+      await cloudSaveStaffMember(changed);
+    }
   };
 
   const updateStaffMember = async (updatedMember: StaffMember) => {
     const updated = staff.map(s => (s.id === updatedMember.id ? updatedMember : s));
     await saveStaff(updated);
     setStaff(updated);
+    await cloudSaveStaffMember(updatedMember);
   };
 
   const updateConfig = async (newConfig: BusinessConfig) => {
     await saveBusinessConfig(newConfig);
     setConfig(newConfig);
+    await cloudSaveConfig(newConfig);
   };
 
   return (
@@ -315,6 +426,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appointments,
         clientHistory,
         config,
+        cloudConnected,
+        cloudProjectId,
+        syncWithCloudNow,
+        connectCloudWithCredentials,
         createAppointment,
         updateAppointmentStatus,
         updateAppointmentReminder,
