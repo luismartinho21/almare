@@ -17,12 +17,12 @@ const STORAGE_KEY = '@almare_cloud_firebase_config';
  * or configure it directly in the Admin Panel inside the App.
  */
 export const DEFAULT_FIREBASE_CONFIG: FirebaseCredentials = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: "AIzaSyBmW_MhPT22CWpXvQMw-S8fYLjnWUzJuIw",
+  authDomain: "almare-553e8.firebaseapp.com",
+  projectId: "almare-553e8",
+  storageBucket: "almare-553e8.firebasestorage.app",
+  messagingSenderId: "982086416122",
+  appId: "1:982086416122:web:47ed6463999ae67337fb43",
 };
 
 export const loadStoredFirebaseConfig = async (): Promise<FirebaseCredentials> => {
