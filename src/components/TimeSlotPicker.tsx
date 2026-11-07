@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Appointment, SalonBranch, StaffMember } from '../types';
 import { Theme } from '../constants/theme';
@@ -12,6 +12,9 @@ import {
   minutesToTime,
   getStaffShiftType,
   getStaffAbsenceInfoForDate,
+  getTodayDateString,
+  getCurrentTimeMinutes,
+  isSlotInPast,
 } from '../utils/scheduleHelper';
 
 // Re-exportar para retrocompatibilidade
@@ -45,21 +48,37 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
 
+  // Estado do relógio em tempo real (atualiza a cada 30 segundos)
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const todayStr = useMemo(() => getTodayDateString(currentTime), [currentTime]);
+  const isSelectedToday = selectedDate === todayStr;
+
   // Generate next 10 days
   const nextDays = useMemo(() => {
     const dates = [];
-    const today = new Date();
+    const today = currentTime;
+    const currentMins = getCurrentTimeMinutes(currentTime);
+    const lastSlotMins = timeToMinutes('18:30');
+
     for (let i = 0; i < 10; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
 
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const fullStr = `${yyyy}-${mm}-${dd}`;
+      const fullStr = getTodayDateString(d);
+      const isToday = i === 0;
 
       const dayOfWeek = d.getDay();
-      const isOpen = dayOfWeek !== 0 && dayOfWeek !== 1; // Terça a Sábado
+      const isOpenDay = dayOfWeek !== 0 && dayOfWeek !== 1; // Terça a Sábado
+      const isTodayExpired = isToday && currentMins >= lastSlotMins;
+      const isOpen = isOpenDay;
 
       const weekDay = d.toLocaleDateString('pt-PT', { weekday: 'short' });
       const dayNum = d.getDate();
@@ -70,18 +89,19 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         weekDay: weekDay.toUpperCase().replace('.', ''),
         dayNum,
         monthStr: monthStr.replace('.', ''),
-        isToday: i === 0,
+        isToday,
+        isTodayExpired,
         isOpen,
       });
     }
     return dates;
-  }, []);
+  }, [currentTime]);
 
   const isCurrentDateOpen = useMemo(() => {
     return isSalonOpenDay(selectedDate);
   }, [selectedDate]);
 
-  // Find occupied slots for selected date considering accumulated service duration
+  // Find occupied slots for selected date considering accumulated service duration and current time
   const occupiedSlots = useMemo(() => {
     return getOccupiedSlots({
       date: selectedDate,
@@ -90,8 +110,20 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
       isNoPreference,
       branchStaff,
       appointments,
+      refDate: currentTime,
     });
-  }, [selectedDate, durationMinutes, staffMember, isNoPreference, branchStaff, appointments]);
+  }, [selectedDate, durationMinutes, staffMember, isNoPreference, branchStaff, appointments, currentTime]);
+
+  // Apenas horários futuros aparecem para o dia de hoje; para dias futuros, aparecem todos
+  const visibleMorningSlots = useMemo(() => {
+    if (!isSelectedToday) return MORNING_SLOTS;
+    return MORNING_SLOTS.filter(slot => !isSlotInPast(slot, selectedDate, currentTime));
+  }, [isSelectedToday, selectedDate, currentTime]);
+
+  const visibleAfternoonSlots = useMemo(() => {
+    if (!isSelectedToday) return AFTERNOON_SLOTS;
+    return AFTERNOON_SLOTS.filter(slot => !isSlotInPast(slot, selectedDate, currentTime));
+  }, [isSelectedToday, selectedDate, currentTime]);
 
   const availableSlots = useMemo(() => {
     if (!isCurrentDateOpen) return [];
@@ -178,7 +210,9 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                 : absenceInfo?.isAbsent
                 ? `Profissional temporariamente ausente (${absenceInfo.label})`
                 : isAllOccupied
-                ? 'Agenda Completa • Sem vagas livres nesta data'
+                ? isSelectedToday
+                  ? 'Horários de hoje encerrados • Selecione data futura'
+                  : 'Agenda Completa • Sem vagas livres nesta data'
                 : `Selecione uma vaga disponível abaixo (${durationMinutes} min contínuos)`}
             </Text>
           )}
@@ -248,7 +282,11 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                   { color: isSelected ? '#111' : isBarber ? '#71717A' : '#9CA3AF' },
                 ]}
               >
-                {item.isOpen ? item.monthStr : 'Fechado'}
+                {item.isToday && item.isTodayExpired
+                  ? 'Fechou'
+                  : item.isOpen
+                  ? item.monthStr
+                  : 'Fechado'}
               </Text>
             </TouchableOpacity>
           );
@@ -315,13 +353,14 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               ]}
             >
               <Text style={[styles.closedNoticeTitle, { color: '#EF4444' }]}>
-                ⚠️ Agenda Completa nesta Data
+                {isSelectedToday ? '🕒 Horários de Hoje Encerrados' : '⚠️ Agenda Completa nesta Data'}
               </Text>
               <Text style={[styles.closedNoticeSub, { color: isBarber ? '#FCA5A5' : '#991B1B' }]}>
-                {isNoPreference
-                  ? `Todos os profissionais da equipa estão ocupados ou sem vagas contínuas de ${durationMinutes} min nesta data.`
-                  : `${targetStaffName} não tem vagas livres para ${durationMinutes} min no dia selecionado.`}
-                {'\n\n'}Por favor, selecione outra data acima no calendário ou escolha outro profissional.
+                {isSelectedToday
+                  ? 'Todos os horários de atendimento para o dia de hoje já terminaram ou encontram-se preenchidos.\n\nPor favor, selecione amanhã ou outra data futura no calendário acima para marcar o seu serviço.'
+                  : isNoPreference
+                  ? `Todos os profissionais da equipa estão ocupados ou sem vagas contínuas de ${durationMinutes} min nesta data.\n\nPor favor, selecione outra data acima no calendário.`
+                  : `${targetStaffName} não tem vagas livres para ${durationMinutes} min no dia selecionado.\n\nPor favor, selecione outra data acima no calendário ou escolha outro profissional.`}
               </Text>
             </View>
           ) : null}
@@ -335,6 +374,8 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
                 {shiftType === 'afternoon_only'
                   ? 'Sem vagas de manhã'
+                  : isSelectedToday && visibleMorningSlots.length === 0
+                  ? 'Período encerrado'
                   : `Vagas disponíveis (${durationMinutes} min)`}
               </Text>
             </View>
@@ -345,9 +386,15 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                   Não existem horários de atendimento disponíveis no período da manhã para esta seleção.
                 </Text>
               </View>
+            ) : isSelectedToday && visibleMorningSlots.length === 0 ? (
+              <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
+                <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                  O período da manhã de hoje já terminou. Apenas horários da tarde estão disponíveis.
+                </Text>
+              </View>
             ) : (
               <View style={styles.slotsGrid}>
-                {MORNING_SLOTS.map(slot => {
+                {visibleMorningSlots.map(slot => {
                   const isOccupied = occupiedSlots.has(slot);
                   const isSelected = selectedTimeSlot === slot;
 
@@ -399,6 +446,8 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
                 {shiftType === 'morning_only'
                   ? 'Sem vagas de tarde'
+                  : isSelectedToday && visibleAfternoonSlots.length === 0
+                  ? 'Período encerrado'
                   : `Vagas disponíveis (${durationMinutes} min)`}
               </Text>
             </View>
@@ -409,9 +458,15 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                   Não existem horários de atendimento disponíveis no período da tarde para esta seleção.
                 </Text>
               </View>
+            ) : isSelectedToday && visibleAfternoonSlots.length === 0 ? (
+              <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
+                <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                  O período da tarde de hoje já terminou.
+                </Text>
+              </View>
             ) : (
               <View style={styles.slotsGrid}>
-                {AFTERNOON_SLOTS.map(slot => {
+                {visibleAfternoonSlots.map(slot => {
                   const isOccupied = occupiedSlots.has(slot);
                   const isSelected = selectedTimeSlot === slot;
 

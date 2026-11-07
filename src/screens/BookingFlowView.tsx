@@ -13,6 +13,7 @@ import {
   isStaffAvailableForInterval,
   isSalonOpenDay,
   ALL_WORKING_SLOTS,
+  getInitialBookingDate,
 } from '../utils/scheduleHelper';
 
 interface BookingFlowViewProps {
@@ -107,8 +108,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   }, [selectedServices]);
 
   // Dates & Time
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [selectedDate, setSelectedDate] = useState<string>(() => getInitialBookingDate());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
 
   // Modals

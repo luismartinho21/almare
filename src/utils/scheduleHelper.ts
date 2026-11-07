@@ -32,6 +32,64 @@ export const minutesToTime = (mins: number): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+/**
+ * Retorna a data de hoje formatada em 'YYYY-MM-DD' com base no fuso horário local.
+ */
+export const getTodayDateString = (refDate: Date = new Date()): string => {
+  const yyyy = refDate.getFullYear();
+  const mm = String(refDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(refDate.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+/**
+ * Retorna a hora atual em minutos desde a meia-noite (hora local).
+ */
+export const getCurrentTimeMinutes = (refDate: Date = new Date()): number => {
+  return refDate.getHours() * 60 + refDate.getMinutes();
+};
+
+/**
+ * Verifica se um determinado horário ('HH:MM') numa determinada data ('YYYY-MM-DD')
+ * já se encontra no passado em relação ao momento atual.
+ */
+export const isSlotInPast = (slot: string, date: string, refDate: Date = new Date()): boolean => {
+  const todayStr = getTodayDateString(refDate);
+  if (date < todayStr) return true;
+  if (date > todayStr) return false;
+
+  // No dia de hoje, qualquer horário que já começou ou passou é considerado no passado
+  const currentMins = getCurrentTimeMinutes(refDate);
+  const slotMins = timeToMinutes(slot);
+  return slotMins <= currentMins;
+};
+
+/**
+ * Retorna a data inicial ideal para o agendamento:
+ * Se hoje ainda estiver aberto e com horários futuros por decorrer (antes das 18:30), retorna hoje.
+ * Se hoje já tiver fechado ou for dia encerrado (Dom/Seg), retorna o próximo dia aberto.
+ */
+export const getInitialBookingDate = (refDate: Date = new Date()): string => {
+  const todayStr = getTodayDateString(refDate);
+  const currentMins = getCurrentTimeMinutes(refDate);
+  const lastSlotMins = timeToMinutes('18:30');
+
+  if (isSalonOpenDay(todayStr) && currentMins < lastSlotMins) {
+    return todayStr;
+  }
+
+  for (let i = 1; i <= 10; i++) {
+    const next = new Date(refDate);
+    next.setDate(refDate.getDate() + i);
+    const nextStr = getTodayDateString(next);
+    if (isSalonOpenDay(nextStr)) {
+      return nextStr;
+    }
+  }
+
+  return todayStr;
+};
+
 export type StaffShiftType = 'all_day' | 'morning_only' | 'afternoon_only' | 'off';
 
 /**
@@ -154,9 +212,15 @@ export const isStaffAvailableForInterval = (
   slot: string,
   durationMinutes: number,
   date: string,
-  appointments: Appointment[]
+  appointments: Appointment[],
+  refDate: Date = new Date()
 ): boolean => {
   if (!isSalonOpenDay(date)) return false;
+
+  // Se o horário já passou em relação ao momento atual (no dia de hoje ou dias passados)
+  if (isSlotInPast(slot, date, refDate)) {
+    return false;
+  }
 
   // Se o profissional estiver inativo
   if (staff.status === 'inactive') {
@@ -221,10 +285,11 @@ export const getFreeStaffForInterval = (
   slot: string,
   durationMinutes: number,
   date: string,
-  appointments: Appointment[]
+  appointments: Appointment[],
+  refDate: Date = new Date()
 ): StaffMember[] => {
   return branchStaff.filter(s =>
-    isStaffAvailableForInterval(s, slot, durationMinutes, date, appointments)
+    isStaffAvailableForInterval(s, slot, durationMinutes, date, appointments, refDate)
   );
 };
 
@@ -238,6 +303,7 @@ export const getOccupiedSlots = ({
   isNoPreference,
   branchStaff,
   appointments,
+  refDate = new Date(),
 }: {
   date: string;
   durationMinutes: number;
@@ -245,6 +311,7 @@ export const getOccupiedSlots = ({
   isNoPreference: boolean;
   branchStaff: StaffMember[];
   appointments: Appointment[];
+  refDate?: Date;
 }): Set<string> => {
   const occupiedSet = new Set<string>();
 
@@ -254,9 +321,15 @@ export const getOccupiedSlots = ({
   }
 
   ALL_WORKING_SLOTS.forEach(slot => {
+    // Horários no passado ficam automaticamente marcados como ocupados/indisponíveis
+    if (isSlotInPast(slot, date, refDate)) {
+      occupiedSet.add(slot);
+      return;
+    }
+
     if (isNoPreference) {
       // Sem preferência: ocupado se nenhum profissional estiver disponível para a duração acumulada
-      const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments);
+      const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments, refDate);
       if (freeStaff.length === 0) {
         occupiedSet.add(slot);
       }
@@ -267,13 +340,14 @@ export const getOccupiedSlots = ({
         slot,
         durationMinutes,
         date,
-        appointments
+        appointments,
+        refDate
       );
       if (!available) {
         occupiedSet.add(slot);
       }
     } else {
-      const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments);
+      const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments, refDate);
       if (freeStaff.length === 0) {
         occupiedSet.add(slot);
       }
