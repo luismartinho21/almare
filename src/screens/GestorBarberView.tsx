@@ -71,6 +71,7 @@ export const GestorBarberView: React.FC = () => {
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
+  const [inlineExtraDesc, setInlineExtraDesc] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
   const [inlineExtraCat, setInlineExtraCat] = useState('Extras');
@@ -504,13 +505,14 @@ export const GestorBarberView: React.FC = () => {
       branch: 'barber',
       category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
-      description: 'Extra opcional para barbearia.',
+      description: inlineExtraDesc.trim() || 'Extra de precisão e qualidade Almare Barber.',
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: '',
     });
     setSelectedExtraIds(prev => [...prev, created.id]);
     setInlineExtraName('');
+    setInlineExtraDesc('');
     setShowInlineNewExtra(false);
   };
 
@@ -997,9 +999,22 @@ export const GestorBarberView: React.FC = () => {
                     <Text style={styles.serviceManageSub}>
                       {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
                     </Text>
-                    {item.description ? (
-                      <Text style={styles.serviceManageDesc}>{item.description}</Text>
-                    ) : null}
+                    <View style={styles.managerDescriptionBox}>
+                      <View style={styles.managerDescriptionHeader}>
+                        <Text style={styles.managerDescriptionTitle}>ℹ️ Descrição ("Saber mais"):</Text>
+                        <TouchableOpacity
+                          style={styles.managerEditDescBtn}
+                          onPress={() => handleOpenEditService(item)}
+                        >
+                          <Text style={styles.managerEditDescBtnText}>
+                            {item.description ? '✏️ Alterar' : '+ Adicionar Descrição'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={[styles.managerDescriptionContent, !item.description && styles.managerDescriptionEmpty]}>
+                        {item.description || '⚠️ Sem descrição. Clique em "+ Adicionar Descrição" para preencher o que os clientes veem no "Saber mais".'}
+                      </Text>
+                    </View>
 
                     {compatibleExtras.length > 0 ? (
                       <View style={styles.serviceAttachedExtrasBox}>
@@ -1617,13 +1632,19 @@ export const GestorBarberView: React.FC = () => {
 
               {/* Descrição */}
               <View style={styles.serviceFieldGroup}>
-                <Text style={styles.serviceFieldLabel}>Descrição Curta</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.serviceFieldLabel}>Descrição Detalhada ("Saber mais")</Text>
+                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>Visível aos clientes</Text>
+                </View>
+                <Text style={styles.modalFieldHint}>
+                  Esta descrição aparece aos clientes quando clicam em "Saber mais" neste serviço ou extra.
+                </Text>
                 <TextInput
-                  style={[styles.serviceInput, { height: 60, textAlignVertical: 'top' }]}
+                  style={[styles.serviceInput, { height: 75, textAlignVertical: 'top' }]}
                   value={newServDesc}
                   onChangeText={setNewServDesc}
                   multiline
-                  placeholder="Detalhes ou produtos incluídos no serviço..."
+                  placeholder="Explique os benefícios, produtos usados e procedimento..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1761,6 +1782,19 @@ export const GestorBarberView: React.FC = () => {
                                 onChangeText={setInlineExtraDur}
                               />
                             </View>
+                          </View>
+
+                          {/* Descrição do Extra */}
+                          <View style={{ marginTop: 6 }}>
+                            <Text style={styles.modalFieldLabelMini}>Descrição do Extra ("Saber mais"):</Text>
+                            <TextInput
+                              style={[styles.serviceInput, { height: 50, textAlignVertical: 'top', marginTop: 4 }]}
+                              placeholder="Descreva o que está incluído neste extra..."
+                              placeholderTextColor="#71717A"
+                              multiline
+                              value={inlineExtraDesc}
+                              onChangeText={setInlineExtraDesc}
+                            />
                           </View>
                           <View style={styles.inlineActionRow}>
                             <TouchableOpacity
@@ -2660,6 +2694,48 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     lineHeight: 16,
+  },
+  managerDescriptionBox: {
+    backgroundColor: '#1E1E26',
+    borderWidth: 1,
+    borderColor: '#2F2F3B',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 6,
+  },
+  managerDescriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  managerDescriptionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D4AF37',
+    letterSpacing: 0.3,
+  },
+  managerEditDescBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#2A2A38',
+    borderWidth: 1,
+    borderColor: '#3F3F50',
+  },
+  managerEditDescBtnText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#F3F4F6',
+  },
+  managerDescriptionContent: {
+    fontSize: 11,
+    color: '#D4D4D8',
+    lineHeight: 15,
+  },
+  managerDescriptionEmpty: {
+    color: '#F59E0B',
+    fontStyle: 'italic',
   },
   serviceAttachedExtrasBox: {
     marginTop: 8,

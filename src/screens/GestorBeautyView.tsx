@@ -69,6 +69,7 @@ export const GestorBeautyView: React.FC = () => {
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
+  const [inlineExtraDesc, setInlineExtraDesc] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('6');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
   const [inlineExtraCat, setInlineExtraCat] = useState('Extras');
@@ -281,13 +282,14 @@ export const GestorBeautyView: React.FC = () => {
       branch: 'beauty',
       category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
-      description: 'Extra opcional para serviços de beleza.',
+      description: inlineExtraDesc.trim() || 'Extra de beleza e bem-estar Almare Beauty.',
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: '',
     });
     setSelectedExtraIds(prev => [...prev, created.id]);
     setInlineExtraName('');
+    setInlineExtraDesc('');
     setShowInlineNewExtra(false);
   };
 
@@ -1020,9 +1022,22 @@ export const GestorBeautyView: React.FC = () => {
                     <Text style={styles.serviceManageSub}>
                       {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
                     </Text>
-                    {item.description ? (
-                      <Text style={styles.serviceManageDesc}>{item.description}</Text>
-                    ) : null}
+                    <View style={styles.managerDescriptionBox}>
+                      <View style={styles.managerDescriptionHeader}>
+                        <Text style={styles.managerDescriptionTitle}>ℹ️ Descrição ("Saber mais"):</Text>
+                        <TouchableOpacity
+                          style={styles.managerEditDescBtn}
+                          onPress={() => handleOpenEditService(item)}
+                        >
+                          <Text style={styles.managerEditDescBtnText}>
+                            {item.description ? '✏️ Alterar' : '+ Adicionar Descrição'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={[styles.managerDescriptionContent, !item.description && styles.managerDescriptionEmpty]}>
+                        {item.description || '⚠️ Sem descrição. Clique em "+ Adicionar Descrição" para preencher o que os clientes veem no "Saber mais".'}
+                      </Text>
+                    </View>
 
                     {compatibleExtras.length > 0 ? (
                       <View style={styles.serviceAttachedExtrasBox}>
@@ -1305,13 +1320,19 @@ export const GestorBeautyView: React.FC = () => {
 
               {/* Description */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Descrição do Serviço</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>Descrição Detalhada ("Saber mais")</Text>
+                  <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>Visível aos clientes</Text>
+                </View>
+                <Text style={styles.fieldSubHint}>
+                  Esta descrição aparece aos clientes quando clicam em "Saber mais" neste serviço ou extra.
+                </Text>
                 <TextInput
-                  style={[styles.input, { height: 60 }]}
+                  style={[styles.input, { height: 75 }]}
                   multiline
                   value={newServDesc}
                   onChangeText={setNewServDesc}
-                  placeholder="Detalhes do que inclui o tratamento..."
+                  placeholder="Detalhes dos passos, benefícios e produtos de beleza incluídos..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1428,6 +1449,19 @@ export const GestorBeautyView: React.FC = () => {
                           keyboardType="numeric"
                           value={inlineExtraDur}
                           onChangeText={setInlineExtraDur}
+                        />
+                      </View>
+
+                      {/* Descrição do Extra */}
+                      <View style={{ marginBottom: 8 }}>
+                        <Text style={styles.labelMini}>Descrição do Extra ("Saber mais"):</Text>
+                        <TextInput
+                          style={[styles.input, { height: 50, marginTop: 2 }]}
+                          placeholder="Descreva o que está incluído neste extra..."
+                          placeholderTextColor="#71717A"
+                          multiline
+                          value={inlineExtraDesc}
+                          onChangeText={setInlineExtraDesc}
                         />
                       </View>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -2470,6 +2504,53 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 4,
     lineHeight: 15,
+  },
+  managerDescriptionBox: {
+    backgroundColor: '#FAF7F0',
+    borderWidth: 1,
+    borderColor: '#E8E0CF',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 6,
+  },
+  managerDescriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  managerDescriptionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Theme.colors.beauty.badge,
+    letterSpacing: 0.3,
+  },
+  managerEditDescBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#F3E8FF',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+  },
+  managerEditDescBtnText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6B21A8',
+  },
+  managerDescriptionContent: {
+    fontSize: 11,
+    color: '#374151',
+    lineHeight: 15,
+  },
+  managerDescriptionEmpty: {
+    color: '#D97706',
+    fontStyle: 'italic',
+  },
+  fieldSubHint: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginBottom: 6,
   },
   serviceAttachedExtrasBox: {
     backgroundColor: '#FFFDF5',

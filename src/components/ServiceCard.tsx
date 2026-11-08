@@ -25,6 +25,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
   const [isDropdownOpen, setIsDropdownOpen] = useState(true);
+  const [showServiceDetails, setShowServiceDetails] = useState(false);
+  const [expandedExtraIds, setExpandedExtraIds] = useState<string[]>([]);
+
+  const toggleExtraExpanded = (extraId: string) => {
+    setExpandedExtraIds(prev =>
+      prev.includes(extraId) ? prev.filter(id => id !== extraId) : [...prev, extraId]
+    );
+  };
 
   // Auto-open dropdown menu whenever service becomes selected
   useEffect(() => {
@@ -78,9 +86,72 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           </View>
         </View>
 
-        <Text style={[styles.description, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-          {service.description}
-        </Text>
+        <View style={styles.actionRowMiddle}>
+          <Text
+            style={[styles.description, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}
+            numberOfLines={showServiceDetails ? undefined : 2}
+          >
+            {service.description || 'Serviço personalizado com foco na excelência e bem-estar Almare.'}
+          </Text>
+
+          {/* Botão Saber Mais do Serviço Principal */}
+          <TouchableOpacity
+            style={[
+              styles.saberMaisBtn,
+              {
+                borderColor: showServiceDetails ? accentColor : (isBarber ? '#3F3F4E' : '#E5DEC9'),
+                backgroundColor: showServiceDetails
+                  ? (isBarber ? '#2C2B36' : '#FAF6EE')
+                  : 'transparent',
+              },
+            ]}
+            onPress={() => setShowServiceDetails(prev => !prev)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.saberMaisBtnText, { color: accentColor }]}>
+              {showServiceDetails ? 'Ocultar detalhes ▲' : 'ℹ️ Saber mais ▼'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Caixa expandida de Saber Mais com descrição rica */}
+        {showServiceDetails && (
+          <View
+            style={[
+              styles.detailsBox,
+              {
+                backgroundColor: isBarber ? '#22222B' : '#FAF7F0',
+                borderColor: isBarber ? '#353545' : '#E8E2D2',
+              },
+            ]}
+          >
+            <View style={styles.detailsHeader}>
+              <Text style={[styles.detailsBadge, { color: accentColor }]}>
+                ℹ️ O QUE ESTÁ INCLUÍDO NESTE SERVIÇO:
+              </Text>
+            </View>
+            <Text style={[styles.detailsText, { color: isBarber ? '#E4E4E7' : '#374151' }]}>
+              {service.description || 'Procedimento realizado com os melhores produtos profissionais e atendimento minucioso de alta qualidade Almare.'}
+            </Text>
+            <View style={styles.detailsMetaRow}>
+              <View style={[styles.detailsMetaPill, { backgroundColor: isBarber ? '#2D2D38' : '#EFE9DA' }]}>
+                <Text style={[styles.detailsMetaPillText, { color: isBarber ? '#D4D4D8' : '#4B5563' }]}>
+                  ⏱ {service.durationMinutes} minutos
+                </Text>
+              </View>
+              <View style={[styles.detailsMetaPill, { backgroundColor: isBarber ? '#2D2D38' : '#EFE9DA' }]}>
+                <Text style={[styles.detailsMetaPillText, { color: isBarber ? '#D4D4D8' : '#4B5563' }]}>
+                  🏷 {service.category}
+                </Text>
+              </View>
+              <View style={[styles.detailsMetaPill, { backgroundColor: isBarber ? '#2D2D38' : '#EFE9DA' }]}>
+                <Text style={[styles.detailsMetaPillText, { color: accentColor, fontWeight: '800' }]}>
+                  💳 {service.price.toFixed(2)} €
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         <View style={styles.footerRow}>
           <Text style={[styles.duration, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
@@ -165,72 +236,119 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </Text>
               {availableExtras.map(extra => {
                 const isExtraSelected = selectedExtras.some(e => e.id === extra.id);
+                const isExtraExpanded = expandedExtraIds.includes(extra.id);
+
                 return (
-                  <TouchableOpacity
-                    key={extra.id}
-                    style={[
-                      styles.extraRow,
-                      {
-                        backgroundColor: isExtraSelected
-                          ? (isBarber ? '#36342E' : '#FFF3D6')
-                          : (isBarber ? '#202027' : '#FDFCFA'),
-                        borderColor: isExtraSelected ? accentColor : (isBarber ? '#2E2E38' : '#E8E3D5'),
-                      },
-                    ]}
-                    onPress={() => onToggleExtra(extra)}
-                    activeOpacity={0.7}
-                  >
-                    <View
+                  <View key={extra.id} style={styles.extraItemWrapper}>
+                    <TouchableOpacity
                       style={[
-                        styles.extraCheckCircle,
-                        isExtraSelected && {
-                          backgroundColor: accentColor,
-                          borderColor: accentColor,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.extraCheckText,
-                          { color: isExtraSelected ? (isBarber ? '#000' : '#FFF') : '#9CA3AF' },
-                        ]}
-                      >
-                        {isExtraSelected ? '✓' : '+'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, marginHorizontal: 8 }}>
-                      <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
-                        {extra.name}
-                      </Text>
-                      {extra.description ? (
-                        <Text style={[styles.extraDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                          {extra.description}
-                        </Text>
-                      ) : null}
-                      <Text style={[styles.extraDuration, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
-                        +{extra.durationMinutes} min
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.extraPriceBadge,
+                        styles.extraRow,
                         {
                           backgroundColor: isExtraSelected
-                            ? accentColor
-                            : (isBarber ? '#2D2D36' : '#EDE8DC'),
+                            ? (isBarber ? '#36342E' : '#FFF3D6')
+                            : (isBarber ? '#202027' : '#FDFCFA'),
+                          borderColor: isExtraSelected ? accentColor : (isBarber ? '#2E2E38' : '#E8E3D5'),
                         },
                       ]}
+                      onPress={() => onToggleExtra(extra)}
+                      activeOpacity={0.7}
                     >
-                      <Text
+                      <View
                         style={[
-                          styles.extraPriceText,
-                          { color: isExtraSelected ? (isBarber ? '#000' : '#FFF') : accentColor },
+                          styles.extraCheckCircle,
+                          isExtraSelected && {
+                            backgroundColor: accentColor,
+                            borderColor: accentColor,
+                          },
                         ]}
                       >
-                        +{extra.price.toFixed(2)} €
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                        <Text
+                          style={[
+                            styles.extraCheckText,
+                            { color: isExtraSelected ? (isBarber ? '#000' : '#FFF') : '#9CA3AF' },
+                          ]}
+                        >
+                          {isExtraSelected ? '✓' : '+'}
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1, marginHorizontal: 8 }}>
+                        <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
+                          {extra.name}
+                        </Text>
+                        <Text style={[styles.extraDuration, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
+                          +{extra.durationMinutes} min
+                        </Text>
+                      </View>
+
+                      {/* Botão Saber Mais do Extra */}
+                      <TouchableOpacity
+                        style={[
+                          styles.extraSaberMaisBtn,
+                          {
+                            borderColor: isExtraExpanded ? accentColor : (isBarber ? '#3F3F4E' : '#DFD7C4'),
+                            backgroundColor: isExtraExpanded
+                              ? (isBarber ? '#2D2D38' : '#F4EEE0')
+                              : 'transparent',
+                          },
+                        ]}
+                        onPress={() => toggleExtraExpanded(extra.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.extraSaberMaisText, { color: accentColor }]}>
+                          {isExtraExpanded ? 'Ocultar ▲' : 'ℹ️ Saber mais'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View
+                        style={[
+                          styles.extraPriceBadge,
+                          {
+                            backgroundColor: isExtraSelected
+                              ? accentColor
+                              : (isBarber ? '#2D2D36' : '#EDE8DC'),
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.extraPriceText,
+                            { color: isExtraSelected ? (isBarber ? '#000' : '#FFF') : accentColor },
+                          ]}
+                        >
+                          +{extra.price.toFixed(2)} €
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Caixa de detalhes expandida do Extra */}
+                    {isExtraExpanded && (
+                      <View
+                        style={[
+                          styles.extraExpandedDetailsBox,
+                          {
+                            backgroundColor: isBarber ? '#1A1A22' : '#F8F4EA',
+                            borderColor: isBarber ? '#30303D' : '#E2D9C2',
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.extraExpandedHeader, { color: accentColor }]}>
+                          ℹ️ SOBRE O EXTRA: {extra.name.toUpperCase()}
+                        </Text>
+                        <Text style={[styles.extraExpandedDesc, { color: isBarber ? '#D4D4D8' : '#374151' }]}>
+                          {extra.description || 'Extra complementar de qualidade premium para potenciar e enriquecer o resultado do seu serviço.'}
+                        </Text>
+                        <View style={styles.extraExpandedMetaRow}>
+                          <Text style={[styles.extraExpandedMetaText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                            ⏱ Adiciona: +{extra.durationMinutes} minutos ao tempo total
+                          </Text>
+                          <Text style={[styles.extraExpandedMetaText, { color: accentColor, fontWeight: '700' }]}>
+                            • Valor adicional: +{extra.price.toFixed(2)} €
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
                 );
               })}
             </View>
@@ -294,8 +412,65 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    marginBottom: 12,
     lineHeight: 18,
+    flex: 1,
+    marginRight: 8,
+  },
+  actionRowMiddle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    marginTop: 2,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  saberMaisBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  saberMaisBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  detailsBox: {
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  detailsBadge: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  detailsText: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 10,
+  },
+  detailsMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  detailsMetaPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  detailsMetaPillText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   footerRow: {
     flexDirection: 'row',
@@ -421,5 +596,48 @@ const styles = StyleSheet.create({
   extraPriceText: {
     fontSize: 12,
     fontWeight: '800',
+  },
+  extraItemWrapper: {
+    marginBottom: 8,
+  },
+  extraSaberMaisBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginRight: 6,
+  },
+  extraSaberMaisText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  extraExpandedDetailsBox: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: -4,
+    marginBottom: 6,
+    marginLeft: 12,
+    marginRight: 4,
+  },
+  extraExpandedHeader: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  extraExpandedDesc: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 6,
+  },
+  extraExpandedMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  extraExpandedMetaText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

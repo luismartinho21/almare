@@ -160,6 +160,7 @@ export const AdminConfigView: React.FC = () => {
   // Inline creation of a new extra
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
+  const [inlineExtraDesc, setInlineExtraDesc] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
 
@@ -209,7 +210,7 @@ export const AdminConfigView: React.FC = () => {
       branch: newServBranch,
       category: 'Extras',
       name: inlineExtraName.trim(),
-      description: `Extra opcional para ${newServBranch === 'barber' ? 'Barber' : 'Beauty'}.`,
+      description: inlineExtraDesc.trim() || `Extra de alta qualidade para ${newServBranch === 'barber' ? 'Barber' : 'Beauty'}.`,
       price: parseFloat(inlineExtraPrice) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: 'sparkles',
@@ -218,6 +219,7 @@ export const AdminConfigView: React.FC = () => {
     // Automatically select the newly created extra
     setSelectedExtraIds(prev => [...prev, createdExtra.id]);
     setInlineExtraName('');
+    setInlineExtraDesc('');
     setShowInlineNewExtra(false);
   };
 
@@ -619,6 +621,23 @@ export const AdminConfigView: React.FC = () => {
                       {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
                     </Text>
 
+                    <View style={styles.managerDescriptionBox}>
+                      <View style={styles.managerDescriptionHeader}>
+                        <Text style={styles.managerDescriptionTitle}>ℹ️ Descrição ("Saber mais"):</Text>
+                        <TouchableOpacity
+                          style={styles.managerEditDescBtn}
+                          onPress={() => handleOpenEditService(item)}
+                        >
+                          <Text style={styles.managerEditDescBtnText}>
+                            {item.description ? '✏️ Alterar' : '+ Adicionar Descrição'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={[styles.managerDescriptionContent, !item.description && styles.managerDescriptionEmpty]}>
+                        {item.description || '⚠️ Sem descrição. Clique em "+ Adicionar Descrição" para configurar o "Saber mais".'}
+                      </Text>
+                    </View>
+
                     {hasCompatibleExtras ? (
                       <View style={styles.extrasCountBadge}>
                         <Text style={styles.extrasCountBadgeText}>
@@ -954,13 +973,16 @@ export const AdminConfigView: React.FC = () => {
 
               {/* Description */}
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Descrição do Serviço</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>Descrição Detalhada ("Saber mais")</Text>
+                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>Visível aos clientes</Text>
+                </View>
                 <TextInput
-                  style={[styles.input, { height: 60 }]}
+                  style={[styles.input, { height: 75 }]}
                   multiline
                   value={newServDesc}
                   onChangeText={setNewServDesc}
-                  placeholder="Descreva o que inclui o serviço..."
+                  placeholder="Descreva detalhadamente o que inclui o serviço, benefícios e produtos..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1058,6 +1080,14 @@ export const AdminConfigView: React.FC = () => {
                           onChangeText={setInlineExtraDur}
                         />
                       </View>
+                      <TextInput
+                        style={[styles.input, { height: 50, marginBottom: 8 }]}
+                        placeholder="Descrição do Extra ('Saber mais')..."
+                        placeholderTextColor="#71717A"
+                        multiline
+                        value={inlineExtraDesc}
+                        onChangeText={setInlineExtraDesc}
+                      />
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <TouchableOpacity style={styles.inlineSaveBtn} onPress={handleCreateInlineExtra}>
                           <Text style={styles.inlineSaveBtnText}>Adicionar Extra à Lista</Text>
@@ -1439,6 +1469,49 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     marginTop: 4,
+  },
+  managerDescriptionBox: {
+    backgroundColor: '#1E1E26',
+    borderWidth: 1,
+    borderColor: '#2F2F3B',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  managerDescriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  managerDescriptionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D4AF37',
+    letterSpacing: 0.3,
+  },
+  managerEditDescBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#2A2A38',
+    borderWidth: 1,
+    borderColor: '#3F3F50',
+  },
+  managerEditDescBtnText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#F3F4F6',
+  },
+  managerDescriptionContent: {
+    fontSize: 11,
+    color: '#D4D4D8',
+    lineHeight: 15,
+  },
+  managerDescriptionEmpty: {
+    color: '#F59E0B',
+    fontStyle: 'italic',
   },
   extrasCountBadgeText: {
     color: Theme.colors.brandSecondary,
