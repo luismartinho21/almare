@@ -621,22 +621,9 @@ export const AdminConfigView: React.FC = () => {
                       {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
                     </Text>
 
-                    <View style={styles.managerDescriptionBox}>
-                      <View style={styles.managerDescriptionHeader}>
-                        <Text style={styles.managerDescriptionTitle}>ℹ️ Descrição ("Saber mais"):</Text>
-                        <TouchableOpacity
-                          style={styles.managerEditDescBtn}
-                          onPress={() => handleOpenEditService(item)}
-                        >
-                          <Text style={styles.managerEditDescBtnText}>
-                            {item.description ? '✏️ Alterar' : '+ Adicionar Descrição'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={[styles.managerDescriptionContent, !item.description && styles.managerDescriptionEmpty]}>
-                        {item.description || '⚠️ Sem descrição. Clique em "+ Adicionar Descrição" para configurar o "Saber mais".'}
-                      </Text>
-                    </View>
+                    {item.description ? (
+                      <Text style={[styles.itemSub, { color: '#9CA3AF', marginTop: 2 }]}>{item.description}</Text>
+                    ) : null}
 
                     {hasCompatibleExtras ? (
                       <View style={styles.extrasCountBadge}>

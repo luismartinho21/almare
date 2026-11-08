@@ -1022,22 +1022,9 @@ export const GestorBeautyView: React.FC = () => {
                     <Text style={styles.serviceManageSub}>
                       {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
                     </Text>
-                    <View style={styles.managerDescriptionBox}>
-                      <View style={styles.managerDescriptionHeader}>
-                        <Text style={styles.managerDescriptionTitle}>ℹ️ Descrição ("Saber mais"):</Text>
-                        <TouchableOpacity
-                          style={styles.managerEditDescBtn}
-                          onPress={() => handleOpenEditService(item)}
-                        >
-                          <Text style={styles.managerEditDescBtnText}>
-                            {item.description ? '✏️ Alterar' : '+ Adicionar Descrição'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={[styles.managerDescriptionContent, !item.description && styles.managerDescriptionEmpty]}>
-                        {item.description || '⚠️ Sem descrição. Clique em "+ Adicionar Descrição" para preencher o que os clientes veem no "Saber mais".'}
-                      </Text>
-                    </View>
+                    {item.description ? (
+                      <Text style={styles.serviceManageDesc}>{item.description}</Text>
+                    ) : null}
 
                     {compatibleExtras.length > 0 ? (
                       <View style={styles.serviceAttachedExtrasBox}>
@@ -1318,17 +1305,17 @@ export const GestorBeautyView: React.FC = () => {
                 </View>
               </View>
 
-              {/* Description */}
+              {/* Description / Saber Mais */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>Descrição Detalhada ("Saber mais")</Text>
-                  <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>Visível aos clientes</Text>
+                  <Text style={styles.label}>Saber Mais (Descrição Detalhada)</Text>
+                  <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>ℹ️ Visível no botão Saber Mais</Text>
                 </View>
                 <Text style={styles.fieldSubHint}>
-                  Esta descrição aparece aos clientes quando clicam em "Saber mais" neste serviço ou extra.
+                  Texto apresentado aos clientes quando clicam no botão "Saber mais" deste serviço ou extra (tanto no telemóvel como no PC).
                 </Text>
                 <TextInput
-                  style={[styles.input, { height: 75 }]}
+                  style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
                   multiline
                   value={newServDesc}
                   onChangeText={setNewServDesc}

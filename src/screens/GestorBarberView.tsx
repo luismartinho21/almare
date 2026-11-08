@@ -999,22 +999,9 @@ export const GestorBarberView: React.FC = () => {
                     <Text style={styles.serviceManageSub}>
                       {item.category} • {item.price.toFixed(2)} € • {item.durationMinutes} min
                     </Text>
-                    <View style={styles.managerDescriptionBox}>
-                      <View style={styles.managerDescriptionHeader}>
-                        <Text style={styles.managerDescriptionTitle}>ℹ️ Descrição ("Saber mais"):</Text>
-                        <TouchableOpacity
-                          style={styles.managerEditDescBtn}
-                          onPress={() => handleOpenEditService(item)}
-                        >
-                          <Text style={styles.managerEditDescBtnText}>
-                            {item.description ? '✏️ Alterar' : '+ Adicionar Descrição'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={[styles.managerDescriptionContent, !item.description && styles.managerDescriptionEmpty]}>
-                        {item.description || '⚠️ Sem descrição. Clique em "+ Adicionar Descrição" para preencher o que os clientes veem no "Saber mais".'}
-                      </Text>
-                    </View>
+                    {item.description ? (
+                      <Text style={styles.serviceManageDesc}>{item.description}</Text>
+                    ) : null}
 
                     {compatibleExtras.length > 0 ? (
                       <View style={styles.serviceAttachedExtrasBox}>
@@ -1630,21 +1617,21 @@ export const GestorBarberView: React.FC = () => {
                 </View>
               </View>
 
-              {/* Descrição */}
+              {/* Saber Mais / Descrição */}
               <View style={styles.serviceFieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.serviceFieldLabel}>Descrição Detalhada ("Saber mais")</Text>
-                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>Visível aos clientes</Text>
+                  <Text style={styles.serviceFieldLabel}>Saber Mais (Descrição Detalhada)</Text>
+                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Visível no botão Saber Mais</Text>
                 </View>
                 <Text style={styles.modalFieldHint}>
-                  Esta descrição aparece aos clientes quando clicam em "Saber mais" neste serviço ou extra.
+                  Texto apresentado aos clientes quando clicam em "Saber mais" neste serviço ou extra (tanto no telemóvel como no PC).
                 </Text>
                 <TextInput
-                  style={[styles.serviceInput, { height: 75, textAlignVertical: 'top' }]}
+                  style={[styles.serviceInput, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
                   value={newServDesc}
                   onChangeText={setNewServDesc}
                   multiline
-                  placeholder="Explique os benefícios, produtos usados e procedimento..."
+                  placeholder="Explique os benefícios, técnicas e produtos usados..."
                   placeholderTextColor="#71717A"
                 />
               </View>
