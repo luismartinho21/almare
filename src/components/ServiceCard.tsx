@@ -131,7 +131,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </Text>
             </View>
             <Text style={[styles.detailsText, { color: isBarber ? '#E4E4E7' : '#374151' }]}>
-              {service.description || 'Procedimento realizado com os melhores produtos profissionais e atendimento minucioso de alta qualidade Almare.'}
+              {service.longDescription || service.description || 'Procedimento realizado com os melhores produtos profissionais e atendimento minucioso de alta qualidade Almare.'}
             </Text>
             <View style={styles.detailsMetaRow}>
               <View style={[styles.detailsMetaPill, { backgroundColor: isBarber ? '#2D2D38' : '#EFE9DA' }]}>
@@ -276,6 +276,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                         <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
                           {extra.name}
                         </Text>
+                        {extra.description ? (
+                          <Text
+                            style={[styles.extraDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}
+                            numberOfLines={1}
+                          >
+                            {extra.description}
+                          </Text>
+                        ) : null}
                         <Text style={[styles.extraDuration, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
                           +{extra.durationMinutes} min
                         </Text>
@@ -336,7 +344,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                           ℹ️ SOBRE O EXTRA: {extra.name.toUpperCase()}
                         </Text>
                         <Text style={[styles.extraExpandedDesc, { color: isBarber ? '#D4D4D8' : '#374151' }]}>
-                          {extra.description || 'Extra complementar de qualidade premium para potenciar e enriquecer o resultado do seu serviço.'}
+                          {extra.longDescription || extra.description || 'Extra complementar de qualidade premium para potenciar e enriquecer o resultado do seu serviço.'}
                         </Text>
                         <View style={styles.extraExpandedMetaRow}>
                           <Text style={[styles.extraExpandedMetaText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>

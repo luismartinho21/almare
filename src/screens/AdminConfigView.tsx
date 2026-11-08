@@ -150,6 +150,7 @@ export const AdminConfigView: React.FC = () => {
   const [newServCat, setNewServCat] = useState('Cortes');
   const [newServName, setNewServName] = useState('');
   const [newServDesc, setNewServDesc] = useState('');
+  const [newServLongDesc, setNewServLongDesc] = useState('');
   const [newServPrice, setNewServPrice] = useState('20');
   const [newServDur, setNewServDur] = useState('30');
 
@@ -161,6 +162,7 @@ export const AdminConfigView: React.FC = () => {
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraDesc, setInlineExtraDesc] = useState('');
+  const [inlineExtraLongDesc, setInlineExtraLongDesc] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
 
@@ -211,6 +213,7 @@ export const AdminConfigView: React.FC = () => {
       category: 'Extras',
       name: inlineExtraName.trim(),
       description: inlineExtraDesc.trim() || `Extra de alta qualidade para ${newServBranch === 'barber' ? 'Barber' : 'Beauty'}.`,
+      longDescription: inlineExtraLongDesc.trim() || inlineExtraDesc.trim(),
       price: parseFloat(inlineExtraPrice) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: 'sparkles',
@@ -220,6 +223,7 @@ export const AdminConfigView: React.FC = () => {
     setSelectedExtraIds(prev => [...prev, createdExtra.id]);
     setInlineExtraName('');
     setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setShowInlineNewExtra(false);
   };
 
@@ -251,11 +255,14 @@ export const AdminConfigView: React.FC = () => {
     setNewServCat('Cortes');
     setNewServName('');
     setNewServDesc('');
+    setNewServLongDesc('');
     setNewServPrice('20');
     setNewServDur('30');
     setHasExtras(false);
     setSelectedExtraIds([]);
     setShowInlineNewExtra(false);
+    setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setServiceModalVisible(true);
   };
 
@@ -265,11 +272,14 @@ export const AdminConfigView: React.FC = () => {
     setNewServCat(service.category);
     setNewServName(service.name);
     setNewServDesc(service.description || '');
+    setNewServLongDesc(service.longDescription || '');
     setNewServPrice(String(service.price));
     setNewServDur(String(service.durationMinutes));
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
     setShowInlineNewExtra(false);
+    setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setServiceModalVisible(true);
   };
 
@@ -289,6 +299,7 @@ export const AdminConfigView: React.FC = () => {
         category: newServCat.trim() || (newServBranch === 'barber' ? 'Cortes' : 'Manicure / Pedicure'),
         name: newServName.trim(),
         description: newServDesc.trim(),
+        longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
@@ -299,6 +310,7 @@ export const AdminConfigView: React.FC = () => {
         category: newServCat.trim() || (newServBranch === 'barber' ? 'Cortes' : 'Manicure / Pedicure'),
         name: newServName.trim(),
         description: newServDesc.trim() || 'Serviço de alta qualidade Almare.',
+        longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
         iconName: '',
@@ -959,16 +971,32 @@ export const AdminConfigView: React.FC = () => {
               </View>
 
               {/* Description */}
+              {/* 1. Descrição Curta */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>Descrição Detalhada ("Saber mais")</Text>
-                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>Visível aos clientes</Text>
+                  <Text style={styles.label}>1. Descrição Curta (Cartão Principal)</Text>
+                  <Text style={{ fontSize: 10, color: '#A1A1AA' }}>Aparece pequena no cartão</Text>
                 </View>
                 <TextInput
-                  style={[styles.input, { height: 75 }]}
-                  multiline
+                  style={[styles.input, { height: 45 }]}
                   value={newServDesc}
                   onChangeText={setNewServDesc}
+                  placeholder="Ex: Corte à tesoura ou máquina, lavagem premium e styling final."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* 2. Saber Mais / Descrição Completa */}
+              <View style={styles.fieldGroup}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>2. Saber Mais (Descrição Completa)</Text>
+                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Abre no botão Saber Mais</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
+                  multiline
+                  value={newServLongDesc}
+                  onChangeText={setNewServLongDesc}
                   placeholder="Descreva detalhadamente o que inclui o serviço, benefícios e produtos..."
                   placeholderTextColor="#71717A"
                 />
@@ -1068,12 +1096,19 @@ export const AdminConfigView: React.FC = () => {
                         />
                       </View>
                       <TextInput
-                        style={[styles.input, { height: 50, marginBottom: 8 }]}
-                        placeholder="Descrição do Extra ('Saber mais')..."
+                        style={[styles.input, { height: 42, marginBottom: 6 }]}
+                        placeholder="1. Descrição Curta (Aparece no drop-down)..."
                         placeholderTextColor="#71717A"
-                        multiline
                         value={inlineExtraDesc}
                         onChangeText={setInlineExtraDesc}
+                      />
+                      <TextInput
+                        style={[styles.input, { height: 60, marginBottom: 8, textAlignVertical: 'top', paddingTop: 6 }]}
+                        placeholder="2. Saber Mais do Extra (Descrição Completa)..."
+                        placeholderTextColor="#71717A"
+                        multiline
+                        value={inlineExtraLongDesc}
+                        onChangeText={setInlineExtraLongDesc}
                       />
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         <TouchableOpacity style={styles.inlineSaveBtn} onPress={handleCreateInlineExtra}>

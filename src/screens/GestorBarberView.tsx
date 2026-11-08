@@ -65,6 +65,7 @@ export const GestorBarberView: React.FC = () => {
   const [newServCat, setNewServCat] = useState('Cortes');
   const [newServName, setNewServName] = useState('');
   const [newServDesc, setNewServDesc] = useState('');
+  const [newServLongDesc, setNewServLongDesc] = useState('');
   const [newServPrice, setNewServPrice] = useState('18');
   const [newServDur, setNewServDur] = useState('30');
   const [hasExtras, setHasExtras] = useState(false);
@@ -72,6 +73,7 @@ export const GestorBarberView: React.FC = () => {
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraDesc, setInlineExtraDesc] = useState('');
+  const [inlineExtraLongDesc, setInlineExtraLongDesc] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('5');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
   const [inlineExtraCat, setInlineExtraCat] = useState('Extras');
@@ -475,11 +477,14 @@ export const GestorBarberView: React.FC = () => {
     setNewServCat('Cortes');
     setNewServName('');
     setNewServDesc('');
+    setNewServLongDesc('');
     setNewServPrice('18');
     setNewServDur('30');
     setHasExtras(false);
     setSelectedExtraIds([]);
     setShowInlineNewExtra(false);
+    setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setServiceModalVisible(true);
   };
 
@@ -488,11 +493,14 @@ export const GestorBarberView: React.FC = () => {
     setNewServCat(service.category);
     setNewServName(service.name);
     setNewServDesc(service.description || '');
+    setNewServLongDesc(service.longDescription || '');
     setNewServPrice(String(service.price));
     setNewServDur(String(service.durationMinutes));
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
     setShowInlineNewExtra(false);
+    setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setServiceModalVisible(true);
   };
 
@@ -506,6 +514,7 @@ export const GestorBarberView: React.FC = () => {
       category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
       description: inlineExtraDesc.trim() || 'Extra de precisão e qualidade Almare Barber.',
+      longDescription: inlineExtraLongDesc.trim() || inlineExtraDesc.trim(),
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: '',
@@ -513,6 +522,7 @@ export const GestorBarberView: React.FC = () => {
     setSelectedExtraIds(prev => [...prev, created.id]);
     setInlineExtraName('');
     setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setShowInlineNewExtra(false);
   };
 
@@ -531,6 +541,7 @@ export const GestorBarberView: React.FC = () => {
         name: newServName.trim(),
         category: newServCat.trim() || 'Cortes',
         description: newServDesc.trim(),
+        longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
@@ -541,6 +552,7 @@ export const GestorBarberView: React.FC = () => {
         category: newServCat.trim() || 'Cortes',
         name: newServName.trim(),
         description: newServDesc.trim() || 'Serviço de excelência Almare Barber.',
+        longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
         iconName: '',
@@ -1617,21 +1629,36 @@ export const GestorBarberView: React.FC = () => {
                 </View>
               </View>
 
-              {/* Saber Mais / Descrição */}
+              {/* 1. Descrição Curta */}
               <View style={styles.serviceFieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.serviceFieldLabel}>Saber Mais (Descrição Detalhada)</Text>
+                  <Text style={styles.serviceFieldLabel}>1. Descrição Curta (Cartão Principal)</Text>
+                  <Text style={{ fontSize: 10, color: '#A1A1AA' }}>Aparece pequena no cartão</Text>
+                </View>
+                <TextInput
+                  style={[styles.serviceInput, { height: 45 }]}
+                  value={newServDesc}
+                  onChangeText={setNewServDesc}
+                  placeholder="Ex: Corte à tesoura ou máquina, lavagem premium e styling final."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* 2. Saber Mais / Descrição Completa */}
+              <View style={styles.serviceFieldGroup}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.serviceFieldLabel}>2. Saber Mais (Descrição Completa)</Text>
                   <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Visível no botão Saber Mais</Text>
                 </View>
                 <Text style={styles.modalFieldHint}>
-                  Texto apresentado aos clientes quando clicam em "Saber mais" neste serviço ou extra (tanto no telemóvel como no PC).
+                  Texto completo e detalhado apresentado quando o cliente clica em "Saber mais" (tanto no telemóvel como no PC).
                 </Text>
                 <TextInput
                   style={[styles.serviceInput, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
-                  value={newServDesc}
-                  onChangeText={setNewServDesc}
+                  value={newServLongDesc}
+                  onChangeText={setNewServLongDesc}
                   multiline
-                  placeholder="Explique os benefícios, técnicas e produtos usados..."
+                  placeholder="Explique os benefícios, técnicas e produtos usados em detalhe..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1771,16 +1798,28 @@ export const GestorBarberView: React.FC = () => {
                             </View>
                           </View>
 
-                          {/* Descrição do Extra */}
+                          {/* 1. Descrição Curta do Extra */}
                           <View style={{ marginTop: 6 }}>
-                            <Text style={styles.modalFieldLabelMini}>Descrição do Extra ("Saber mais"):</Text>
+                            <Text style={styles.modalFieldLabelMini}>1. Descrição Curta do Extra:</Text>
                             <TextInput
-                              style={[styles.serviceInput, { height: 50, textAlignVertical: 'top', marginTop: 4 }]}
-                              placeholder="Descreva o que está incluído neste extra..."
+                              style={[styles.serviceInput, { height: 42, marginTop: 4 }]}
+                              placeholder="Aparece pequena no drop-down..."
                               placeholderTextColor="#71717A"
-                              multiline
                               value={inlineExtraDesc}
                               onChangeText={setInlineExtraDesc}
+                            />
+                          </View>
+
+                          {/* 2. Saber Mais do Extra (Descrição Completa) */}
+                          <View style={{ marginTop: 6 }}>
+                            <Text style={styles.modalFieldLabelMini}>2. Saber Mais do Extra (Completa):</Text>
+                            <TextInput
+                              style={[styles.serviceInput, { height: 60, textAlignVertical: 'top', marginTop: 4, paddingTop: 6 }]}
+                              placeholder="Aparece quando o cliente clica em 'Saber mais' neste extra..."
+                              placeholderTextColor="#71717A"
+                              multiline
+                              value={inlineExtraLongDesc}
+                              onChangeText={setInlineExtraLongDesc}
                             />
                           </View>
                           <View style={styles.inlineActionRow}>

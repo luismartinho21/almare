@@ -7,7 +7,8 @@ export interface Service {
   branch: SalonBranch;
   category: string;
   name: string;
-  description: string;
+  description: string; // Descrição curta que aparece no cartão principal
+  longDescription?: string; // Descrição completa que aparece ao clicar em "Saber mais"
   price: number;
   durationMinutes: number;
   iconName: string;

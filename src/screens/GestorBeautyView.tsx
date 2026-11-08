@@ -63,6 +63,7 @@ export const GestorBeautyView: React.FC = () => {
   const [newServCat, setNewServCat] = useState('Manicure / Pedicure');
   const [newServName, setNewServName] = useState('');
   const [newServDesc, setNewServDesc] = useState('');
+  const [newServLongDesc, setNewServLongDesc] = useState('');
   const [newServPrice, setNewServPrice] = useState('25');
   const [newServDur, setNewServDur] = useState('45');
   const [hasExtras, setHasExtras] = useState(false);
@@ -70,6 +71,7 @@ export const GestorBeautyView: React.FC = () => {
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraDesc, setInlineExtraDesc] = useState('');
+  const [inlineExtraLongDesc, setInlineExtraLongDesc] = useState('');
   const [inlineExtraPrice, setInlineExtraPrice] = useState('6');
   const [inlineExtraDur, setInlineExtraDur] = useState('10');
   const [inlineExtraCat, setInlineExtraCat] = useState('Extras');
@@ -252,11 +254,14 @@ export const GestorBeautyView: React.FC = () => {
     setNewServCat('Manicure / Pedicure');
     setNewServName('');
     setNewServDesc('');
+    setNewServLongDesc('');
     setNewServPrice('25');
     setNewServDur('45');
     setHasExtras(false);
     setSelectedExtraIds([]);
     setShowInlineNewExtra(false);
+    setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setServiceModalVisible(true);
   };
 
@@ -265,11 +270,14 @@ export const GestorBeautyView: React.FC = () => {
     setNewServCat(service.category);
     setNewServName(service.name);
     setNewServDesc(service.description || '');
+    setNewServLongDesc(service.longDescription || '');
     setNewServPrice(String(service.price));
     setNewServDur(String(service.durationMinutes));
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
     setShowInlineNewExtra(false);
+    setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setServiceModalVisible(true);
   };
 
@@ -283,6 +291,7 @@ export const GestorBeautyView: React.FC = () => {
       category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
       description: inlineExtraDesc.trim() || 'Extra de beleza e bem-estar Almare Beauty.',
+      longDescription: inlineExtraLongDesc.trim() || inlineExtraDesc.trim(),
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: '',
@@ -290,6 +299,7 @@ export const GestorBeautyView: React.FC = () => {
     setSelectedExtraIds(prev => [...prev, created.id]);
     setInlineExtraName('');
     setInlineExtraDesc('');
+    setInlineExtraLongDesc('');
     setShowInlineNewExtra(false);
   };
 
@@ -308,6 +318,7 @@ export const GestorBeautyView: React.FC = () => {
         name: newServName.trim(),
         category: newServCat.trim() || 'Manicure / Pedicure',
         description: newServDesc.trim(),
+        longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
@@ -318,6 +329,7 @@ export const GestorBeautyView: React.FC = () => {
         category: newServCat.trim() || 'Manicure / Pedicure',
         name: newServName.trim(),
         description: newServDesc.trim() || 'Serviço de excelência Almare Beauty.',
+        longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
         iconName: '',
@@ -1305,20 +1317,35 @@ export const GestorBeautyView: React.FC = () => {
                 </View>
               </View>
 
-              {/* Description / Saber Mais */}
+              {/* 1. Descrição Curta */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>Saber Mais (Descrição Detalhada)</Text>
+                  <Text style={styles.label}>1. Descrição Curta (Cartão Principal)</Text>
+                  <Text style={{ fontSize: 10, color: '#9CA3AF' }}>Aparece pequena no cartão</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { height: 45 }]}
+                  value={newServDesc}
+                  onChangeText={setNewServDesc}
+                  placeholder="Ex: Cutículas, limagem, esfoliação e aplicação de verniz gel duradouro."
+                  placeholderTextColor="#71717A"
+                />
+              </View>
+
+              {/* 2. Saber Mais / Descrição Completa */}
+              <View style={styles.fieldGroup}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>2. Saber Mais (Descrição Completa)</Text>
                   <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>ℹ️ Visível no botão Saber Mais</Text>
                 </View>
                 <Text style={styles.fieldSubHint}>
-                  Texto apresentado aos clientes quando clicam no botão "Saber mais" deste serviço ou extra (tanto no telemóvel como no PC).
+                  Texto completo e detalhado apresentado quando o cliente clica em "Saber mais" (tanto no telemóvel como no PC).
                 </Text>
                 <TextInput
                   style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
                   multiline
-                  value={newServDesc}
-                  onChangeText={setNewServDesc}
+                  value={newServLongDesc}
+                  onChangeText={setNewServLongDesc}
                   placeholder="Detalhes dos passos, benefícios e produtos de beleza incluídos..."
                   placeholderTextColor="#71717A"
                 />
@@ -1439,16 +1466,28 @@ export const GestorBeautyView: React.FC = () => {
                         />
                       </View>
 
-                      {/* Descrição do Extra */}
-                      <View style={{ marginBottom: 8 }}>
-                        <Text style={styles.labelMini}>Descrição do Extra ("Saber mais"):</Text>
+                      {/* 1. Descrição Curta do Extra */}
+                      <View style={{ marginBottom: 6 }}>
+                        <Text style={styles.labelMini}>1. Descrição Curta do Extra:</Text>
                         <TextInput
-                          style={[styles.input, { height: 50, marginTop: 2 }]}
-                          placeholder="Descreva o que está incluído neste extra..."
+                          style={[styles.input, { height: 42, marginTop: 2 }]}
+                          placeholder="Aparece pequena no drop-down..."
                           placeholderTextColor="#71717A"
-                          multiline
                           value={inlineExtraDesc}
                           onChangeText={setInlineExtraDesc}
+                        />
+                      </View>
+
+                      {/* 2. Saber Mais do Extra (Completa) */}
+                      <View style={{ marginBottom: 8 }}>
+                        <Text style={styles.labelMini}>2. Saber Mais do Extra (Completa):</Text>
+                        <TextInput
+                          style={[styles.input, { height: 60, marginTop: 2, textAlignVertical: 'top', paddingTop: 6 }]}
+                          placeholder="Aparece quando o cliente clica em 'Saber mais' neste extra..."
+                          placeholderTextColor="#71717A"
+                          multiline
+                          value={inlineExtraLongDesc}
+                          onChangeText={setInlineExtraLongDesc}
                         />
                       </View>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
