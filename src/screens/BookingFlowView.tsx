@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
-import { Service, StaffMember, Appointment } from '../types';
+import { Service, StaffMember, Appointment, BookingExperienceSelection } from '../types';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
 import { ServiceCard } from '../components/ServiceCard';
@@ -8,6 +8,7 @@ import { StaffCard } from '../components/StaffCard';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { BookingModal } from '../components/BookingModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
+import { ExperienceSelectorModal } from '../components/ExperienceSelectorModal';
 import {
   getFreeStaffForInterval,
   isStaffAvailableForInterval,
@@ -77,11 +78,16 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isNoPreference, setIsNoPreference] = useState<boolean>(false);
 
+  // Experiências especiais (Restaurante & Menu)
+  const [experienceSelections, setExperienceSelections] = useState<Record<string, BookingExperienceSelection>>({});
+  const [activeExpModalService, setActiveExpModalService] = useState<Service | null>(null);
+
   useEffect(() => {
     setSelectedServices([]);
     setSelectedStaff(null);
     setIsNoPreference(false);
     setSelectedTimeSlot('');
+    setExperienceSelections({});
   }, [activeBranch]);
 
   // Toggle service selection
@@ -89,11 +95,23 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     setSelectedServices(prev => {
       const exists = prev.some(s => s.id === service.id);
       if (exists) {
+        // Limpar escolha de experiência se for desselecionado
+        if (service.experienceConfig?.enabled) {
+          setExperienceSelections(curr => {
+            const next = { ...curr };
+            delete next[service.id];
+            return next;
+          });
+        }
         if (service.compatibleExtraIds && service.compatibleExtraIds.length > 0) {
           return prev.filter(s => s.id !== service.id && !service.compatibleExtraIds!.includes(s.id));
         }
         return prev.filter(s => s.id !== service.id);
       } else {
+        // Ao selecionar uma experiência exclusiva, abre imediatamente o seletor obrigatório
+        if (service.experienceConfig?.enabled) {
+          setActiveExpModalService(service);
+        }
         return [...prev, service];
       }
     });
@@ -158,6 +176,14 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       alert('Por favor, selecione pelo menos um serviço.');
       return;
     }
+    const unchosenExp = selectedServices.find(
+      s => s.experienceConfig?.enabled && !experienceSelections[s.id]
+    );
+    if (unchosenExp) {
+      alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de 3 restaurantes parceiros e o respetivo menu.`);
+      setActiveExpModalService(unchosenExp);
+      return;
+    }
     const checkNoPref = noPref ?? isNoPreference;
     const checkStaff = staffTarget ?? selectedStaff;
     if (!checkStaff && !checkNoPref) {
@@ -195,6 +221,9 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       return;
     }
 
+    const expService = selectedServices.find(s => s.experienceConfig?.enabled);
+    const expSelection = expService ? experienceSelections[expService.id] : undefined;
+
     const bookingNotes = isNoPreference
       ? `${notes ? notes + ' | ' : ''}(Sem preferência de profissional)`
       : notes;
@@ -207,7 +236,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       effectiveStaff,
       selectedDate,
       selectedTimeSlot,
-      bookingNotes
+      bookingNotes,
+      expSelection
     );
 
     setBookingModalVisible(false);
@@ -377,6 +407,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   availableExtras={compatibleExtras}
                   selectedExtras={selectedExtrasForThisCard}
                   onToggleExtra={handleToggleService}
+                  experienceSelection={experienceSelections[service.id]}
+                  onOpenExperienceSelector={setActiveExpModalService}
                 />
               );
             })}
@@ -388,7 +420,17 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                 { backgroundColor: selectedServices.length > 0 ? accentColor : '#4B5563' },
               ]}
               onPress={() => {
-                if (selectedServices.length > 0) setCurrentStep(2);
+                if (selectedServices.length === 0) return;
+                // Verificar se alguma experiência exclusiva selecionada ainda não escolheu restaurante e menu
+                const unchosenExp = selectedServices.find(
+                  s => s.experienceConfig?.enabled && !experienceSelections[s.id]
+                );
+                if (unchosenExp) {
+                  alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de 3 restaurantes parceiros e o seu menu antes de continuar.`);
+                  setActiveExpModalService(unchosenExp);
+                  return;
+                }
+                setCurrentStep(2);
               }}
               disabled={selectedServices.length === 0}
               activeOpacity={0.8}
@@ -445,6 +487,18 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   {totalPrice.toFixed(2)} € • {totalDuration} min acumulados
                 </Text>
               </View>
+
+              {Object.keys(experienceSelections).length > 0 && (
+                <View style={[styles.summaryBannerRow, { marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: isBarber ? '#2D2D3A' : '#E6D7B8' }]}>
+                  <Text style={[styles.summaryBannerLabel, { color: accentColor }]}>EXPERIÊNCIA:</Text>
+                  <Text
+                    style={[styles.summaryBannerValue, { color: accentColor }]}
+                    numberOfLines={2}
+                  >
+                    🍽️ {Object.values(experienceSelections).map(e => `${e.restaurantName} • ${e.menuName}`).join(' | ')}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Opção 1: Sem preferência (Abre o horário no próprio cartão, como os extras) */}
@@ -622,7 +676,28 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         isNoPreference={isNoPreference}
         date={selectedDate}
         timeSlot={selectedTimeSlot}
+        experienceSelection={
+          selectedServices.find(s => s.experienceConfig?.enabled)
+            ? experienceSelections[selectedServices.find(s => s.experienceConfig?.enabled)!.id]
+            : undefined
+        }
         onConfirmBooking={handleConfirmBooking}
+      />
+
+      {/* Experience Selector Modal */}
+      <ExperienceSelectorModal
+        visible={!!activeExpModalService}
+        service={activeExpModalService}
+        branch={activeBranch}
+        currentSelection={activeExpModalService ? experienceSelections[activeExpModalService.id] : undefined}
+        onConfirm={(selection) => {
+          setExperienceSelections(prev => ({
+            ...prev,
+            [selection.serviceId]: selection,
+          }));
+          setActiveExpModalService(null);
+        }}
+        onClose={() => setActiveExpModalService(null)}
       />
 
       {/* Success Modal */}
@@ -636,6 +711,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
           setSelectedStaff(null);
           setIsNoPreference(false);
           setSelectedTimeSlot('');
+          setExperienceSelections({});
           onBackToHome();
         }}
       />

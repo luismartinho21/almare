@@ -14,6 +14,7 @@ import { SalonBranch, Service, Appointment } from '../types';
 import { Theme } from '../constants/theme';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 import { loadStoredFirebaseConfig } from '../config/firebaseConfig';
+import { DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS } from '../constants/mockData';
 
 export const AdminConfigView: React.FC = () => {
   const {
@@ -157,6 +158,7 @@ export const AdminConfigView: React.FC = () => {
   // Extras toggle & selection state for new service
   const [hasExtras, setHasExtras] = useState(false);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
+  const [isExperience, setIsExperience] = useState(false);
 
   // Inline creation of a new extra
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
@@ -260,6 +262,7 @@ export const AdminConfigView: React.FC = () => {
     setNewServDur('30');
     setHasExtras(false);
     setSelectedExtraIds([]);
+    setIsExperience(false);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -277,6 +280,7 @@ export const AdminConfigView: React.FC = () => {
     setNewServDur(String(service.durationMinutes));
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
+    setIsExperience(!!service.experienceConfig?.enabled);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -292,6 +296,15 @@ export const AdminConfigView: React.FC = () => {
     const priceNum = parseFloat(newServPrice.replace(',', '.')) || 15;
     const durNum = parseInt(newServDur, 10) || 30;
 
+    const experienceConfig = isExperience
+      ? (editingService?.experienceConfig || {
+          enabled: true,
+          title: 'Experiência Exclusiva com Restaurante & Menu',
+          instruction: 'Para avançar, selecione 1 de 3 restaurantes parceiros e o seu menu preferido:',
+          restaurants: DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS,
+        })
+      : undefined;
+
     if (editingService) {
       await updateService({
         ...editingService,
@@ -303,6 +316,7 @@ export const AdminConfigView: React.FC = () => {
         price: priceNum,
         durationMinutes: durNum,
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
+        experienceConfig,
       });
     } else {
       await addService({
@@ -315,6 +329,7 @@ export const AdminConfigView: React.FC = () => {
         durationMinutes: durNum,
         iconName: '',
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
+        experienceConfig,
       });
     }
 
@@ -1125,6 +1140,57 @@ export const AdminConfigView: React.FC = () => {
                   )}
                 </View>
               )}
+
+              {/* Experiência Especial (Restaurante & Menu) */}
+              <View style={[styles.fieldGroup, { marginTop: 14 }]}>
+                <Text style={styles.label}>
+                  ✨ É uma Experiência Especial (com Restaurante & Menu)?
+                </Text>
+                <Text style={{ fontSize: 11, color: '#A1A1AA', marginBottom: 8, lineHeight: 15 }}>
+                  Se ativado (como a "ALMARE | Grand Romance Experience"), o cliente é obrigado a escolher 1 de 3 restaurantes parceiros e o respetivo menu para concluir a marcação.
+                </Text>
+
+                <View style={styles.extrasToggleRow}>
+                  <TouchableOpacity
+                    style={[styles.extrasToggleBtn, !isExperience && styles.extrasToggleBtnActive]}
+                    onPress={() => setIsExperience(false)}
+                  >
+                    <Text style={[styles.extrasToggleText, !isExperience && styles.extrasToggleTextActive]}>
+                      Serviço Normal
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.extrasToggleBtn, isExperience && styles.extrasToggleBtnActive]}
+                    onPress={() => {
+                      setIsExperience(true);
+                      if (newServCat === 'Cortes' || newServCat === 'Manicure / Pedicure' || !newServCat) {
+                        setNewServCat('Experiências');
+                      }
+                    }}
+                  >
+                    <Text style={[styles.extrasToggleText, isExperience && styles.extrasToggleTextActive]}>
+                      ✨ Experiência Exclusiva
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {isExperience && (
+                  <View style={styles.extrasSelectContainer}>
+                    <Text style={[styles.extrasSelectTitle, { color: '#D4AF37' }]}>
+                      🍽️ 3 Restaurantes Parceiros Ativos:
+                    </Text>
+                    <Text style={[styles.noExtrasText, { marginBottom: 6 }]}>
+                      • Mare Nostrum • Vista Mar & Alta Cozinha (3 Menus){'\n'}
+                      • Palácio das Especiarias • Bistrô & Charme (3 Menus){'\n'}
+                      • Adega & Quinta Gourmet • Vinhos & Fogo (3 Menus)
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#A1A1AA' }}>
+                      * O cliente escolherá obrigatoriamente um destes restaurantes e o respetivo menu antes do agendamento.
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveService}>
                 <Text style={styles.modalSaveBtnText}>

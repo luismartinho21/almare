@@ -406,6 +406,17 @@ export const StaffView: React.FC = () => {
                     </Text>
                   </View>
 
+                  {app.experienceSelection ? (
+                    <View style={{ marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: app.branch === 'barber' ? '#242430' : '#FFF9EC', borderWidth: 1, borderColor: accentColor }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: accentColor }}>
+                        🍽️ EXPERIÊNCIA: {app.experienceSelection.restaurantName}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: app.branch === 'barber' ? '#E4E4E7' : '#374151', marginTop: 2 }}>
+                        Menu Selecionado: {app.experienceSelection.menuName}
+                      </Text>
+                    </View>
+                  ) : null}
+
                   {app.notes ? (
                     <View style={styles.notesBox}>
                       <Text style={styles.notesLabel}>Nota do Cliente / Pedido:</Text>

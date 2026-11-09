@@ -2,6 +2,39 @@ export type SalonBranch = 'barber' | 'beauty';
 
 export type UserRole = 'client' | 'gestor_barber' | 'gestor_beauty' | 'staff' | 'admin';
 
+export interface ExperienceMenuItem {
+  id: string;
+  name: string;
+  description: string;
+  priceSupplement?: number;
+}
+
+export interface ExperienceRestaurant {
+  id: string;
+  name: string;
+  cuisine: string;
+  location: string;
+  description: string;
+  image?: string;
+  menus: ExperienceMenuItem[];
+}
+
+export interface ServiceExperienceConfig {
+  enabled: boolean;
+  title: string; // Ex: "Experiência Romântica com Jantar"
+  instruction?: string;
+  restaurants: ExperienceRestaurant[];
+}
+
+export interface BookingExperienceSelection {
+  serviceId: string;
+  restaurantId: string;
+  restaurantName: string;
+  menuId: string;
+  menuName: string;
+  notes?: string;
+}
+
 export interface Service {
   id: string;
   branch: SalonBranch;
@@ -13,6 +46,7 @@ export interface Service {
   durationMinutes: number;
   iconName: string;
   compatibleExtraIds?: string[]; // IDs dos extras específicos que podem ser associados a este serviço
+  experienceConfig?: ServiceExperienceConfig; // Configuração especial de experiência (ex: restaurante e menu)
 }
 
 export interface StaffMember {
@@ -49,6 +83,7 @@ export interface Appointment {
   servicePrice: number;    // Grand total price (€)
   serviceDuration: number; // Grand total duration (min)
   servicesList?: Service[]; // Full array of selected services
+  experienceSelection?: BookingExperienceSelection; // Detalhes do restaurante e menu escolhidos
   staffId: string;
   staffName: string;
   date: string; // YYYY-MM-DD

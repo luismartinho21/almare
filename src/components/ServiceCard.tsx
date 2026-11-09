@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Service, SalonBranch } from '../types';
+import { Service, SalonBranch, BookingExperienceSelection } from '../types';
 import { Theme } from '../constants/theme';
 
 interface ServiceCardProps {
@@ -11,6 +11,8 @@ interface ServiceCardProps {
   availableExtras?: Service[];
   selectedExtras?: Service[];
   onToggleExtra?: (extra: Service) => void;
+  experienceSelection?: BookingExperienceSelection | null;
+  onOpenExperienceSelector?: (service: Service) => void;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -21,9 +23,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   availableExtras,
   selectedExtras = [],
   onToggleExtra,
+  experienceSelection,
+  onOpenExperienceSelector,
 }) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+  const isExperience = !!(service.experienceConfig?.enabled);
   const [isDropdownOpen, setIsDropdownOpen] = useState(true);
   const [showServiceDetails, setShowServiceDetails] = useState(false);
   const [expandedExtraIds, setExpandedExtraIds] = useState<string[]>([]);
@@ -57,6 +62,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         onPress={() => onToggleSelect(service)}
         activeOpacity={0.8}
       >
+        {isExperience && (
+          <View style={[styles.experienceTagBadge, { backgroundColor: isBarber ? '#2B2515' : '#FEF3C7', borderColor: accentColor }]}>
+            <Text style={[styles.experienceTagBadgeText, { color: accentColor }]}>
+              ✨ EXPERIÊNCIA EXCLUSIVA • 🍽️ RESTAURANTE & MENU INCLUÍDO
+            </Text>
+          </View>
+        )}
+
         <View style={styles.headerRow}>
           <View style={styles.titleArea}>
             <View style={{ flex: 1 }}>
@@ -150,6 +163,60 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                 </Text>
               </View>
             </View>
+          </View>
+        )}
+
+        {/* Caixa de status da experiência romântica selecionada */}
+        {isSelected && isExperience && (
+          <View
+            style={[
+              styles.experienceStatusBox,
+              {
+                backgroundColor: isBarber ? '#22212B' : '#FFFDF5',
+                borderColor: experienceSelection ? accentColor : '#F59E0B',
+              },
+            ]}
+          >
+            <View style={styles.experienceStatusHeader}>
+              <Text style={[styles.experienceStatusTitle, { color: experienceSelection ? accentColor : '#F59E0B' }]}>
+                {experienceSelection ? '✓ RESTAURANTE & MENU SELECIONADOS' : '⚠️ ESCOLHA OBRIGATÓRIA'}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.experienceActionBtn,
+                  {
+                    backgroundColor: experienceSelection ? (isBarber ? '#2C2B38' : '#FAF6EE') : accentColor,
+                    borderColor: accentColor,
+                  },
+                ]}
+                onPress={() => onOpenExperienceSelector?.(service)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.experienceActionBtnText,
+                    { color: experienceSelection ? accentColor : (isBarber ? '#000' : '#111') },
+                  ]}
+                >
+                  {experienceSelection ? 'Alterar ✏️' : 'Escolher Restaurante & Menu 🍽️'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {experienceSelection ? (
+              <View style={styles.experienceSelectedDetails}>
+                <Text style={[styles.experienceSelectedText, { color: isBarber ? '#F4F4F5' : '#1F2937' }]}>
+                  🍽️ <Text style={{ fontWeight: '800' }}>{experienceSelection.restaurantName}</Text>
+                </Text>
+                <Text style={[styles.experienceSelectedSub, { color: isBarber ? '#D4D4D8' : '#4B5563' }]}>
+                  📋 <Text style={{ fontWeight: '700' }}>{experienceSelection.menuName}</Text>
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.experienceWarningText, { color: isBarber ? '#FCA5A5' : '#B45309' }]}>
+                Para concluir esta experiência, selecione 1 de 3 restaurantes parceiros e o menu pretendido.
+              </Text>
+            )}
           </View>
         )}
 
@@ -647,5 +714,62 @@ const styles = StyleSheet.create({
   extraExpandedMetaText: {
     fontSize: 10,
     fontWeight: '600',
+  },
+  experienceTagBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  experienceTagBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  experienceStatusBox: {
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  experienceStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  experienceStatusTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
+  experienceActionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  experienceActionBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  experienceSelectedDetails: {
+    marginTop: 4,
+    gap: 2,
+  },
+  experienceSelectedText: {
+    fontSize: 13,
+  },
+  experienceSelectedSub: {
+    fontSize: 12,
+  },
+  experienceWarningText: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
 });

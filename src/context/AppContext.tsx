@@ -7,6 +7,7 @@ import {
   Appointment,
   ClientHistoryNote,
   BusinessConfig,
+  BookingExperienceSelection,
 } from '../types';
 import {
   loadAppointments,
@@ -71,7 +72,8 @@ interface AppContextType {
     staffMember: StaffMember,
     date: string,
     timeSlot: string,
-    notes?: string
+    notes?: string,
+    experienceSelection?: BookingExperienceSelection
   ) => Promise<Appointment>;
 
   updateAppointmentStatus: (id: string, status: Appointment['status']) => Promise<void>;
@@ -226,7 +228,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     staffMember: StaffMember,
     date: string,
     timeSlot: string,
-    notes?: string
+    notes?: string,
+    experienceSelection?: BookingExperienceSelection
   ): Promise<Appointment> => {
     const totalPrice = selectedServices.reduce((acc, s) => acc + s.price, 0);
     const totalDuration = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
@@ -243,6 +246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       servicePrice: totalPrice,
       serviceDuration: totalDuration,
       servicesList: selectedServices,
+      experienceSelection: experienceSelection || undefined,
       staffId: staffMember.id,
       staffName: staffMember.name,
       date,

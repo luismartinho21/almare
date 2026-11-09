@@ -147,6 +147,20 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
                 </Text>
               </View>
 
+              {appointment.experienceSelection && (
+                <View style={[styles.ticketRow, { alignItems: 'flex-start' }]}>
+                  <Text style={[styles.label, { color: accentColor }]}>🍽️ Experiência:</Text>
+                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                    <Text style={[styles.value, isBarber ? styles.valueBarber : styles.valueBeauty, { color: accentColor, fontWeight: '800', textAlign: 'right' }]}>
+                      {appointment.experienceSelection.restaurantName}
+                    </Text>
+                    <Text style={[styles.valueSmall, isBarber ? styles.valueSmallBarber : styles.valueSmallBeauty, { textAlign: 'right', marginTop: 2 }]}>
+                      Menu: {appointment.experienceSelection.menuName}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
               <View style={styles.ticketRow}>
                 <Text style={styles.label}>Profissional:</Text>
                 <Text style={[styles.value, isBarber ? styles.valueBarber : styles.valueBeauty]}>

@@ -15,6 +15,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Service, StaffMember } from '../types';
 import { Theme } from '../constants/theme';
+import { DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS } from '../constants/mockData';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 import { compressImageFile } from '../utils/imageHelper';
@@ -68,6 +69,7 @@ export const GestorBeautyView: React.FC = () => {
   const [newServDur, setNewServDur] = useState('45');
   const [hasExtras, setHasExtras] = useState(false);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
+  const [isExperience, setIsExperience] = useState<boolean>(false);
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraDesc, setInlineExtraDesc] = useState('');
@@ -169,7 +171,7 @@ export const GestorBeautyView: React.FC = () => {
   }, [beautyServices, catFilter]);
 
   const beautyCategories = useMemo(() => {
-    const defaultCats = ['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Extras'];
+    const defaultCats = ['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Experiências', 'Extras'];
     const dynamicCats = Array.from(new Set(beautyServices.map(s => s.category).filter(Boolean)));
     const merged = Array.from(new Set([...defaultCats, ...dynamicCats, ...customCategories]));
     return ['TODOS', ...merged];
@@ -259,6 +261,7 @@ export const GestorBeautyView: React.FC = () => {
     setNewServDur('45');
     setHasExtras(false);
     setSelectedExtraIds([]);
+    setIsExperience(false);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -275,6 +278,7 @@ export const GestorBeautyView: React.FC = () => {
     setNewServDur(String(service.durationMinutes));
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
+    setIsExperience(!!service.experienceConfig?.enabled);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -312,6 +316,15 @@ export const GestorBeautyView: React.FC = () => {
     const priceNum = parseFloat(newServPrice.replace(',', '.')) || 0;
     const durNum = parseInt(newServDur, 10) || 45;
 
+    const experienceConfig = isExperience
+      ? (editingService?.experienceConfig || {
+          enabled: true,
+          title: 'Experiência Exclusiva com Restaurante & Menu',
+          instruction: 'Para avançar, selecione 1 de 3 restaurantes parceiros e o seu menu preferido:',
+          restaurants: DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS,
+        })
+      : undefined;
+
     if (editingService) {
       await updateService({
         ...editingService,
@@ -322,6 +335,7 @@ export const GestorBeautyView: React.FC = () => {
         price: priceNum,
         durationMinutes: durNum,
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
+        experienceConfig,
       });
     } else {
       await addService({
@@ -334,6 +348,7 @@ export const GestorBeautyView: React.FC = () => {
         durationMinutes: durNum,
         iconName: '',
         compatibleExtraIds: hasExtras ? selectedExtraIds : [],
+        experienceConfig,
       });
     }
 
@@ -926,6 +941,16 @@ export const GestorBeautyView: React.FC = () => {
                     <Text style={styles.priceDuration}>
                       {app.servicePrice} € • {app.serviceDuration} min • Data: {app.date}
                     </Text>
+                    {app.experienceSelection ? (
+                      <View style={{ marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: '#FFF9EC', borderWidth: 1, borderColor: '#D4AF37' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#B45309' }}>
+                          🍽️ EXPERIÊNCIA: {app.experienceSelection.restaurantName}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#374151', marginTop: 2 }}>
+                          Menu Selecionado: {app.experienceSelection.menuName}
+                        </Text>
+                      </View>
+                    ) : null}
                     {app.notes ? <Text style={styles.notesText}>Nota: &quot;{app.notes}&quot;</Text> : null}
                     <View style={styles.reminderStatusRow}>
                       <Text style={styles.reminderStatusText}>
@@ -1505,6 +1530,57 @@ export const GestorBeautyView: React.FC = () => {
                   )}
                 </View>
               )}
+
+              {/* Experiência Especial (Restaurante & Menu) */}
+              <View style={[styles.fieldGroup, { marginTop: 14 }]}>
+                <Text style={styles.label}>
+                  ✨ É uma Experiência Especial (com Restaurante & Menu)?
+                </Text>
+                <Text style={styles.modalFieldHint}>
+                  Se ativado (como a "ALMARE | Grand Romance Experience"), o cliente é obrigado a escolher 1 de 3 restaurantes parceiros e o respetivo menu para concluir a marcação.
+                </Text>
+
+                <View style={styles.toggleRow}>
+                  <TouchableOpacity
+                    style={[styles.toggleOptionBtn, !isExperience && styles.toggleOptionBtnActive]}
+                    onPress={() => setIsExperience(false)}
+                  >
+                    <Text style={[styles.toggleOptionText, !isExperience && styles.toggleOptionTextActive]}>
+                      Serviço Normal
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.toggleOptionBtn, isExperience && styles.toggleOptionBtnActive]}
+                    onPress={() => {
+                      setIsExperience(true);
+                      if (newServCat === 'Manicure / Pedicure' || !newServCat) {
+                        setNewServCat('Experiências');
+                      }
+                    }}
+                  >
+                    <Text style={[styles.toggleOptionText, isExperience && styles.toggleOptionTextActive]}>
+                      ✨ Experiência Exclusiva
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {isExperience && (
+                  <View style={styles.extrasConfigBox}>
+                    <Text style={[styles.extrasConfigTitle, { color: Theme.colors.beauty.badge }]}>
+                      🍽️ 3 Restaurantes Parceiros Ativos:
+                    </Text>
+                    <Text style={[styles.noExtrasHelp, { marginBottom: 6 }]}>
+                      • Mare Nostrum • Vista Mar & Alta Cozinha (3 Menus){'\n'}
+                      • Palácio das Especiarias • Bistrô & Charme (3 Menus){'\n'}
+                      • Adega & Quinta Gourmet • Vinhos & Fogo (3 Menus)
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#6B7280' }}>
+                      * O cliente escolherá obrigatoriamente um destes restaurantes e o respetivo menu antes do agendamento.
+                    </Text>
+                  </View>
+                )}
+              </View>
 
               <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveService}>
                 <Text style={styles.modalSaveBtnText}>

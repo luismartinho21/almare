@@ -1,4 +1,79 @@
-import { Service, StaffMember, Appointment, BusinessConfig, RolePinsConfig } from '../types';
+import { Service, StaffMember, Appointment, BusinessConfig, RolePinsConfig, ExperienceRestaurant } from '../types';
+
+export const DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS: ExperienceRestaurant[] = [
+  {
+    id: 'rest-1',
+    name: 'Mare Nostrum • Vista Mar & Alta Cozinha',
+    cuisine: 'Mediterrânica & Marisco Nobre',
+    location: 'Avenida Marginal, Frente ao Mar',
+    description: 'Localização privilegiada com vista panorâmica sobre o oceano, mesas reservadas à luz de velas e ambiente intimista.',
+    menus: [
+      {
+        id: 'menu-1-1',
+        name: 'Menu Sinfonia do Mar',
+        description: 'Ostras frescas da Ria com vinagrete cítrico • Robalo selvagem grelhado sobre risotto de açafrão • Petit Gâteau de caramelo salgado com gelado artesanal.',
+      },
+      {
+        id: 'menu-1-2',
+        name: 'Menu Terra & Romance',
+        description: 'Carpaccio de novilho com trufa negra e parmesão 24 meses • Tornedó Rossini com puré aveludado de batata trufada • Fondant de chocolate belga com frutos vermelhos.',
+      },
+      {
+        id: 'menu-1-3',
+        name: 'Menu Vegetariano d\'Ouro',
+        description: 'Ceviche vegetal de palmito e manga • Raviolis artesanais de cogumelos selvagens com emulsão de salva • Mil-folhas crocante de baunilha Bourbon.',
+      },
+    ],
+  },
+  {
+    id: 'rest-2',
+    name: 'Palácio das Especiarias • Bistrô & Charme',
+    cuisine: 'Franco-Portuguesa de Autor',
+    location: 'Largo do Palácio Real, Chiado',
+    description: 'Salão nobre em palacete histórico do século XIX com jardim de inverno iluminado por candelabros e privacidade absoluta.',
+    menus: [
+      {
+        id: 'menu-2-1',
+        name: 'Menu Paixão em Paris',
+        description: 'Foie gras grelhado com redução de vinho do Porto • Magret de pato com puré de castanhas e citrinos • Crème Brûlée perfumada com lavanda francesa.',
+      },
+      {
+        id: 'menu-2-2',
+        name: 'Menu Segredos do Palácio',
+        description: 'Vieiras coradas com emulsão de espumante e caviar • Lombo de bacalhau confitado em azeite virgem com crosta de broa • Pavlova de frutos do bosque.',
+      },
+      {
+        id: 'menu-2-3',
+        name: 'Menu Jardim Botânico',
+        description: 'Creme aveludado de espargos verdes com azeite de trufa • Risotto cremoso de abóbora assada e queijo de cabra artesanal • Tarte Tatin caramelizada com gelado de baunilha.',
+      },
+    ],
+  },
+  {
+    id: 'rest-3',
+    name: 'Adega & Quinta Gourmet • Vinhos & Fogo',
+    cuisine: 'Ibérico Contemporâneo & Harmonização',
+    location: 'Quinta dos Aromas, Sintra / Lisboa',
+    description: 'Cave privada com lareira acesa, paredes de pedra rústica, castiçais e uma seleção de vinhos de reserva exclusiva.',
+    menus: [
+      {
+        id: 'menu-3-1',
+        name: 'Menu Reserva d\'Amor',
+        description: 'Tábua nobre de presunto Pata Negra e queijos curados com compota de figo • Bife da vazia maturada 45 dias na brasa • Torta quente de chocolate e avelãs tostadas.',
+      },
+      {
+        id: 'menu-3-2',
+        name: 'Menu Tesouros do Atlântico',
+        description: 'Polvo crocante confitado com batata-doce roxa • Arroz caldoso de lavagante com coentros frescos • Cheesecake desconstruído de frutos silvestres.',
+      },
+      {
+        id: 'menu-3-3',
+        name: 'Menu Jardins de Sintra',
+        description: 'Tártaro de abacate, manga e tomate da horta • Gnocchi caseiro com creme suave de queijo azul e nozes crocantes • Crumble morno de maçã reineta com canela.',
+      },
+    ],
+  },
+];
 
 export const INITIAL_ROLE_PINS: RolePinsConfig = {
   adminPin: '9999',
@@ -83,6 +158,23 @@ export const INITIAL_SERVICES: Service[] = [
     durationMinutes: 20,
     iconName: '',
     compatibleExtraIds: ['b-ext1', 'b-ext4'],
+  },
+  {
+    id: 'b-romance',
+    branch: 'barber',
+    category: 'Experiências',
+    name: 'ALMARE | Grand Romance Experience',
+    description: 'A derradeira experiência a dois: Ritual Almare exclusivo + Jantar romântico à escolha com menu incluído.',
+    longDescription: 'Uma jornada sensorial inesquecível para partilhar a dois. Inclui corte e styling de precisão, ritual completo de barba ou massagem craniana com toalha quente e aromaterapia. Para coroar o momento, inclui jantar romântico num dos nossos 3 restaurantes parceiros de topo, com menu completo exclusivo para o casal.',
+    price: 195,
+    durationMinutes: 120,
+    iconName: '',
+    experienceConfig: {
+      enabled: true,
+      title: 'Jantar Romântico para Dois (1 de 3 Restaurantes Parceiros)',
+      instruction: 'Selecione 1 dos 3 restaurantes parceiros exclusivos Almare e, de seguida, escolha o menu pretendido para o casal:',
+      restaurants: DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS,
+    },
   },
   {
     id: 'b-ext1',
@@ -256,6 +348,23 @@ export const INITIAL_SERVICES: Service[] = [
     durationMinutes: 90,
     iconName: '',
     compatibleExtraIds: ['be-ext1', 'be-ext3'],
+  },
+  {
+    id: 'be-romance',
+    branch: 'beauty',
+    category: 'Experiências',
+    name: 'ALMARE | Grand Romance Experience',
+    description: 'A derradeira experiência a dois: Ritual Almare exclusivo + Jantar romântico à escolha com menu incluído.',
+    longDescription: 'Uma jornada sensorial inesquecível para partilhar a dois. Inclui sessão privada de Head-Spa Holístico duplo com cascata de água morna, aromaterapia botânica e Hydra-Facial Glow relaxante. Para coroar o momento, inclui jantar romântico num dos nossos 3 restaurantes parceiros de topo, com menu completo exclusivo para o casal.',
+    price: 195,
+    durationMinutes: 120,
+    iconName: '',
+    experienceConfig: {
+      enabled: true,
+      title: 'Jantar Romântico para Dois (1 de 3 Restaurantes Parceiros)',
+      instruction: 'Selecione 1 dos 3 restaurantes parceiros exclusivos Almare e, de seguida, escolha o menu pretendido para o casal:',
+      restaurants: DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS,
+    },
   },
 
   // EXTRAS BEAUTY

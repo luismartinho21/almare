@@ -10,7 +10,7 @@ import {
   Pressable,
   ScrollView,
 } from 'react-native';
-import { SalonBranch, Service, StaffMember } from '../types';
+import { SalonBranch, Service, StaffMember, BookingExperienceSelection } from '../types';
 import { Theme } from '../constants/theme';
 
 interface BookingModalProps {
@@ -22,6 +22,7 @@ interface BookingModalProps {
   isNoPreference?: boolean;
   date: string;
   timeSlot: string;
+  experienceSelection?: BookingExperienceSelection;
   onConfirmBooking: (clientName: string, clientPhone: string, notes?: string) => Promise<void>;
 }
 
@@ -34,6 +35,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   isNoPreference,
   date,
   timeSlot,
+  experienceSelection,
   onConfirmBooking,
 }) => {
   const [clientName, setClientName] = useState('');
@@ -114,6 +116,29 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </View>
               ))}
             </ScrollView>
+
+            {experienceSelection && (
+              <View
+                style={{
+                  marginTop: 8,
+                  padding: 8,
+                  borderRadius: 8,
+                  backgroundColor: isBarber ? '#24242C' : '#F7F3E8',
+                  borderWidth: 1,
+                  borderColor: accentColor,
+                }}
+              >
+                <Text style={{ fontSize: 10, fontWeight: '800', color: accentColor, letterSpacing: 0.5 }}>
+                  🍽️ EXPERIÊNCIA ROMANCE INCLUÍDA:
+                </Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: isBarber ? '#FFF' : '#111827', marginTop: 2 }}>
+                  {experienceSelection.restaurantName}
+                </Text>
+                <Text style={{ fontSize: 11, color: isBarber ? '#D4D4D8' : '#4B5563', marginTop: 1 }}>
+                  Menu: {experienceSelection.menuName}
+                </Text>
+              </View>
+            )}
 
             <View style={[styles.divider, { backgroundColor: isBarber ? '#3F3F46' : '#E5DCBA' }]} />
 
