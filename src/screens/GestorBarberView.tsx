@@ -14,12 +14,13 @@ import {
   Platform,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { StaffMember, Service } from '../types';
+import { StaffMember, Service, ServiceExperienceConfig } from '../types';
 import { Theme } from '../constants/theme';
-import { DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS } from '../constants/mockData';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 import { compressImageFile } from '../utils/imageHelper';
+import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
+import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
 
 type GestorTab = 'management' | 'services' | 'staff';
 type ManagementSubTab = 'appointments' | 'finance';
@@ -72,6 +73,9 @@ export const GestorBarberView: React.FC = () => {
   const [hasExtras, setHasExtras] = useState(false);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [isExperience, setIsExperience] = useState<boolean>(false);
+  const [expConfigDraft, setExpConfigDraft] = useState<ServiceExperienceConfig | undefined>(undefined);
+  const [expEditorVisible, setExpEditorVisible] = useState<boolean>(false);
+  const [expPersonalized, setExpPersonalized] = useState<boolean>(false);
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraDesc, setInlineExtraDesc] = useState('');
@@ -485,6 +489,8 @@ export const GestorBarberView: React.FC = () => {
     setHasExtras(false);
     setSelectedExtraIds([]);
     setIsExperience(false);
+    setExpConfigDraft(undefined);
+    setExpPersonalized(false);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -502,6 +508,12 @@ export const GestorBarberView: React.FC = () => {
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
     setIsExperience(!!service.experienceConfig?.enabled);
+    setExpConfigDraft(
+      service.experienceConfig
+        ? JSON.parse(JSON.stringify(service.experienceConfig))
+        : undefined
+    );
+    setExpPersonalized(!!service.experienceConfig?.enabled);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -536,17 +548,19 @@ export const GestorBarberView: React.FC = () => {
       return;
     }
 
+    if (isExperience && (!expPersonalized || !expConfigDraft || expConfigDraft.restaurants.length === 0)) {
+      Alert.alert(
+        'Personalizar Experiência',
+        'Para guardar um serviço com Experiência Exclusiva, personalize primeiro os restaurantes parceiros e os respetivos menus.'
+      );
+      setExpEditorVisible(true);
+      return;
+    }
+
     const priceNum = parseFloat(newServPrice.replace(',', '.')) || 0;
     const durNum = parseInt(newServDur, 10) || 15;
 
-    const experienceConfig = isExperience
-      ? (editingService?.experienceConfig || {
-          enabled: true,
-          title: 'Experiência Exclusiva com Restaurante & Menu',
-          instruction: 'Para avançar, selecione 1 de 3 restaurantes parceiros e o seu menu preferido:',
-          restaurants: DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS,
-        })
-      : undefined;
+    const experienceConfig = isExperience ? expConfigDraft : undefined;
 
     if (editingService) {
       await updateService({
@@ -1038,6 +1052,19 @@ export const GestorBarberView: React.FC = () => {
                     </Text>
                     {item.description ? (
                       <Text style={styles.serviceManageDesc}>{item.description}</Text>
+                    ) : null}
+
+                    {item.experienceConfig?.enabled ? (
+                      <View style={{ marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: '#252117', borderWidth: 1, borderColor: '#D4AF37' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#D4AF37' }}>
+                          ✨ EXPERIÊNCIA EXCLUSIVA • {item.experienceConfig.restaurants.length} RESTAURANTE(S)
+                        </Text>
+                        {item.experienceConfig.restaurants.map(r => (
+                          <Text key={r.id} style={{ fontSize: 10, color: '#E4E4E7', marginTop: 2 }}>
+                            • {r.name} ({r.menus.length} menus)
+                          </Text>
+                        ))}
+                      </View>
                     ) : null}
 
                     {compatibleExtras.length > 0 ? (
@@ -1564,7 +1591,7 @@ export const GestorBarberView: React.FC = () => {
       </Modal>
 
       {/* Modal: Adicionar / Editar Serviço Barber */}
-      <Modal visible={serviceModalVisible} transparent animationType="slide" onRequestClose={() => setServiceModalVisible(false)}>
+      <Modal visible={serviceModalVisible && !expEditorVisible} transparent animationType="slide" onRequestClose={() => setServiceModalVisible(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setServiceModalVisible(false)}>
           <Pressable style={[styles.modalBody, { maxHeight: '90%' }]} onPress={e => e.stopPropagation()}>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -1605,7 +1632,13 @@ export const GestorBarberView: React.FC = () => {
                     <TouchableOpacity
                       key={cat}
                       style={[styles.categorySelectPill, newServCat.toLowerCase() === cat.toLowerCase() && styles.categorySelectPillActive]}
-                      onPress={() => setNewServCat(cat)}
+                      onPress={() => {
+                        setNewServCat(cat);
+                        if (cat.toLowerCase() === 'experiências' && !isExperience) {
+                          setIsExperience(true);
+                          setExpEditorVisible(true);
+                        }
+                      }}
                     >
                       <Text
                         style={[
@@ -1868,56 +1901,24 @@ export const GestorBarberView: React.FC = () => {
                 </View>
               )}
 
-              {/* Experiência Especial (Restaurante & Menu) */}
-              <View style={[styles.extrasSectionContainer, { marginTop: 14 }]}>
-                <Text style={styles.serviceFieldLabel}>
-                  ✨ É uma Experiência Especial (com Restaurante & Menu)?
-                </Text>
-                <Text style={styles.extrasSectionNotice}>
-                  Se ativado (como a "ALMARE | Grand Romance Experience"), o cliente é obrigado a escolher 1 de 3 restaurantes parceiros e o respetivo menu para concluir a marcação.
-                </Text>
-
-                <View style={styles.toggleRow}>
-                  <TouchableOpacity
-                    style={[styles.toggleBtn, !isExperience && styles.toggleBtnActive]}
-                    onPress={() => setIsExperience(false)}
-                  >
-                    <Text style={[styles.toggleBtnText, !isExperience && styles.toggleBtnTextActive]}>
-                      Serviço Normal
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.toggleBtn, isExperience && styles.toggleBtnActive]}
-                    onPress={() => {
-                      setIsExperience(true);
-                      if (newServCat === 'Cortes' || !newServCat) {
-                        setNewServCat('Experiências');
-                      }
-                    }}
-                  >
-                    <Text style={[styles.toggleBtnText, isExperience && styles.toggleBtnTextActive]}>
-                      ✨ Experiência Exclusiva
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {isExperience && (
-                  <View style={styles.extrasConfigBox}>
-                    <Text style={[styles.extrasSubTitle, { color: '#D4AF37' }]}>
-                      🍽️ 3 Restaurantes Parceiros Ativos:
-                    </Text>
-                    <Text style={[styles.noExtrasNotice, { marginBottom: 6 }]}>
-                      • Mare Nostrum • Vista Mar & Alta Cozinha (3 Menus){'\n'}
-                      • Palácio das Especiarias • Bistrô & Charme (3 Menus){'\n'}
-                      • Adega & Quinta Gourmet • Vinhos & Fogo (3 Menus)
-                    </Text>
-                    <Text style={{ fontSize: 10, color: '#A1A1AA' }}>
-                      * O cliente escolherá obrigatoriamente um destes restaurantes e o respetivo menu antes do agendamento.
-                    </Text>
-                  </View>
-                )}
-              </View>
+              {/* Experiência Especial (Restaurantes & Menus Editáveis) */}
+              <ExperienceConfigSection
+                branch="barber"
+                isExperience={isExperience}
+                expConfigDraft={expConfigDraft}
+                isPersonalized={expPersonalized}
+                onSelectNormal={() => setIsExperience(false)}
+                onSelectExperience={() => {
+                  setIsExperience(true);
+                  if (newServCat === 'Cortes' || !newServCat) {
+                    setNewServCat('Experiências');
+                  }
+                  if (!expPersonalized) {
+                    setExpEditorVisible(true);
+                  }
+                }}
+                onOpenEditor={() => setExpEditorVisible(true)}
+              />
 
               {/* Botões do Modal */}
               <TouchableOpacity style={styles.saveScheduleBtn} onPress={handleSaveService}>
@@ -1939,6 +1940,20 @@ export const GestorBarberView: React.FC = () => {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal: Editor de Experiência (Restaurantes Parceiros & Menus) */}
+      <ExperienceEditorModal
+        visible={expEditorVisible}
+        branch="barber"
+        serviceName={newServName}
+        initialConfig={expConfigDraft}
+        onSave={updatedConfig => {
+          setExpConfigDraft(updatedConfig);
+          setExpPersonalized(true);
+          setExpEditorVisible(false);
+        }}
+        onClose={() => setExpEditorVisible(false)}
+      />
 
       {/* Modal: Gerir Filtros e Categorias Barber */}
       <Modal visible={manageFiltersModalVisible} transparent animationType="slide" onRequestClose={() => setManageFiltersModalVisible(false)}>

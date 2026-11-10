@@ -32,6 +32,7 @@ export interface BookingExperienceSelection {
   restaurantName: string;
   menuId: string;
   menuName: string;
+  priceSupplement?: number;
   notes?: string;
 }
 

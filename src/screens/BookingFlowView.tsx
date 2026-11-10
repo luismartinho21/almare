@@ -118,8 +118,13 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   };
 
   const totalPrice = useMemo(() => {
-    return selectedServices.reduce((sum, s) => sum + s.price, 0);
-  }, [selectedServices]);
+    const base = selectedServices.reduce((sum, s) => sum + s.price, 0);
+    const expSupp = Object.values(experienceSelections).reduce(
+      (sum, sel) => sum + (sel.priceSupplement || 0),
+      0
+    );
+    return base + expSupp;
+  }, [selectedServices, experienceSelections]);
 
   const totalDuration = useMemo(() => {
     return selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
@@ -180,7 +185,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       s => s.experienceConfig?.enabled && !experienceSelections[s.id]
     );
     if (unchosenExp) {
-      alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de 3 restaurantes parceiros e o respetivo menu.`);
+      const rCount = unchosenExp.experienceConfig?.restaurants?.length || 1;
+      alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de ${rCount} restaurante(s) parceiro(s) e o respetivo menu.`);
       setActiveExpModalService(unchosenExp);
       return;
     }
@@ -426,7 +432,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   s => s.experienceConfig?.enabled && !experienceSelections[s.id]
                 );
                 if (unchosenExp) {
-                  alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de 3 restaurantes parceiros e o seu menu antes de continuar.`);
+                  const rCount = unchosenExp.experienceConfig?.restaurants?.length || 1;
+                  alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de ${rCount} restaurante(s) parceiro(s) e o seu menu antes de continuar.`);
                   setActiveExpModalService(unchosenExp);
                   return;
                 }

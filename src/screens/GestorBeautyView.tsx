@@ -13,12 +13,13 @@ import {
   Image,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { Service, StaffMember } from '../types';
+import { Service, StaffMember, ServiceExperienceConfig } from '../types';
 import { Theme } from '../constants/theme';
-import { DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS } from '../constants/mockData';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
 import { compressImageFile } from '../utils/imageHelper';
+import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
+import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
 
 const DEFAULT_BEAUTY_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
 const BEAUTY_AVATAR_PRESETS = [
@@ -70,6 +71,9 @@ export const GestorBeautyView: React.FC = () => {
   const [hasExtras, setHasExtras] = useState(false);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [isExperience, setIsExperience] = useState<boolean>(false);
+  const [expConfigDraft, setExpConfigDraft] = useState<ServiceExperienceConfig | undefined>(undefined);
+  const [expEditorVisible, setExpEditorVisible] = useState<boolean>(false);
+  const [expPersonalized, setExpPersonalized] = useState<boolean>(false);
   const [showInlineNewExtra, setShowInlineNewExtra] = useState(false);
   const [inlineExtraName, setInlineExtraName] = useState('');
   const [inlineExtraDesc, setInlineExtraDesc] = useState('');
@@ -262,6 +266,8 @@ export const GestorBeautyView: React.FC = () => {
     setHasExtras(false);
     setSelectedExtraIds([]);
     setIsExperience(false);
+    setExpConfigDraft(undefined);
+    setExpPersonalized(false);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -279,6 +285,12 @@ export const GestorBeautyView: React.FC = () => {
     setHasExtras(!!(service.compatibleExtraIds && service.compatibleExtraIds.length > 0));
     setSelectedExtraIds(service.compatibleExtraIds || []);
     setIsExperience(!!service.experienceConfig?.enabled);
+    setExpConfigDraft(
+      service.experienceConfig
+        ? JSON.parse(JSON.stringify(service.experienceConfig))
+        : undefined
+    );
+    setExpPersonalized(!!service.experienceConfig?.enabled);
     setShowInlineNewExtra(false);
     setInlineExtraDesc('');
     setInlineExtraLongDesc('');
@@ -313,17 +325,19 @@ export const GestorBeautyView: React.FC = () => {
       return;
     }
 
+    if (isExperience && (!expPersonalized || !expConfigDraft || expConfigDraft.restaurants.length === 0)) {
+      Alert.alert(
+        'Personalizar Experiência',
+        'Para guardar um serviço com Experiência Exclusiva, personalize primeiro os restaurantes parceiros e os respetivos menus.'
+      );
+      setExpEditorVisible(true);
+      return;
+    }
+
     const priceNum = parseFloat(newServPrice.replace(',', '.')) || 0;
     const durNum = parseInt(newServDur, 10) || 45;
 
-    const experienceConfig = isExperience
-      ? (editingService?.experienceConfig || {
-          enabled: true,
-          title: 'Experiência Exclusiva com Restaurante & Menu',
-          instruction: 'Para avançar, selecione 1 de 3 restaurantes parceiros e o seu menu preferido:',
-          restaurants: DEFAULT_ROMANCE_EXPERIENCE_RESTAURANTS,
-        })
-      : undefined;
+    const experienceConfig = isExperience ? expConfigDraft : undefined;
 
     if (editingService) {
       await updateService({
@@ -1063,6 +1077,19 @@ export const GestorBeautyView: React.FC = () => {
                       <Text style={styles.serviceManageDesc}>{item.description}</Text>
                     ) : null}
 
+                    {item.experienceConfig?.enabled ? (
+                      <View style={{ marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: '#FFF9EC', borderWidth: 1, borderColor: Theme.colors.beauty.badge }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: Theme.colors.beauty.badge }}>
+                          ✨ EXPERIÊNCIA EXCLUSIVA • {item.experienceConfig.restaurants.length} RESTAURANTE(S)
+                        </Text>
+                        {item.experienceConfig.restaurants.map(r => (
+                          <Text key={r.id} style={{ fontSize: 10, color: '#374151', marginTop: 2 }}>
+                            • {r.name} ({r.menus.length} menus)
+                          </Text>
+                        ))}
+                      </View>
+                    ) : null}
+
                     {compatibleExtras.length > 0 ? (
                       <View style={styles.serviceAttachedExtrasBox}>
                         <Text style={styles.serviceAttachedExtrasTitle}>
@@ -1254,7 +1281,7 @@ export const GestorBeautyView: React.FC = () => {
 
       {/* Add / Edit Service Modal for Beauty */}
       <Modal
-        visible={serviceModalVisible}
+        visible={serviceModalVisible && !expEditorVisible}
         transparent
         animationType="slide"
         onRequestClose={() => {
@@ -1303,7 +1330,13 @@ export const GestorBeautyView: React.FC = () => {
                     <TouchableOpacity
                       key={cat}
                       style={[styles.modalCatPill, newServCat.toLowerCase() === cat.toLowerCase() && styles.modalCatPillActive]}
-                      onPress={() => setNewServCat(cat)}
+                      onPress={() => {
+                        setNewServCat(cat);
+                        if (cat.toLowerCase() === 'experiências' && !isExperience) {
+                          setIsExperience(true);
+                          setExpEditorVisible(true);
+                        }
+                      }}
                     >
                       <Text style={[styles.modalCatPillText, newServCat.toLowerCase() === cat.toLowerCase() && styles.modalCatPillTextActive]}>
                         {cat}
@@ -1531,56 +1564,24 @@ export const GestorBeautyView: React.FC = () => {
                 </View>
               )}
 
-              {/* Experiência Especial (Restaurante & Menu) */}
-              <View style={[styles.fieldGroup, { marginTop: 14 }]}>
-                <Text style={styles.label}>
-                  ✨ É uma Experiência Especial (com Restaurante & Menu)?
-                </Text>
-                <Text style={styles.modalFieldHint}>
-                  Se ativado (como a "ALMARE | Grand Romance Experience"), o cliente é obrigado a escolher 1 de 3 restaurantes parceiros e o respetivo menu para concluir a marcação.
-                </Text>
-
-                <View style={styles.toggleRow}>
-                  <TouchableOpacity
-                    style={[styles.toggleOptionBtn, !isExperience && styles.toggleOptionBtnActive]}
-                    onPress={() => setIsExperience(false)}
-                  >
-                    <Text style={[styles.toggleOptionText, !isExperience && styles.toggleOptionTextActive]}>
-                      Serviço Normal
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.toggleOptionBtn, isExperience && styles.toggleOptionBtnActive]}
-                    onPress={() => {
-                      setIsExperience(true);
-                      if (newServCat === 'Manicure / Pedicure' || !newServCat) {
-                        setNewServCat('Experiências');
-                      }
-                    }}
-                  >
-                    <Text style={[styles.toggleOptionText, isExperience && styles.toggleOptionTextActive]}>
-                      ✨ Experiência Exclusiva
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {isExperience && (
-                  <View style={styles.extrasConfigBox}>
-                    <Text style={[styles.extrasConfigTitle, { color: Theme.colors.beauty.badge }]}>
-                      🍽️ 3 Restaurantes Parceiros Ativos:
-                    </Text>
-                    <Text style={[styles.noExtrasHelp, { marginBottom: 6 }]}>
-                      • Mare Nostrum • Vista Mar & Alta Cozinha (3 Menus){'\n'}
-                      • Palácio das Especiarias • Bistrô & Charme (3 Menus){'\n'}
-                      • Adega & Quinta Gourmet • Vinhos & Fogo (3 Menus)
-                    </Text>
-                    <Text style={{ fontSize: 10, color: '#6B7280' }}>
-                      * O cliente escolherá obrigatoriamente um destes restaurantes e o respetivo menu antes do agendamento.
-                    </Text>
-                  </View>
-                )}
-              </View>
+              {/* Experiência Especial (Restaurantes & Menus Editáveis) */}
+              <ExperienceConfigSection
+                branch="beauty"
+                isExperience={isExperience}
+                expConfigDraft={expConfigDraft}
+                isPersonalized={expPersonalized}
+                onSelectNormal={() => setIsExperience(false)}
+                onSelectExperience={() => {
+                  setIsExperience(true);
+                  if (newServCat === 'Manicure / Pedicure' || !newServCat) {
+                    setNewServCat('Experiências');
+                  }
+                  if (!expPersonalized) {
+                    setExpEditorVisible(true);
+                  }
+                }}
+                onOpenEditor={() => setExpEditorVisible(true)}
+              />
 
               <TouchableOpacity style={styles.modalSaveBtn} onPress={handleSaveService}>
                 <Text style={styles.modalSaveBtnText}>
@@ -1601,6 +1602,20 @@ export const GestorBeautyView: React.FC = () => {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal: Editor de Experiência Beauty (Restaurantes Parceiros & Menus) */}
+      <ExperienceEditorModal
+        visible={expEditorVisible}
+        branch="beauty"
+        serviceName={newServName}
+        initialConfig={expConfigDraft}
+        onSave={updatedConfig => {
+          setExpConfigDraft(updatedConfig);
+          setExpPersonalized(true);
+          setExpEditorVisible(false);
+        }}
+        onClose={() => setExpEditorVisible(false)}
+      />
 
       {/* Modal: Gerir Filtros e Categorias Beauty */}
       <Modal visible={manageFiltersModalVisible} transparent animationType="slide" onRequestClose={() => setManageFiltersModalVisible(false)}>

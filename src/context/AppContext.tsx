@@ -231,7 +231,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes?: string,
     experienceSelection?: BookingExperienceSelection
   ): Promise<Appointment> => {
-    const totalPrice = selectedServices.reduce((acc, s) => acc + s.price, 0);
+    const basePrice = selectedServices.reduce((acc, s) => acc + s.price, 0);
+    const totalPrice = basePrice + (experienceSelection?.priceSupplement || 0);
     const totalDuration = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
     const joinedNames = selectedServices.map(s => s.name).join(' + ');
     const primaryId = selectedServices[0]?.id || 'custom';

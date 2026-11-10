@@ -47,7 +47,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
 
-  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
+  const totalPrice =
+    selectedServices.reduce((sum, s) => sum + s.price, 0) +
+    (experienceSelection?.priceSupplement || 0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
 
   const handleSubmit = async () => {
@@ -129,13 +131,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 }}
               >
                 <Text style={{ fontSize: 10, fontWeight: '800', color: accentColor, letterSpacing: 0.5 }}>
-                  🍽️ EXPERIÊNCIA ROMANCE INCLUÍDA:
+                  🍽️ EXPERIÊNCIA EXCLUSIVA INCLUÍDA:
                 </Text>
                 <Text style={{ fontSize: 12, fontWeight: '700', color: isBarber ? '#FFF' : '#111827', marginTop: 2 }}>
                   {experienceSelection.restaurantName}
                 </Text>
                 <Text style={{ fontSize: 11, color: isBarber ? '#D4D4D8' : '#4B5563', marginTop: 1 }}>
                   Menu: {experienceSelection.menuName}
+                  {experienceSelection.priceSupplement && experienceSelection.priceSupplement > 0
+                    ? ` (+${experienceSelection.priceSupplement.toFixed(2)} €)`
+                    : ''}
                 </Text>
               </View>
             )}

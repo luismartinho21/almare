@@ -251,10 +251,12 @@ export const subscribeToCloudConfig = (
 // CLOUD MUTATION HELPERS
 // =========================================================================
 
+const sanitizeForFirestore = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
+
 export const cloudSaveAppointment = async (appointment: Appointment): Promise<void> => {
   if (!dbInstance || !isConnected) return;
   try {
-    await setDoc(doc(dbInstance, 'appointments', appointment.id), appointment);
+    await setDoc(doc(dbInstance, 'appointments', appointment.id), sanitizeForFirestore(appointment));
   } catch (e) {
     console.warn('[Firebase Cloud] Failed to save appointment to cloud:', e);
   }
@@ -263,7 +265,7 @@ export const cloudSaveAppointment = async (appointment: Appointment): Promise<vo
 export const cloudSaveService = async (service: Service): Promise<void> => {
   if (!dbInstance || !isConnected) return;
   try {
-    await setDoc(doc(dbInstance, 'services', service.id), service);
+    await setDoc(doc(dbInstance, 'services', service.id), sanitizeForFirestore(service));
   } catch (e) {
     console.warn('[Firebase Cloud] Failed to save service to cloud:', e);
   }

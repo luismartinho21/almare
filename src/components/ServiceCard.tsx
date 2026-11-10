@@ -65,7 +65,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         {isExperience && (
           <View style={[styles.experienceTagBadge, { backgroundColor: isBarber ? '#2B2515' : '#FEF3C7', borderColor: accentColor }]}>
             <Text style={[styles.experienceTagBadgeText, { color: accentColor }]}>
-              ✨ EXPERIÊNCIA EXCLUSIVA • 🍽️ RESTAURANTE & MENU INCLUÍDO
+              ✨ {service.experienceConfig?.title ? service.experienceConfig.title.toUpperCase() : 'EXPERIÊNCIA EXCLUSIVA • RESTAURANTE & MENU'}
             </Text>
           </View>
         )}
@@ -210,11 +210,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                 </Text>
                 <Text style={[styles.experienceSelectedSub, { color: isBarber ? '#D4D4D8' : '#4B5563' }]}>
                   📋 <Text style={{ fontWeight: '700' }}>{experienceSelection.menuName}</Text>
+                  {experienceSelection.priceSupplement && experienceSelection.priceSupplement > 0
+                    ? ` (+${experienceSelection.priceSupplement.toFixed(2)} €)`
+                    : ''}
                 </Text>
               </View>
             ) : (
               <Text style={[styles.experienceWarningText, { color: isBarber ? '#FCA5A5' : '#B45309' }]}>
-                Para concluir esta experiência, selecione 1 de 3 restaurantes parceiros e o menu pretendido.
+                Para concluir esta experiência, selecione 1 de {service.experienceConfig?.restaurants?.length || 1} restaurante(s) parceiro(s) e o menu pretendido.
               </Text>
             )}
           </View>

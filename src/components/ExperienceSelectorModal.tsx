@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
-import { Service, SalonBranch, BookingExperienceSelection, ExperienceRestaurant, ExperienceMenuItem } from '../types';
+import { Service, SalonBranch, BookingExperienceSelection, ExperienceRestaurant } from '../types';
 import { Theme } from '../constants/theme';
 
 interface ExperienceSelectorModalProps {
@@ -20,7 +20,14 @@ interface ExperienceSelectorModalProps {
   onClose: () => void;
 }
 
-export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = ({
+export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = props => {
+  if (!props.visible || !props.service || !props.service.experienceConfig?.enabled) return null;
+  return <ExperienceSelectorContent {...props} service={props.service} />;
+};
+
+const ExperienceSelectorContent: React.FC<
+  ExperienceSelectorModalProps & { service: Service }
+> = ({
   visible,
   service,
   branch,
@@ -31,37 +38,30 @@ export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = (
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
 
-  const restaurants: ExperienceRestaurant[] = service?.experienceConfig?.restaurants || [];
+  const restaurants: ExperienceRestaurant[] = service.experienceConfig?.restaurants || [];
 
-  const [selectedRestId, setSelectedRestId] = useState<string>('');
-  const [selectedMenuId, setSelectedMenuId] = useState<string>('');
+  const [selectedRestId, setSelectedRestId] = useState<string>(() =>
+    currentSelection && currentSelection.serviceId === service.id
+      ? currentSelection.restaurantId
+      : ''
+  );
+  const [selectedMenuId, setSelectedMenuId] = useState<string>(() =>
+    currentSelection && currentSelection.serviceId === service.id
+      ? currentSelection.menuId
+      : ''
+  );
 
-  useEffect(() => {
-    if (visible && service) {
-      if (currentSelection && currentSelection.serviceId === service.id) {
-        setSelectedRestId(currentSelection.restaurantId);
-        setSelectedMenuId(currentSelection.menuId);
-      } else {
-        // Default to first restaurant if none selected
-        if (restaurants.length > 0 && !selectedRestId) {
-          setSelectedRestId(restaurants[0].id);
-          setSelectedMenuId(restaurants[0].menus[0]?.id || '');
-        }
-      }
-    }
-  }, [visible, service, currentSelection]);
-
-  if (!visible || !service || !service.experienceConfig?.enabled) return null;
+  if (!service.experienceConfig?.enabled) return null;
 
   const activeRestaurant = restaurants.find(r => r.id === selectedRestId);
   const activeMenu = activeRestaurant?.menus.find(m => m.id === selectedMenuId);
 
   const handleSelectRestaurant = (rest: ExperienceRestaurant) => {
     setSelectedRestId(rest.id);
-    // If current selected menu doesn't belong to this restaurant, default to its first menu
+    // If current selected menu doesn't belong to this restaurant, reset menu choice so client actively picks
     const hasSameMenu = rest.menus.some(m => m.id === selectedMenuId);
     if (!hasSameMenu) {
-      setSelectedMenuId(rest.menus[0]?.id || '');
+      setSelectedMenuId('');
     }
   };
 
@@ -73,6 +73,7 @@ export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = (
       restaurantName: activeRestaurant.name,
       menuId: activeMenu.id,
       menuName: activeMenu.name,
+      priceSupplement: activeMenu.priceSupplement || 0,
       notes: `${activeRestaurant.name} • ${activeMenu.name}`,
     });
   };
@@ -102,7 +103,7 @@ export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = (
               </Text>
               <Text style={[styles.subtitle, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
                 {service.experienceConfig.instruction ||
-                  'Para avançar, selecione 1 de 3 restaurantes parceiros e o menu que mais aprecia:'}
+                  `Para avançar, selecione 1 de ${restaurants.length} restaurante(s) parceiro(s) e o menu que mais aprecia:`}
               </Text>
             </View>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -118,7 +119,9 @@ export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = (
                   <Text style={[styles.stepNumberText, { color: isBarber ? '#000' : '#FFF' }]}>1</Text>
                 </View>
                 <Text style={[styles.stepTitle, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
-                  Escolha 1 de 3 Restaurantes Parceiros *
+                  {restaurants.length > 1
+                    ? `Escolha 1 de ${restaurants.length} Restaurantes Parceiros *`
+                    : 'Escolha o Restaurante Parceiro *'}
                 </Text>
               </View>
 
@@ -220,9 +223,20 @@ export const ExperienceSelectorModal: React.FC<ExperienceSelectorModalProps> = (
                         >
                           <View style={styles.menuHeaderRow}>
                             <View style={{ flex: 1 }}>
-                              <Text style={[styles.menuPillLabel, { color: accentColor }]}>
-                                MENU {mIdx + 1}
-                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={[styles.menuPillLabel, { color: accentColor }]}>
+                                  MENU {mIdx + 1}
+                                </Text>
+                                {menu.priceSupplement && menu.priceSupplement > 0 ? (
+                                  <Text style={{ fontSize: 10, fontWeight: '800', color: accentColor }}>
+                                    (+{menu.priceSupplement.toFixed(2)} €)
+                                  </Text>
+                                ) : (
+                                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>
+                                    • Incluído
+                                  </Text>
+                                )}
+                              </View>
                               <Text style={[styles.menuTitle, { color: isBarber ? '#FFF' : '#111827' }]}>
                                 {menu.name}
                               </Text>
