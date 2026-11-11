@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Service, SalonBranch, BookingExperienceSelection } from '../types';
+import {
+  Service,
+  SalonBranch,
+  BookingExperienceSelection,
+  ExperienceRestaurant,
+} from '../types';
 import { Theme } from '../constants/theme';
 
 interface ServiceCardProps {
@@ -13,6 +18,8 @@ interface ServiceCardProps {
   onToggleExtra?: (extra: Service) => void;
   experienceSelection?: BookingExperienceSelection | null;
   onOpenExperienceSelector?: (service: Service) => void;
+  onSelectExperienceSelection?: (selection: BookingExperienceSelection) => void;
+  onClearExperienceSelection?: (serviceId: string) => void;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -25,6 +32,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   onToggleExtra,
   experienceSelection,
   onOpenExperienceSelector,
+  onSelectExperienceSelection,
+  onClearExperienceSelection,
 }) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
@@ -38,13 +47,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       prev.includes(extraId) ? prev.filter(id => id !== extraId) : [...prev, extraId]
     );
   };
-
-  // Auto-open dropdown menu whenever service becomes selected
-  useEffect(() => {
-    if (isSelected) {
-      setIsDropdownOpen(true);
-    }
-  }, [isSelected]);
 
   return (
     <View
@@ -166,7 +168,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           </View>
         )}
 
-        {/* Caixa de status da experiência romântica selecionada */}
+        {/* Caixa de status da experiência selecionada */}
         {isSelected && isExperience && (
           <View
             style={[
@@ -179,28 +181,25 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           >
             <View style={styles.experienceStatusHeader}>
               <Text style={[styles.experienceStatusTitle, { color: experienceSelection ? accentColor : '#F59E0B' }]}>
-                {experienceSelection ? '✓ RESTAURANTE & MENU SELECIONADOS' : '⚠️ ESCOLHA OBRIGATÓRIA'}
+                {experienceSelection ? '✓ RESTAURANTE & MENU SELECIONADOS' : '⚠️ ESCOLHA OBRIGATÓRIA ABAIXO'}
               </Text>
-              <TouchableOpacity
-                style={[
-                  styles.experienceActionBtn,
-                  {
-                    backgroundColor: experienceSelection ? (isBarber ? '#2C2B38' : '#FAF6EE') : accentColor,
-                    borderColor: accentColor,
-                  },
-                ]}
-                onPress={() => onOpenExperienceSelector?.(service)}
-                activeOpacity={0.8}
-              >
-                <Text
+              {onOpenExperienceSelector && (
+                <TouchableOpacity
                   style={[
-                    styles.experienceActionBtnText,
-                    { color: experienceSelection ? accentColor : (isBarber ? '#000' : '#111') },
+                    styles.experienceActionBtn,
+                    {
+                      backgroundColor: isBarber ? '#2C2B38' : '#FAF6EE',
+                      borderColor: accentColor,
+                    },
                   ]}
+                  onPress={() => onOpenExperienceSelector(service)}
+                  activeOpacity={0.8}
                 >
-                  {experienceSelection ? 'Alterar ✏️' : 'Escolher Restaurante & Menu 🍽️'}
-                </Text>
-              </TouchableOpacity>
+                  <Text style={[styles.experienceActionBtnText, { color: accentColor }]}>
+                    {experienceSelection ? 'Alterar' : 'Abrir Lista'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {experienceSelection ? (
@@ -217,7 +216,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </View>
             ) : (
               <Text style={[styles.experienceWarningText, { color: isBarber ? '#FCA5A5' : '#B45309' }]}>
-                Para concluir esta experiência, selecione 1 de {service.experienceConfig?.restaurants?.length || 1} restaurante(s) parceiro(s) e o menu pretendido.
+                Escolha primeiro 1 dos {service.experienceConfig?.restaurants?.length || 1} restaurante(s) na aba abaixo e depois o menu pretendido ⬇️
               </Text>
             )}
           </View>
@@ -259,6 +258,17 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
+
+      {/* ABA INLINE DE RESTAURANTES & MENUS (abre logo abaixo quando a experiência é selecionada) */}
+      {isSelected && isExperience && service.experienceConfig?.enabled && (
+        <InlineExperienceAccordion
+          service={service}
+          branch={branch}
+          experienceSelection={experienceSelection}
+          onSelectExperienceSelection={onSelectExperienceSelection}
+          onClearExperienceSelection={onClearExperienceSelection}
+        />
+      )}
 
       {/* MENU DROP-DOWN DE EXTRAS (aparece imediatamente abaixo quando o serviço é selecionado) */}
       {isSelected && availableExtras && availableExtras.length > 0 && onToggleExtra && (
@@ -429,6 +439,242 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                   </View>
                 );
               })}
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
+
+interface InlineExperienceAccordionProps {
+  service: Service;
+  branch: SalonBranch;
+  experienceSelection?: BookingExperienceSelection | null;
+  onSelectExperienceSelection?: (selection: BookingExperienceSelection) => void;
+  onClearExperienceSelection?: (serviceId: string) => void;
+}
+
+const InlineExperienceAccordion: React.FC<InlineExperienceAccordionProps> = ({
+  service,
+  branch,
+  experienceSelection,
+  onSelectExperienceSelection,
+  onClearExperienceSelection,
+}) => {
+  const isBarber = branch === 'barber';
+  const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
+  const restaurants: ExperienceRestaurant[] = service.experienceConfig?.restaurants || [];
+
+  const [isOpen, setIsOpen] = useState(true);
+  const [draftRestId, setDraftRestId] = useState<string>(
+    () => experienceSelection?.restaurantId || ''
+  );
+
+  const activeRestId = draftRestId || experienceSelection?.restaurantId || '';
+  const activeRestaurant = restaurants.find(r => r.id === activeRestId) || null;
+
+  const handleSelectRestaurant = (rest: ExperienceRestaurant) => {
+    setDraftRestId(rest.id);
+    if (experienceSelection && experienceSelection.restaurantId !== rest.id) {
+      onClearExperienceSelection?.(service.id);
+    }
+  };
+
+  return (
+    <View style={styles.extrasContainer}>
+      <View style={styles.extrasDivider} />
+
+      <TouchableOpacity
+        style={[
+          styles.dropdownHeader,
+          {
+            backgroundColor: isBarber ? '#1E1E26' : '#FAF6EC',
+            borderColor: experienceSelection ? accentColor : '#F59E0B',
+          },
+        ]}
+        onPress={() => setIsOpen(prev => !prev)}
+        activeOpacity={0.75}
+      >
+        <View style={styles.dropdownHeaderLeft}>
+          <Text style={[styles.dropdownChevron, { color: accentColor }]}>
+            {isOpen ? '▼' : '▶'}
+          </Text>
+          <Text style={[styles.dropdownHeaderTitle, { color: isBarber ? '#FFF' : '#1F2937' }]}>
+            🍽️ 1. Restaurantes Parceiros ({restaurants.length})
+          </Text>
+        </View>
+
+        <View style={styles.dropdownHeaderRight}>
+          <View
+            style={[
+              styles.extraBadgeSelected,
+              { backgroundColor: experienceSelection ? accentColor : '#F59E0B' },
+            ]}
+          >
+            <Text style={[styles.extraBadgeSelectedText, { color: isBarber ? '#000' : '#111' }]}>
+              {experienceSelection ? '✓ Escolhido' : 'Obrigatório'}
+            </Text>
+          </View>
+          <Text style={[styles.dropdownHint, { color: accentColor }]}>
+            {isOpen ? 'Recolher ▲' : 'Escolher ▼'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      {isOpen && (
+        <View style={styles.dropdownContent}>
+          <Text style={[styles.dropdownSubtitle, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+            {service.experienceConfig?.instruction ||
+              `Passo 1: Escolha 1 dos ${restaurants.length} restaurantes parceiros abaixo:`}
+          </Text>
+
+          {/* PASSO 1: LISTA DOS RESTAURANTES */}
+          {restaurants.map((rest, rIdx) => {
+            const isRestSelected = activeRestId === rest.id;
+            return (
+              <TouchableOpacity
+                key={rest.id}
+                style={[
+                  styles.inlineExpCard,
+                  {
+                    backgroundColor: isRestSelected
+                      ? (isBarber ? '#2C2A22' : '#FFF4D6')
+                      : (isBarber ? '#1E1E26' : '#FDFCFA'),
+                    borderColor: isRestSelected
+                      ? accentColor
+                      : (isBarber ? '#2E2E38' : '#E8E3D5'),
+                    borderWidth: isRestSelected ? 1.8 : 1,
+                  },
+                ]}
+                onPress={() => handleSelectRestaurant(rest)}
+                activeOpacity={0.78}
+              >
+                <View style={styles.inlineExpTopRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.inlineExpTag, { color: accentColor }]}>
+                      OPÇÃO {rIdx + 1} • {rest.cuisine.toUpperCase()}
+                    </Text>
+                    <Text style={[styles.inlineExpTitle, { color: isBarber ? '#FFF' : '#111827' }]}>
+                      {rest.name}
+                    </Text>
+                    <Text style={[styles.inlineExpLoc, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                      📍 {rest.location}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.inlineRadioCircle,
+                      isRestSelected && { backgroundColor: accentColor, borderColor: accentColor },
+                    ]}
+                  >
+                    {isRestSelected && (
+                      <Text style={{ fontSize: 11, fontWeight: '900', color: isBarber ? '#000' : '#111' }}>
+                        ✓
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <Text style={[styles.inlineExpDesc, { color: isBarber ? '#D4D4D8' : '#4B5563' }]}>
+                  {rest.description}
+                </Text>
+
+                <Text style={[styles.inlineExpMenusHint, { color: accentColor }]}>
+                  🍽️ {rest.menus.length} Menus disponíveis {isRestSelected ? '• Ver pratos abaixo ▼' : '• Toque para escolher'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* PASSO 2: OS MENUS / PRATOS DISPONÍVEIS DO RESTAURANTE SELECIONADO */}
+          {activeRestaurant ? (
+            <View style={[styles.inlineMenusSection, { borderTopColor: isBarber ? '#2E2E3A' : '#E8E3D5' }]}>
+              <Text style={[styles.inlineMenusHeading, { color: accentColor }]}>
+                📋 2. Escolha o Menu / Pratos em {activeRestaurant.name}:
+              </Text>
+
+              {activeRestaurant.menus.map((menu, mIdx) => {
+                const isMenuSelected =
+                  experienceSelection?.restaurantId === activeRestaurant.id &&
+                  experienceSelection?.menuId === menu.id;
+
+                return (
+                  <TouchableOpacity
+                    key={menu.id}
+                    style={[
+                      styles.inlineMenuCard,
+                      {
+                        backgroundColor: isMenuSelected
+                          ? (isBarber ? '#333024' : '#FFF0C7')
+                          : (isBarber ? '#1A1A22' : '#FAF7EE'),
+                        borderColor: isMenuSelected
+                          ? accentColor
+                          : (isBarber ? '#2C2C38' : '#E6DFCC'),
+                        borderWidth: isMenuSelected ? 1.8 : 1,
+                      },
+                    ]}
+                    onPress={() => {
+                      onSelectExperienceSelection?.({
+                        serviceId: service.id,
+                        restaurantId: activeRestaurant.id,
+                        restaurantName: activeRestaurant.name,
+                        menuId: menu.id,
+                        menuName: menu.name,
+                        priceSupplement: menu.priceSupplement || 0,
+                        notes: `${activeRestaurant.name} • ${menu.name}`,
+                      });
+                    }}
+                    activeOpacity={0.78}
+                  >
+                    <View style={styles.inlineExpTopRow}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[styles.inlineExpTag, { color: accentColor }]}>
+                            MENU {mIdx + 1}
+                          </Text>
+                          {menu.priceSupplement && menu.priceSupplement > 0 ? (
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: accentColor }}>
+                              (+{menu.priceSupplement.toFixed(2)} €)
+                            </Text>
+                          ) : (
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>
+                              • Incluído
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={[styles.inlineMenuTitle, { color: isBarber ? '#FFF' : '#111827' }]}>
+                          {menu.name}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.inlineRadioCircle,
+                          isMenuSelected && { backgroundColor: accentColor, borderColor: accentColor },
+                        ]}
+                      >
+                        {isMenuSelected && (
+                          <Text style={{ fontSize: 11, fontWeight: '900', color: isBarber ? '#000' : '#111' }}>
+                            ✓
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    <Text style={[styles.inlineExpDesc, { color: isBarber ? '#E4E4E7' : '#374151', marginTop: 4 }]}>
+                      {menu.description}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={[styles.inlinePickPrompt, { borderColor: isBarber ? '#333340' : '#E5DEC9' }]}>
+              <Text style={{ fontSize: 11, color: isBarber ? '#A1A1AA' : '#6B7280', fontStyle: 'italic' }}>
+                👆 Selecione primeiro 1 restaurante acima para revelar os respetivos menus e pratos disponíveis.
+              </Text>
             </View>
           )}
         </View>
@@ -774,5 +1020,77 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
     marginTop: 2,
+  },
+  inlineExpCard: {
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  inlineExpTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  inlineExpTag: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  inlineExpTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  inlineExpLoc: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  inlineRadioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#71717A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  inlineExpDesc: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 6,
+  },
+  inlineExpMenusHint: {
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  inlineMenusSection: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  inlineMenusHeading: {
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  inlineMenuCard: {
+    padding: 11,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  inlineMenuTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  inlinePickPrompt: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginTop: 4,
+    alignItems: 'center',
   },
 });

@@ -107,8 +107,27 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
               <Text style={styles.checkIcon}>✓</Text>
             </View>
 
+            <View
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 4,
+                borderRadius: 20,
+                backgroundColor: isBarber ? '#2B2515' : '#FEF3C7',
+                borderWidth: 1,
+                borderColor: accentColor,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '900', color: accentColor, letterSpacing: 0.5 }}>
+                🎉 PARABÉNS! MARCAÇÃO EFETUADA
+              </Text>
+            </View>
+
             <Text style={[styles.title, isBarber ? styles.titleBarber : styles.titleBeauty]}>
-              Marcação Confirmada!
+              Marcação Efetuada com Sucesso!
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: accentColor, textAlign: 'center', marginBottom: 6 }}>
+              ✨ Parabéns {appointment.clientName}, aguardamos a sua visita!
             </Text>
             <Text style={[styles.subTitle, isBarber ? styles.subTitleBarber : styles.subTitleBeauty]}>
               O horário de <Text style={[styles.boldText, { color: accentColor }]}>{appointment.timeSlot}</Text> no dia{' '}

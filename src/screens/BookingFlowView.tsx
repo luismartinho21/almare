@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { Service, StaffMember, Appointment, BookingExperienceSelection } from '../types';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
@@ -65,19 +65,20 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     });
   }, [branchServices]);
 
-  // Categories list (com 'Signature' logo em primeiro após 'TODOS')
+  // Categories list (Signature sempre em 1.º lugar, até antes de TODOS)
   const categories = useMemo(() => {
     const set = new Set<string>();
     regularServices.forEach(s => set.add(s.category));
-    const ordered = Array.from(set).sort((a, b) => {
-      const aIsSig = a.trim().toLowerCase() === 'signature' ? 0 : 1;
-      const bIsSig = b.trim().toLowerCase() === 'signature' ? 0 : 1;
-      return aIsSig - bIsSig;
-    });
-    return ['TODOS', ...ordered];
+    const allCats = Array.from(set);
+    const signatureCat = allCats.find(c => c.trim().toLowerCase() === 'signature');
+    const others = allCats.filter(c => c.trim().toLowerCase() !== 'signature');
+    return signatureCat ? [signatureCat, 'TODOS', ...others] : ['TODOS', ...others];
   }, [regularServices]);
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('TODOS');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Signature');
+  const effectiveCategory = categories.includes(selectedCategory)
+    ? selectedCategory
+    : categories[0] || 'TODOS';
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
 
   // Staff selection state:
@@ -119,10 +120,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         }
         return prev.filter(s => s.id !== service.id);
       } else {
-        // Ao selecionar uma experiência exclusiva, abre imediatamente o seletor obrigatório
-        if (service.experienceConfig?.enabled) {
-          setActiveExpModalService(service);
-        }
+        // Ao selecionar uma experiência exclusiva, abre automaticamente a aba inline logo abaixo do cartão
         return [...prev, service];
       }
     });
@@ -150,10 +148,9 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
 
   const filteredServices = useMemo(() => {
-    const activeCat = categories.includes(selectedCategory) ? selectedCategory : 'TODOS';
-    if (activeCat === 'TODOS') return regularServices;
-    return regularServices.filter(s => s.category === activeCat);
-  }, [regularServices, categories, selectedCategory]);
+    if (effectiveCategory === 'TODOS') return regularServices;
+    return regularServices.filter(s => s.category === effectiveCategory);
+  }, [regularServices, effectiveCategory]);
 
   // Check if a specific slot is available for a staff member or whole team
   const checkSlotAvailability = (targetStaff: StaffMember | null, noPref: boolean, slot: string): boolean => {
@@ -259,7 +256,12 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     );
 
     setBookingModalVisible(false);
-    setConfirmedBooking(created);
+    if (Platform.OS === 'web') {
+      setConfirmedBooking(created);
+    } else {
+      // Aguarda transição de saída do modal anterior no iOS/Android antes de abrir o pop-up de parabéns
+      setTimeout(() => setConfirmedBooking(created), 250);
+    }
   };
 
   return (
@@ -336,7 +338,12 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                 </Text>
               </View>
               {selectedServices.length > 0 && (
-                <TouchableOpacity onPress={() => setSelectedServices([])}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedServices([]);
+                    setExperienceSelections({});
+                  }}
+                >
                   <Text style={styles.clearText}>Limpar ({selectedServices.length})</Text>
                 </TouchableOpacity>
               )}
@@ -363,7 +370,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
             {/* Category Tabs */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {categories.map(cat => {
-                const isCatSelected = selectedCategory === cat;
+                const isCatSelected = effectiveCategory === cat;
                 return (
                   <TouchableOpacity
                     key={cat}
@@ -427,6 +434,19 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                   onToggleExtra={handleToggleService}
                   experienceSelection={experienceSelections[service.id]}
                   onOpenExperienceSelector={setActiveExpModalService}
+                  onSelectExperienceSelection={sel =>
+                    setExperienceSelections(prev => ({
+                      ...prev,
+                      [sel.serviceId]: sel,
+                    }))
+                  }
+                  onClearExperienceSelection={serviceId =>
+                    setExperienceSelections(prev => {
+                      const next = { ...prev };
+                      delete next[serviceId];
+                      return next;
+                    })
+                  }
                 />
               );
             })}
@@ -726,6 +746,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         onClose={() => {
           setConfirmedBooking(null);
           setCurrentStep(1);
+          setSelectedCategory('Signature');
           setSelectedServices([]);
           setSelectedStaff(null);
           setIsNoPreference(false);
