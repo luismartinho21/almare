@@ -56,14 +56,25 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   }, [branchServices]);
 
   const regularServices = useMemo(() => {
-    return branchServices.filter(s => s.category.toLowerCase() !== 'extras');
+    const nonExtras = branchServices.filter(s => s.category.toLowerCase() !== 'extras');
+    // Colocar os serviços "Signature" sempre em primeiro lugar quando o cliente entra
+    return [...nonExtras].sort((a, b) => {
+      const aIsSig = a.category.trim().toLowerCase() === 'signature' ? 0 : 1;
+      const bIsSig = b.category.trim().toLowerCase() === 'signature' ? 0 : 1;
+      return aIsSig - bIsSig;
+    });
   }, [branchServices]);
 
-  // Categories list
+  // Categories list (com 'Signature' logo em primeiro após 'TODOS')
   const categories = useMemo(() => {
     const set = new Set<string>();
     regularServices.forEach(s => set.add(s.category));
-    return ['TODOS', ...Array.from(set)];
+    const ordered = Array.from(set).sort((a, b) => {
+      const aIsSig = a.trim().toLowerCase() === 'signature' ? 0 : 1;
+      const bIsSig = b.trim().toLowerCase() === 'signature' ? 0 : 1;
+      return aIsSig - bIsSig;
+    });
+    return ['TODOS', ...ordered];
   }, [regularServices]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('TODOS');
@@ -139,9 +150,10 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
 
   const filteredServices = useMemo(() => {
-    if (selectedCategory === 'TODOS') return regularServices;
-    return regularServices.filter(s => s.category === selectedCategory);
-  }, [regularServices, selectedCategory]);
+    const activeCat = categories.includes(selectedCategory) ? selectedCategory : 'TODOS';
+    if (activeCat === 'TODOS') return regularServices;
+    return regularServices.filter(s => s.category === activeCat);
+  }, [regularServices, categories, selectedCategory]);
 
   // Check if a specific slot is available for a staff member or whole team
   const checkSlotAvailability = (targetStaff: StaffMember | null, noPref: boolean, slot: string): boolean => {
