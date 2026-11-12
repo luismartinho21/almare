@@ -294,6 +294,44 @@ export const getFreeStaffForInterval = (
 };
 
 /**
+ * Devolve os slots em que o ramo oposto (Masculino/Feminino) não tem nenhum profissional livre
+ * para atender a Experiência a 2 no mesmo horário.
+ */
+export const getPartnerBlockedSlots = ({
+  date,
+  durationMinutes,
+  oppositeBranchStaff,
+  appointments,
+  refDate = new Date(),
+}: {
+  date: string;
+  durationMinutes: number;
+  oppositeBranchStaff: StaffMember[];
+  appointments: Appointment[];
+  refDate?: Date;
+}): Set<string> => {
+  const blockedSet = new Set<string>();
+  if (!isSalonOpenDay(date)) return blockedSet;
+
+  ALL_WORKING_SLOTS.forEach(slot => {
+    if (isSlotInPast(slot, date, refDate)) return;
+    const freeOpposite = getFreeStaffForInterval(
+      oppositeBranchStaff,
+      slot,
+      durationMinutes,
+      date,
+      appointments,
+      refDate
+    );
+    if (freeOpposite.length === 0) {
+      blockedSet.add(slot);
+    }
+  });
+
+  return blockedSet;
+};
+
+/**
  * Calcula o conjunto de slots ocupados/bloqueados para a data e duração solicitadas.
  */
 export const getOccupiedSlots = ({
@@ -304,6 +342,8 @@ export const getOccupiedSlots = ({
   branchStaff,
   appointments,
   refDate = new Date(),
+  requiresPartnerAvailability = false,
+  oppositeBranchStaff = [],
 }: {
   date: string;
   durationMinutes: number;
@@ -312,6 +352,8 @@ export const getOccupiedSlots = ({
   branchStaff: StaffMember[];
   appointments: Appointment[];
   refDate?: Date;
+  requiresPartnerAvailability?: boolean;
+  oppositeBranchStaff?: StaffMember[];
 }): Set<string> => {
   const occupiedSet = new Set<string>();
 
@@ -332,6 +374,7 @@ export const getOccupiedSlots = ({
       const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments, refDate);
       if (freeStaff.length === 0) {
         occupiedSet.add(slot);
+        return;
       }
     } else if (staffMember) {
       // Profissional específico selecionado
@@ -345,10 +388,27 @@ export const getOccupiedSlots = ({
       );
       if (!available) {
         occupiedSet.add(slot);
+        return;
       }
     } else {
       const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments, refDate);
       if (freeStaff.length === 0) {
+        occupiedSet.add(slot);
+        return;
+      }
+    }
+
+    // Se for Experiência a 2, exige disponibilidade simultânea no ramo oposto
+    if (requiresPartnerAvailability) {
+      const freeOpposite = getFreeStaffForInterval(
+        oppositeBranchStaff,
+        slot,
+        durationMinutes,
+        date,
+        appointments,
+        refDate
+      );
+      if (freeOpposite.length === 0) {
         occupiedSet.add(slot);
       }
     }

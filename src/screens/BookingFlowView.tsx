@@ -87,6 +87,14 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     return staff.filter(s => s.branch === activeBranch);
   }, [staff, activeBranch]);
 
+  const oppositeBranchStaff = useMemo(() => {
+    return staff.filter(s => s.branch !== activeBranch);
+  }, [staff, activeBranch]);
+
+  const isCoupleExperienceSelected = useMemo(() => {
+    return selectedServices.some(s => s.experienceConfig?.enabled);
+  }, [selectedServices]);
+
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isNoPreference, setIsNoPreference] = useState<boolean>(false);
 
@@ -152,16 +160,46 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     return regularServices.filter(s => s.category === effectiveCategory);
   }, [regularServices, effectiveCategory]);
 
-  // Check if a specific slot is available for a staff member or whole team
+  // Check if a specific slot is available for a staff member or whole team (and opposite branch if Experience)
   const checkSlotAvailability = (targetStaff: StaffMember | null, noPref: boolean, slot: string): boolean => {
     if (!isSalonOpenDay(selectedDate) || !slot) return false;
+    let currentFree = false;
     if (noPref) {
-      return getFreeStaffForInterval(branchStaff, slot, totalDuration, selectedDate, appointments).length > 0;
+      currentFree = getFreeStaffForInterval(branchStaff, slot, totalDuration, selectedDate, appointments).length > 0;
+    } else if (targetStaff) {
+      currentFree = isStaffAvailableForInterval(targetStaff, slot, totalDuration, selectedDate, appointments);
     }
-    if (targetStaff) {
-      return isStaffAvailableForInterval(targetStaff, slot, totalDuration, selectedDate, appointments);
+    if (!currentFree) return false;
+
+    if (isCoupleExperienceSelected) {
+      const oppositeFree = getFreeStaffForInterval(
+        oppositeBranchStaff,
+        slot,
+        totalDuration,
+        selectedDate,
+        appointments
+      );
+      return oppositeFree.length > 0;
     }
-    return false;
+    return true;
+  };
+
+  const getUnavailableSlotMessage = (targetStaff: StaffMember | null, noPref: boolean, slot: string): string => {
+    if (isCoupleExperienceSelected) {
+      const oppositeFree = getFreeStaffForInterval(
+        oppositeBranchStaff,
+        slot,
+        totalDuration,
+        selectedDate,
+        appointments
+      );
+      if (oppositeFree.length === 0) {
+        return isBarber
+          ? `Horário Feminino (Beauty) bloqueado/ocupado às ${slot}. Como a experiência é a 2, por favor escolha outro horário.`
+          : `Horário Masculino (Barber) bloqueado/ocupado às ${slot}. Como a experiência é a 2, por favor escolha outro horário.`;
+      }
+    }
+    return 'O horário pretendido está indisponível ou já se encontra ocupado. Por favor escolha outra vaga.';
   };
 
   // Check if a staff member or team has AT LEAST ONE available slot on selectedDate
@@ -215,7 +253,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     }
     const isFree = checkSlotAvailability(checkStaff, checkNoPref, selectedTimeSlot);
     if (!isFree) {
-      alert('O horário pretendido está indisponível ou já se encontra ocupado. Por favor escolha outra vaga.');
+      alert(getUnavailableSlotMessage(checkStaff, checkNoPref, selectedTimeSlot));
       return;
     }
     setBookingModalVisible(true);
@@ -232,7 +270,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
 
     const isFree = checkSlotAvailability(effectiveStaff, isNoPreference, selectedTimeSlot);
     if (!isFree) {
-      alert('A vaga selecionada já se encontra ocupada ou indisponível. Por favor escolha outro horário.');
+      alert(getUnavailableSlotMessage(effectiveStaff, isNoPreference, selectedTimeSlot));
       return;
     }
 
@@ -578,6 +616,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                         branchStaff={branchStaff}
                         appointments={appointments}
                         durationMinutes={totalDuration}
+                        requiresPartnerAvailability={isCoupleExperienceSelected}
+                        oppositeBranchStaff={oppositeBranchStaff}
                       />
 
                       {/* Proceed to checkout button */}
@@ -660,6 +700,8 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                         branchStaff={branchStaff}
                         appointments={appointments}
                         durationMinutes={totalDuration}
+                        requiresPartnerAvailability={isCoupleExperienceSelected}
+                        oppositeBranchStaff={oppositeBranchStaff}
                       />
 
                       {/* Proceed to checkout button */}

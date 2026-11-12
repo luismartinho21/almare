@@ -8,6 +8,7 @@ import {
   ALL_WORKING_SLOTS,
   isSalonOpenDay,
   getOccupiedSlots,
+  getPartnerBlockedSlots,
   timeToMinutes,
   minutesToTime,
   getStaffShiftType,
@@ -31,6 +32,8 @@ interface TimeSlotPickerProps {
   branchStaff: StaffMember[];
   appointments: Appointment[];
   durationMinutes?: number;
+  requiresPartnerAvailability?: boolean;
+  oppositeBranchStaff?: StaffMember[];
 }
 
 export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
@@ -44,6 +47,8 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
   branchStaff,
   appointments,
   durationMinutes = 30,
+  requiresPartnerAvailability = false,
+  oppositeBranchStaff = [],
 }) => {
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
@@ -101,6 +106,18 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     return isSalonOpenDay(selectedDate);
   }, [selectedDate]);
 
+  // Slots em que o ramo oposto (Masculino/Feminino) está sem vagas para Experiência a 2
+  const partnerBlockedSlots = useMemo(() => {
+    if (!requiresPartnerAvailability) return new Set<string>();
+    return getPartnerBlockedSlots({
+      date: selectedDate,
+      durationMinutes,
+      oppositeBranchStaff,
+      appointments,
+      refDate: currentTime,
+    });
+  }, [requiresPartnerAvailability, selectedDate, durationMinutes, oppositeBranchStaff, appointments, currentTime]);
+
   // Find occupied slots for selected date considering accumulated service duration and current time
   const occupiedSlots = useMemo(() => {
     return getOccupiedSlots({
@@ -111,8 +128,20 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
       branchStaff,
       appointments,
       refDate: currentTime,
+      requiresPartnerAvailability,
+      oppositeBranchStaff,
     });
-  }, [selectedDate, durationMinutes, staffMember, isNoPreference, branchStaff, appointments, currentTime]);
+  }, [
+    selectedDate,
+    durationMinutes,
+    staffMember,
+    isNoPreference,
+    branchStaff,
+    appointments,
+    currentTime,
+    requiresPartnerAvailability,
+    oppositeBranchStaff,
+  ]);
 
   // Apenas horários futuros aparecem para o dia de hoje; para dias futuros, aparecem todos
   const visibleMorningSlots = useMemo(() => {
@@ -358,6 +387,8 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <Text style={[styles.closedNoticeSub, { color: isBarber ? '#FCA5A5' : '#991B1B' }]}>
                 {isSelectedToday
                   ? 'Todos os horários de atendimento para o dia de hoje já terminaram ou encontram-se preenchidos.\n\nPor favor, selecione amanhã ou outra data futura no calendário acima para marcar o seu serviço.'
+                  : requiresPartnerAvailability && partnerBlockedSlots.size > 0
+                  ? `Não existem vagas simultâneas para a Experiência a 2 nesta data (alguns horários no lado ${isBarber ? 'Feminino' : 'Masculino'} encontram-se ocupados).\n\nPor favor, selecione outra data acima no calendário.`
                   : isNoPreference
                   ? `Todos os profissionais da equipa estão ocupados ou sem vagas contínuas de ${durationMinutes} min nesta data.\n\nPor favor, selecione outra data acima no calendário.`
                   : `${targetStaffName} não tem vagas livres para ${durationMinutes} min no dia selecionado.\n\nPor favor, selecione outra data acima no calendário ou escolha outro profissional.`}
@@ -365,140 +396,157 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
             </View>
           ) : null}
 
-          {/* Section: Manhã (09:30 - 12:30) */}
-          <View style={styles.shiftSection}>
-            <View style={styles.shiftHeaderRow}>
-              <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                2. Manhã (09:30 às 12:30)
+          {requiresPartnerAvailability && partnerBlockedSlots.size > 0 && !isAllOccupied ? (
+            <View
+              style={[
+                styles.closedNoticeBox,
+                isBarber ? styles.closedBoxBarber : styles.closedBoxBeauty,
+                {
+                  borderColor: '#F59E0B',
+                  marginBottom: 14,
+                  backgroundColor: isBarber ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB',
+                },
+              ]}
+            >
+              <Text style={[styles.closedNoticeTitle, { color: '#D97706' }]}>
+                ⚠️ Experiência a 2 • Horário {isBarber ? 'Feminino' : 'Masculino'} Bloqueado
               </Text>
-              <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                {shiftType === 'afternoon_only'
-                  ? 'Sem vagas de manhã'
-                  : isSelectedToday && visibleMorningSlots.length === 0
-                  ? 'Período encerrado'
-                  : `Vagas disponíveis (${durationMinutes} min)`}
+              <Text style={[styles.closedNoticeSub, { color: isBarber ? '#FDE68A' : '#92400E', marginTop: 3 }]}>
+                Os horários assinalados como{' '}
+                <Text style={{ fontWeight: '800' }}>{isBarber ? '"Fem. Bloq."' : '"Masc. Bloq."'}</Text> já estão ocupados no lado{' '}
+                {isBarber ? 'Feminino (Beauty)' : 'Masculino (Barber)'}. Por favor, escolha outro horário livre para os dois.
               </Text>
             </View>
+          ) : null}
 
-            {shiftType === 'afternoon_only' ? (
-              <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
-                <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-                  Não existem horários de atendimento disponíveis no período da manhã para esta seleção.
-                </Text>
-              </View>
-            ) : isSelectedToday && visibleMorningSlots.length === 0 ? (
-              <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
-                <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-                  O período da manhã de hoje já terminou. Apenas horários da tarde estão disponíveis.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.slotsGrid}>
-                {visibleMorningSlots.map(slot => {
-                  const isOccupied = occupiedSlots.has(slot);
-                  const isSelected = selectedTimeSlot === slot;
+          {(() => {
+            const renderSlotButton = (slot: string) => {
+              const isOccupied = occupiedSlots.has(slot);
+              const isPartnerBlocked = partnerBlockedSlots.has(slot);
+              const isSelected = selectedTimeSlot === slot;
+              const occupiedLabel = isPartnerBlocked
+                ? isBarber
+                  ? 'Fem. Bloq.'
+                  : 'Masc. Bloq.'
+                : 'Ocupado';
 
-                  return (
-                    <TouchableOpacity
-                      key={slot}
-                      disabled={isOccupied}
+              return (
+                <TouchableOpacity
+                  key={slot}
+                  disabled={isOccupied}
+                  style={[
+                    styles.slotBtn,
+                    isBarber ? styles.slotBtnBarber : styles.slotBtnBeauty,
+                    isOccupied && styles.slotBtnOccupied,
+                    isSelected && { backgroundColor: accentColor, borderColor: accentColor },
+                  ]}
+                  onPress={() => onSelectTimeSlot(slot)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.slotText,
+                      { color: isSelected ? '#111' : isBarber ? '#F3F4F6' : '#111827' },
+                      isOccupied && styles.slotTextOccupied,
+                    ]}
+                  >
+                    {slot}
+                  </Text>
+                  {isOccupied && (
+                    <Text
                       style={[
-                        styles.slotBtn,
-                        isBarber ? styles.slotBtnBarber : styles.slotBtnBeauty,
-                        isOccupied && styles.slotBtnOccupied,
-                        isSelected && { backgroundColor: accentColor, borderColor: accentColor },
+                        styles.occupiedBadge,
+                        isPartnerBlocked && { color: '#F59E0B' },
                       ]}
-                      onPress={() => onSelectTimeSlot(slot)}
-                      activeOpacity={0.8}
                     >
-                      <Text
-                        style={[
-                          styles.slotText,
-                          { color: isSelected ? '#111' : isBarber ? '#F3F4F6' : '#111827' },
-                          isOccupied && styles.slotTextOccupied,
-                        ]}
-                      >
-                        {slot}
+                      {occupiedLabel}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            };
+
+            return (
+              <>
+                {/* Section: Manhã (09:30 - 12:30) */}
+                <View style={styles.shiftSection}>
+                  <View style={styles.shiftHeaderRow}>
+                    <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+                      2. Manhã (09:30 às 12:30)
+                    </Text>
+                    <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                      {shiftType === 'afternoon_only'
+                        ? 'Sem vagas de manhã'
+                        : isSelectedToday && visibleMorningSlots.length === 0
+                        ? 'Período encerrado'
+                        : `Vagas disponíveis (${durationMinutes} min)`}
+                    </Text>
+                  </View>
+
+                  {shiftType === 'afternoon_only' ? (
+                    <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
+                      <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                        Não existem horários de atendimento disponíveis no período da manhã para esta seleção.
                       </Text>
-                      {isOccupied && <Text style={styles.occupiedBadge}>Ocupado</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-
-          {/* Pause / Lunch Notice (apenas exibido se o profissional trabalhar nos dois turnos) */}
-          {shiftType === 'all_day' && (
-            <View style={styles.lunchNoticeRow}>
-              <Text style={[styles.lunchNoticeText, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
-                Intervalo de Almoço: 12:30 às 14:00
-              </Text>
-            </View>
-          )}
-
-          {/* Section: Tarde (14:00 - 19:00) */}
-          <View style={styles.shiftSection}>
-            <View style={styles.shiftHeaderRow}>
-              <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
-                3. Tarde (14:00 às 19:00)
-              </Text>
-              <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
-                {shiftType === 'morning_only'
-                  ? 'Sem vagas de tarde'
-                  : isSelectedToday && visibleAfternoonSlots.length === 0
-                  ? 'Período encerrado'
-                  : `Vagas disponíveis (${durationMinutes} min)`}
-              </Text>
-            </View>
-
-            {shiftType === 'morning_only' ? (
-              <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
-                <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-                  Não existem horários de atendimento disponíveis no período da tarde para esta seleção.
-                </Text>
-              </View>
-            ) : isSelectedToday && visibleAfternoonSlots.length === 0 ? (
-              <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
-                <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
-                  O período da tarde de hoje já terminou.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.slotsGrid}>
-                {visibleAfternoonSlots.map(slot => {
-                  const isOccupied = occupiedSlots.has(slot);
-                  const isSelected = selectedTimeSlot === slot;
-
-                  return (
-                    <TouchableOpacity
-                      key={slot}
-                      disabled={isOccupied}
-                      style={[
-                        styles.slotBtn,
-                        isBarber ? styles.slotBtnBarber : styles.slotBtnBeauty,
-                        isOccupied && styles.slotBtnOccupied,
-                        isSelected && { backgroundColor: accentColor, borderColor: accentColor },
-                      ]}
-                      onPress={() => onSelectTimeSlot(slot)}
-                      activeOpacity={0.8}
-                    >
-                      <Text
-                        style={[
-                          styles.slotText,
-                          { color: isSelected ? '#111' : isBarber ? '#F3F4F6' : '#111827' },
-                          isOccupied && styles.slotTextOccupied,
-                        ]}
-                      >
-                        {slot}
+                    </View>
+                  ) : isSelectedToday && visibleMorningSlots.length === 0 ? (
+                    <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
+                      <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                        O período da manhã de hoje já terminou. Apenas horários da tarde estão disponíveis.
                       </Text>
-                      {isOccupied && <Text style={styles.occupiedBadge}>Ocupado</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+                    </View>
+                  ) : (
+                    <View style={styles.slotsGrid}>
+                      {visibleMorningSlots.map(renderSlotButton)}
+                    </View>
+                  )}
+                </View>
+
+                {/* Pause / Lunch Notice (apenas exibido se o profissional trabalhar nos dois turnos) */}
+                {shiftType === 'all_day' && (
+                  <View style={styles.lunchNoticeRow}>
+                    <Text style={[styles.lunchNoticeText, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
+                      Intervalo de Almoço: 12:30 às 14:00
+                    </Text>
+                  </View>
+                )}
+
+                {/* Section: Tarde (14:00 - 19:00) */}
+                <View style={styles.shiftSection}>
+                  <View style={styles.shiftHeaderRow}>
+                    <Text style={[styles.shiftTitle, { color: isBarber ? '#F3F4F6' : '#111827' }]}>
+                      3. Tarde (14:00 às 19:00)
+                    </Text>
+                    <Text style={[styles.shiftHint, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+                      {shiftType === 'morning_only'
+                        ? 'Sem vagas de tarde'
+                        : isSelectedToday && visibleAfternoonSlots.length === 0
+                        ? 'Período encerrado'
+                        : `Vagas disponíveis (${durationMinutes} min)`}
+                    </Text>
+                  </View>
+
+                  {shiftType === 'morning_only' ? (
+                    <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
+                      <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                        Não existem horários de atendimento disponíveis no período da tarde para esta seleção.
+                      </Text>
+                    </View>
+                  ) : isSelectedToday && visibleAfternoonSlots.length === 0 ? (
+                    <View style={[styles.shiftOffNoticeBox, isBarber ? styles.shiftOffBarber : styles.shiftOffBeauty]}>
+                      <Text style={[styles.shiftOffNoticeText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
+                        O período da tarde de hoje já terminou.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.slotsGrid}>
+                      {visibleAfternoonSlots.map(renderSlotButton)}
+                    </View>
+                  )}
+                </View>
+              </>
+            );
+          })()}
         </>
       )}
     </View>

@@ -25,6 +25,7 @@ import {
 } from '../storage/storageHelper';
 import { INITIAL_BUSINESS_CONFIG } from '../constants/mockData';
 import { scheduleTwoHourReminder, checkAndTriggerDueReminders } from '../utils/reminderHelper';
+import { getFreeStaffForInterval } from '../utils/scheduleHelper';
 import {
   initFirebaseCloud,
   subscribeToCloudAppointments,
@@ -237,8 +238,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const joinedNames = selectedServices.map(s => s.name).join(' + ');
     const primaryId = selectedServices[0]?.id || 'custom';
 
+    const isCoupleExperience =
+      !!experienceSelection || selectedServices.some(s => s.experienceConfig?.enabled);
+
+    const mainId = `app-${Date.now()}`;
+    const oppositeBranch: SalonBranch = branch === 'barber' ? 'beauty' : 'barber';
+    const oppositeStaffPool = staff.filter(s => s.branch === oppositeBranch);
+    const freePartnerStaff = isCoupleExperience
+      ? getFreeStaffForInterval(oppositeStaffPool, timeSlot, totalDuration, date, appointments)[0]
+      : undefined;
+    const partnerId = freePartnerStaff ? `${mainId}-partner` : undefined;
+
     const newBooking: Appointment = {
-      id: `app-${Date.now()}`,
+      id: mainId,
       branch,
       clientName: clientName.trim(),
       clientPhone: clientPhone.trim(),
@@ -248,6 +260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       serviceDuration: totalDuration,
       servicesList: selectedServices,
       experienceSelection: experienceSelection || undefined,
+      linkedAppointmentId: partnerId,
       staffId: staffMember.id,
       staffName: staffMember.name,
       date,
@@ -259,11 +272,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reminderNotified: false,
     };
 
-    const updated = await addAppointment(newBooking);
-    setAppointments(updated);
-
-    // Save to Cloud in real-time
+    let updated = await addAppointment(newBooking);
     await cloudSaveAppointment(newBooking);
+
+    // Se for uma Experiência a 2, bloqueia autenticamente uma vaga no ramo oposto no mesmo dia e horário
+    if (isCoupleExperience && freePartnerStaff && partnerId) {
+      const partnerBooking: Appointment = {
+        id: partnerId,
+        branch: oppositeBranch,
+        clientName: `${clientName.trim()} (Acompanhante • Exp. a 2)`,
+        clientPhone: clientPhone.trim(),
+        serviceId: primaryId,
+        serviceName: `${joinedNames} (Reserva Casal)`,
+        servicePrice: 0, // Preço contabilizado na marcação principal para não duplicar receita
+        serviceDuration: totalDuration,
+        servicesList: selectedServices,
+        experienceSelection: experienceSelection || undefined,
+        linkedAppointmentId: mainId,
+        isExperiencePartnerSlot: true,
+        staffId: freePartnerStaff.id,
+        staffName: freePartnerStaff.name,
+        date,
+        timeSlot,
+        status: 'confirmed',
+        createdAt: new Date().toISOString(),
+        notes: `Bloqueio automático Experiência a 2 (${branch === 'barber' ? 'Masculino' : 'Feminino'} ➔ ${oppositeBranch === 'barber' ? 'Masculino' : 'Feminino'}). ${notes || ''}`.trim(),
+        reminderEnabled: false,
+        reminderNotified: false,
+      };
+      updated = await addAppointment(partnerBooking);
+      await cloudSaveAppointment(partnerBooking);
+    }
+
+    setAppointments(updated);
 
     // Always schedule notification 2 hours before the appointment
     const shopName = branch === 'barber' ? config.barberShopName : config.beautyShopName;
@@ -275,13 +316,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAppointmentStatus = async (id: string, status: Appointment['status']) => {
-    const updated = appointments.map(app => (app.id === id ? { ...app, status } : app));
+    const targetItem = appointments.find(a => a.id === id);
+    const linkedId = targetItem?.linkedAppointmentId;
+
+    const updated = appointments.map(app => {
+      if (app.id === id || (linkedId && app.id === linkedId)) {
+        return { ...app, status };
+      }
+      return app;
+    });
     await saveAppointments(updated);
     setAppointments(updated);
 
-    const changedItem = updated.find(a => a.id === id);
-    if (changedItem) {
-      await cloudSaveAppointment(changedItem);
+    const changedMain = updated.find(a => a.id === id);
+    if (changedMain) {
+      await cloudSaveAppointment(changedMain);
+    }
+    if (linkedId) {
+      const changedPartner = updated.find(a => a.id === linkedId);
+      if (changedPartner) {
+        await cloudSaveAppointment(changedPartner);
+      }
     }
   };
 

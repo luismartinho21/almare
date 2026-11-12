@@ -85,6 +85,8 @@ export interface Appointment {
   serviceDuration: number; // Grand total duration (min)
   servicesList?: Service[]; // Full array of selected services
   experienceSelection?: BookingExperienceSelection; // Detalhes do restaurante e menu escolhidos
+  linkedAppointmentId?: string; // ID da marcação espelho no ramo oposto (Experiência a 2)
+  isExperiencePartnerSlot?: boolean; // Bloqueio automático do acompanhante no outro ramo
   staffId: string;
   staffName: string;
   date: string; // YYYY-MM-DD
