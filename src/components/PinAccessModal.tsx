@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { Theme } from '../constants/theme';
+import { INITIAL_ROLE_PINS } from '../constants/mockData';
 
 interface PinAccessModalProps {
   visible: boolean;
@@ -20,14 +20,16 @@ export const PinAccessModal: React.FC<PinAccessModalProps> = ({ visible, onClose
   const [pin, setPin] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
+  const [prevVisible, setPrevVisible] = useState<boolean>(visible);
 
-  useEffect(() => {
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
     if (visible) {
       setPin('');
       setErrorMsg('');
       setSuccessMsg('');
     }
-  }, [visible]);
+  }
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 4) {
@@ -67,12 +69,7 @@ export const PinAccessModal: React.FC<PinAccessModalProps> = ({ visible, onClose
       return;
     }
 
-    const pins = config.pins || {
-      adminPin: '9999',
-      gestorBarberPin: '1111',
-      gestorBeautyPin: '2222',
-      staffPin: '3333',
-    };
+    const pins = config.pins || INITIAL_ROLE_PINS;
 
     if (enteredPin === pins.adminPin) {
       setSuccessMsg('Acesso concedido: Administrador');

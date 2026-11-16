@@ -1,0 +1,143 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // FUNÇÕES AUXILIARES DE VALIDAÇÃO DE DADOS (PRODUÇÃO ALMARE)
+    // =========================================================================
+
+    function isValidBranch(branch) {
+      return branch is string && (branch == 'barber' || branch == 'beauty');
+    }
+
+    function isValidAppointmentStatus(status) {
+      return status is string && (
+        status == 'confirmed' ||
+        status == 'completed' ||
+        status == 'cancelled'
+      );
+    }
+
+    function isValidAppointment(data, docId) {
+      return data.keys().hasAll([
+          'id',
+          'branch',
+          'clientName',
+          'clientPhone',
+          'serviceId',
+          'serviceName',
+          'servicePrice',
+          'serviceDuration',
+          'staffId',
+          'staffName',
+          'date',
+          'timeSlot',
+          'status'
+        ])
+        && data.id is string && data.id == docId
+        && isValidBranch(data.branch)
+        && data.clientName is string && data.clientName.size() >= 1 && data.clientName.size() <= 150
+        && data.clientPhone is string && data.clientPhone.size() >= 3 && data.clientPhone.size() <= 50
+        && data.serviceId is string && data.serviceId.size() >= 1
+        && data.serviceName is string && data.serviceName.size() >= 1 && data.serviceName.size() <= 500
+        && data.servicePrice is number && data.servicePrice >= 0 && data.servicePrice <= 10000
+        && data.serviceDuration is number && data.serviceDuration > 0 && data.serviceDuration <= 1440
+        && data.staffId is string && data.staffId.size() >= 1
+        && data.staffName is string && data.staffName.size() >= 1 && data.staffName.size() <= 150
+        && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.timeSlot is string && data.timeSlot.matches('^\\d{2}:\\d{2}$')
+        && isValidAppointmentStatus(data.status);
+    }
+
+    function isValidService(data, docId) {
+      return data.keys().hasAll([
+          'id',
+          'branch',
+          'category',
+          'name',
+          'price',
+          'durationMinutes'
+        ])
+        && data.id is string && data.id == docId
+        && isValidBranch(data.branch)
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 100
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 200
+        && data.price is number && data.price >= 0 && data.price <= 10000
+        && data.durationMinutes is number && data.durationMinutes > 0 && data.durationMinutes <= 1440;
+    }
+
+    function isValidStaff(data, docId) {
+      return data.keys().hasAll([
+          'id',
+          'branch',
+          'name',
+          'roleTitle',
+          'workingHours'
+        ])
+        && data.id is string && data.id == docId
+        && isValidBranch(data.branch)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
+        && data.roleTitle is string && data.roleTitle.size() >= 1 && data.roleTitle.size() <= 150
+        && data.workingHours is map;
+    }
+
+    function isValidBusinessConfig(data) {
+      return data.keys().hasAll([
+          'barberShopName',
+          'beautyShopName',
+          'pins'
+        ])
+        && data.barberShopName is string && data.barberShopName.size() >= 1 && data.barberShopName.size() <= 150
+        && data.beautyShopName is string && data.beautyShopName.size() >= 1 && data.beautyShopName.size() <= 150
+        && data.pins is map;
+    }
+
+    // =========================================================================
+    // 1. COLEÇÃO: appointments (Marcações Cliente / Gestor / Staff)
+    // - Leitura em tempo real para sincronização de agenda e horários livres
+    // - Criação e atualização validadas por esquema (Cliente marca, Gestor/Staff atualiza estado)
+    // - Eliminação física bloqueada (as marcações são canceladas via status = 'cancelled')
+    // =========================================================================
+    match /appointments/{appointmentId} {
+      allow read: if true;
+      allow create, update: if isValidAppointment(request.resource.data, appointmentId);
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 2. COLEÇÃO: services (Catálogo de Serviços, Preços, Extras & Experiências)
+    // =========================================================================
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update: if isValidService(request.resource.data, serviceId);
+      allow delete: if true;
+    }
+
+    // =========================================================================
+    // 3. COLEÇÃO: staff (Equipa, Horários, Ausências & PINs Individuais)
+    // =========================================================================
+    match /staff/{staffId} {
+      allow read: if true;
+      allow create, update: if isValidStaff(request.resource.data, staffId);
+      allow delete: if true;
+    }
+
+    // =========================================================================
+    // 4. COLEÇÃO: settings (Configurações Globais do Estabelecimento)
+    // - Apenas o documento 'businessConfig' é permitido; eliminação bloqueada
+    // =========================================================================
+    match /settings/{settingId} {
+      allow read: if settingId == 'businessConfig';
+      allow create, update: if settingId == 'businessConfig' && isValidBusinessConfig(request.resource.data);
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // BLOQUEIO TOTAL DE QUALQUER OUTRA COLEÇÃO NÃO AUTORIZADA
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

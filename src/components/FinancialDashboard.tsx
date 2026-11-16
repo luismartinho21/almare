@@ -9,6 +9,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
+import { getTodayDateString, getOffsetDateString } from '../utils/scheduleHelper';
 
 export type RevenuePeriodFilter = 'all' | 'today' | 'week' | 'month';
 export type RevenueBranchFilter = 'all' | 'barber' | 'beauty';
@@ -34,7 +35,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
   const activeBranch = lockBranch ? initialBranch : revenueBranch;
 
   const isBeauty = variant === 'beauty';
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getTodayDateString(), []);
 
   // 1. All completed appointments across the salon
   const allCompletedAppointments = useMemo(() => {
@@ -49,12 +50,8 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
 
   // 2. Filtered completed appointments based on period, branch, and search query
   const filteredCompletedAppointments = useMemo(() => {
-    const today = new Date();
     const currentMonthStr = todayStr.substring(0, 7); // YYYY-MM
-
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    const sevenDaysAgoStr = getOffsetDateString(-7, todayStr);
 
     return allCompletedAppointments.filter(app => {
       // Branch filter

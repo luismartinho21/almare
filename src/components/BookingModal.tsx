@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SalonBranch, Service, StaffMember, BookingExperienceSelection } from '../types';
 import { Theme } from '../constants/theme';
@@ -215,6 +217,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             />
           </View>
 
+          {/* RGPD / Privacy Notice & Cancellation Conditions for Store Compliance */}
+          <Text style={[styles.privacyNoticeText, { color: isBarber ? '#71717A' : '#6B7280' }]}>
+            🔒 Os seus dados (nome e telemóvel) destinam-se exclusivamente à gestão desta marcação (RGPD). Pagamento presencial no salão e cancelamento gratuito até 24h antes.{' '}
+            <Text
+              style={{ color: accentColor, textDecorationLine: 'underline', fontWeight: '700' }}
+              onPress={() => {
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.open('./privacy.html', '_blank');
+                } else {
+                  Linking.openURL('https://luismartinho21.github.io/almare/privacy.html');
+                }
+              }}
+            >
+              Política de Privacidade & Condições de Cancelamento
+            </Text>
+          </Text>
+
           {/* Buttons */}
           <TouchableOpacity
             style={[styles.confirmBtn, { backgroundColor: accentColor }]}
@@ -344,6 +363,24 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     marginBottom: 10,
+  },
+  privacyNoticeText: {
+    fontSize: 10,
+    lineHeight: 14,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  privacyLinkBtn: {
+    paddingVertical: 4,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  privacyLinkText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+    textAlign: 'center',
   },
   label: {
     fontSize: 12,

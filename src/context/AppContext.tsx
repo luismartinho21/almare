@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
   SalonBranch,
   UserRole,
@@ -119,6 +119,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Cloud Realtime State
   const [cloudConnected, setCloudConnected] = useState<boolean>(false);
   const [cloudProjectId, setCloudProjectId] = useState<string>('');
+  const roleRef = useRef<UserRole>(role);
+  const locallyCreatedIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    roleRef.current = role;
+  }, [role]);
 
   const currentStaffMember = useMemo(() => {
     if (!currentStaffId) return null;
@@ -148,7 +154,100 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    refreshData();
+    let active = true;
+
+    // Real-time Cloud Listeners cleanup refs
+    let unsubApps: (() => void) | null = null;
+    let unsubServs: (() => void) | null = null;
+    let unsubStaff: (() => void) | null = null;
+    let unsubConf: (() => void) | null = null;
+    let isSubscribed = false;
+
+    const cleanupCloudListeners = () => {
+      if (unsubApps) {
+        unsubApps();
+        unsubApps = null;
+      }
+      if (unsubServs) {
+        unsubServs();
+        unsubServs = null;
+      }
+      if (unsubStaff) {
+        unsubStaff();
+        unsubStaff = null;
+      }
+      if (unsubConf) {
+        unsubConf();
+        unsubConf = null;
+      }
+      isSubscribed = false;
+    };
+
+    const setupCloudListeners = async () => {
+      if (isSubscribed || !active) return;
+      isSubscribed = true;
+      const currentApps = await loadAppointments();
+      const currentServs = await loadServices();
+      const currentStaff = await loadStaff();
+      const currentConf = await loadBusinessConfig();
+
+      unsubApps = subscribeToCloudAppointments((items, newlyAdded) => {
+        if (!active) return;
+        setAppointments(items);
+
+        if (newlyAdded && newlyAdded.length > 0) {
+          const remoteNew = newlyAdded.filter(
+            a => !locallyCreatedIdsRef.current.has(a.id) && !a.isExperiencePartnerSlot
+          );
+          const latest = remoteNew[0] || (roleRef.current !== 'client' ? newlyAdded[0] : undefined);
+          if (latest) {
+            const branchLabel = latest.branch === 'barber' ? 'Barber' : 'Beauty';
+            setActiveNotification({
+              title: `🔔 Nova Marcação Recebida (${branchLabel})`,
+              message: `${latest.clientName} agendou ${latest.serviceName} com ${latest.staffName} para ${latest.date} às ${latest.timeSlot}.`,
+              branch: latest.branch,
+            });
+          }
+        }
+      }, currentApps);
+      unsubServs = subscribeToCloudServices(items => {
+        if (active) setServices(items);
+      }, currentServs);
+      unsubStaff = subscribeToCloudStaff(items => {
+        if (active) setStaff(items);
+      }, currentStaff);
+      unsubConf = subscribeToCloudConfig(c => {
+        if (active) setConfig(c);
+      }, currentConf);
+    };
+
+    const unsubStatus = onCloudStatusChange(status => {
+      if (!active) return;
+      setCloudConnected(status.connected);
+      setCloudProjectId(status.projectId);
+      if (status.connected) {
+        setupCloudListeners();
+      } else {
+        cleanupCloudListeners();
+      }
+    });
+
+    // Load local backup first, then connect to Firebase Firestore so cloud is always authoritative
+    Promise.all([
+      loadAppointments(),
+      loadServices(),
+      loadStaff(),
+      loadClientHistory(),
+      loadBusinessConfig(),
+    ]).then(([loadedApps, loadedServs, loadedStaff, loadedHist, loadedConf]) => {
+      if (!active) return;
+      setAppointments(loadedApps);
+      setServices(loadedServs);
+      setStaff(loadedStaff);
+      setClientHistory(loadedHist);
+      setConfig(loadedConf);
+      initFirebaseCloud();
+    });
 
     // Check for any due reminders (2 hours before appointments)
     const runReminderCheck = async () => {
@@ -165,45 +264,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     runReminderCheck();
     const interval = setInterval(runReminderCheck, 45000); // Check every 45s
 
-    // Real-time Cloud Listeners cleanup refs
-    let unsubApps: (() => void) | null = null;
-    let unsubServs: (() => void) | null = null;
-    let unsubStaff: (() => void) | null = null;
-    let unsubConf: (() => void) | null = null;
-
-    const setupCloudListeners = async () => {
-      const currentApps = await loadAppointments();
-      const currentServs = await loadServices();
-      const currentStaff = await loadStaff();
-      const currentConf = await loadBusinessConfig();
-
-      unsubApps = subscribeToCloudAppointments(items => setAppointments(items), currentApps);
-      unsubServs = subscribeToCloudServices(items => setServices(items), currentServs);
-      unsubStaff = subscribeToCloudStaff(items => setStaff(items), currentStaff);
-      unsubConf = subscribeToCloudConfig(c => setConfig(c), currentConf);
-    };
-
-    const unsubStatus = onCloudStatusChange(status => {
-      setCloudConnected(status.connected);
-      setCloudProjectId(status.projectId);
-      if (status.connected) {
-        setupCloudListeners();
-      }
-    });
-
-    initFirebaseCloud().then(connected => {
-      if (connected) {
-        setupCloudListeners();
-      }
-    });
-
     return () => {
+      active = false;
       clearInterval(interval);
       unsubStatus();
-      if (unsubApps) unsubApps();
-      if (unsubServs) unsubServs();
-      if (unsubStaff) unsubStaff();
-      if (unsubConf) unsubConf();
+      cleanupCloudListeners();
     };
   }, []);
 
@@ -271,6 +336,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reminderEnabled: true,
       reminderNotified: false,
     };
+
+    locallyCreatedIdsRef.current.add(mainId);
+    if (partnerId) {
+      locallyCreatedIdsRef.current.add(partnerId);
+    }
 
     let updated = await addAppointment(newBooking);
     await cloudSaveAppointment(newBooking);

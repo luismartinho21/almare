@@ -21,6 +21,7 @@ import { FinancialDashboard } from '../components/FinancialDashboard';
 import { compressImageFile } from '../utils/imageHelper';
 import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
 import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
+import { getTodayDateString, getOffsetDateString } from '../utils/scheduleHelper';
 
 type GestorTab = 'management' | 'services' | 'staff';
 type ManagementSubTab = 'appointments' | 'finance';
@@ -56,7 +57,7 @@ export const GestorBarberView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<GestorTab>('management');
   const [managementSubTab, setManagementSubTab] = useState<ManagementSubTab>('appointments');
   const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
-  const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customDate, setCustomDate] = useState<string>(getTodayDateString());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>('ALL');
 
@@ -111,8 +112,8 @@ export const GestorBarberView: React.FC = () => {
   const [staffStatus, setStaffStatus] = useState<'active' | 'inactive'>('active');
   const [staffAbsenceNote, setStaffAbsenceNote] = useState('');
   const [staffUnavailableDates, setStaffUnavailableDates] = useState<string[]>([]);
-  const [absenceStartDate, setAbsenceStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [absenceEndDate, setAbsenceEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [absenceStartDate, setAbsenceStartDate] = useState(getTodayDateString());
+  const [absenceEndDate, setAbsenceEndDate] = useState(getTodayDateString());
 
   // Staff working hours & schedule (padrão: 09:30 - 12:30 e 14:00 - 19:00)
   const [staffStart, setStaffStart] = useState('09:30');
@@ -122,7 +123,7 @@ export const GestorBarberView: React.FC = () => {
   const [staffWorkDays, setStaffWorkDays] = useState('Terça a Sábado');
   const [staffFeedbackMsg, setStaffFeedbackMsg] = useState('');
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
 
   const barberStaff = useMemo(() => staff.filter(s => s.branch === 'barber'), [staff]);
 
@@ -205,7 +206,7 @@ export const GestorBarberView: React.FC = () => {
   };
 
   const handleOpenCreateStaff = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
     const nextPin = generateStaffPin('barber');
     setEditingStaffMember(null);
     setStaffPin(nextPin);
@@ -227,7 +228,7 @@ export const GestorBarberView: React.FC = () => {
   };
 
   const handleOpenEditStaff = (member: StaffMember) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
     setEditingStaffMember(member);
     setStaffPin(member.pin || generateStaffPin('barber'));
     setStaffAvatar(member.avatar || DEFAULT_BARBER_AVATAR);
@@ -291,14 +292,11 @@ export const GestorBarberView: React.FC = () => {
       return;
     }
 
-    const dStart = new Date(start + 'T00:00:00');
-    const dEnd = new Date(end + 'T00:00:00');
     const dates: string[] = [];
-    const cur = new Date(dStart);
-
-    while (cur <= dEnd) {
-      dates.push(cur.toISOString().split('T')[0]);
-      cur.setDate(cur.getDate() + 1);
+    let curStr = start;
+    while (curStr <= end) {
+      dates.push(curStr);
+      curStr = getOffsetDateString(1, curStr);
     }
 
     setStaffUnavailableDates(dates);
@@ -811,9 +809,7 @@ export const GestorBarberView: React.FC = () => {
                   <TouchableOpacity
                     style={styles.customDateNavBtn}
                     onPress={() => {
-                      const d = new Date(customDate);
-                      d.setDate(d.getDate() - 1);
-                      setCustomDate(d.toISOString().split('T')[0]);
+                      setCustomDate(getOffsetDateString(-1, customDate));
                     }}
                   >
                     <Text style={styles.customDateNavBtnText}>◀ Dia Anterior</Text>
@@ -829,9 +825,7 @@ export const GestorBarberView: React.FC = () => {
                   <TouchableOpacity
                     style={styles.customDateNavBtn}
                     onPress={() => {
-                      const d = new Date(customDate);
-                      d.setDate(d.getDate() + 1);
-                      setCustomDate(d.toISOString().split('T')[0]);
+                      setCustomDate(getOffsetDateString(1, customDate));
                     }}
                   >
                     <Text style={styles.customDateNavBtnText}>Dia Seguinte ▶</Text>
@@ -1348,11 +1342,13 @@ export const GestorBarberView: React.FC = () => {
                   </View>
 
                   <View style={{ flex: 1, gap: 8 }}>
-                    <TouchableOpacity style={styles.uploadPhotoBtn} onPress={handlePickAvatarFile}>
-                      <Text style={styles.uploadPhotoBtnText}>📷 Carregar Foto do Dispositivo</Text>
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' && (
+                      <TouchableOpacity style={styles.uploadPhotoBtn} onPress={handlePickAvatarFile}>
+                        <Text style={styles.uploadPhotoBtnText}>📷 Carregar Foto do Dispositivo</Text>
+                      </TouchableOpacity>
+                    )}
 
-                    <Text style={styles.modalFieldLabelMini}>Ou escolha uma sugestão:</Text>
+                    <Text style={styles.modalFieldLabelMini}>Escolha uma sugestão ou cole URL abaixo:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                       {BARBER_AVATAR_PRESETS.map((preset, idx) => (
                         <TouchableOpacity
@@ -1709,7 +1705,7 @@ export const GestorBarberView: React.FC = () => {
                   <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Visível no botão Saber Mais</Text>
                 </View>
                 <Text style={styles.modalFieldHint}>
-                  Texto completo e detalhado apresentado quando o cliente clica em "Saber mais" (tanto no telemóvel como no PC).
+                  Texto completo e detalhado apresentado quando o cliente clica em &quot;Saber mais&quot; (tanto no telemóvel como no PC).
                 </Text>
                 <TextInput
                   style={[styles.serviceInput, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}

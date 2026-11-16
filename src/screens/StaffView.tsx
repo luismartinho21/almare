@@ -11,6 +11,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { Appointment, StaffMember } from '../types';
 import { Theme } from '../constants/theme';
+import { getTodayDateString, getOffsetDateString } from '../utils/scheduleHelper';
+import { formatWhatsAppPhone } from '../utils/reminderHelper';
 
 export const StaffView: React.FC = () => {
   const {
@@ -21,10 +23,11 @@ export const StaffView: React.FC = () => {
     setCurrentStaffId,
     currentStaffMember,
     setRole,
+    cloudConnected,
   } = useApp();
 
   const todayStr = useMemo(() => {
-    return new Date().toISOString().split('T')[0];
+    return getTodayDateString();
   }, []);
 
   // Selected date for "O Dia" view
@@ -49,15 +52,11 @@ export const StaffView: React.FC = () => {
 
   // Navigate dates
   const handlePrevDay = () => {
-    const cur = new Date(selectedDate + 'T00:00:00');
-    cur.setDate(cur.getDate() - 1);
-    setSelectedDate(cur.toISOString().split('T')[0]);
+    setSelectedDate(getOffsetDateString(-1, selectedDate));
   };
 
   const handleNextDay = () => {
-    const cur = new Date(selectedDate + 'T00:00:00');
-    cur.setDate(cur.getDate() + 1);
-    setSelectedDate(cur.toISOString().split('T')[0]);
+    setSelectedDate(getOffsetDateString(1, selectedDate));
   };
 
   const handleGoToday = () => {
@@ -68,16 +67,9 @@ export const StaffView: React.FC = () => {
     if (!dateStr) return '';
     if (dateStr === todayStr) return 'Hoje';
 
-    const today = new Date(todayStr + 'T00:00:00');
-    const target = new Date(dateStr + 'T00:00:00');
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Amanhã';
-
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    if (dateStr === yesterday.toISOString().split('T')[0]) return 'Ontem';
+    const target = new Date(dateStr + 'T12:00:00');
+    if (dateStr === getOffsetDateString(1, todayStr)) return 'Amanhã';
+    if (dateStr === getOffsetDateString(-1, todayStr)) return 'Ontem';
 
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -133,7 +125,7 @@ export const StaffView: React.FC = () => {
   }, [dayAppointments]);
 
   const handleOpenWhatsApp = (app: Appointment) => {
-    const cleanPhone = app.clientPhone.replace(/\s+/g, '');
+    const cleanPhone = formatWhatsAppPhone(app.clientPhone);
     const dateLabel = formatDateLabel(app.date);
     const text = encodeURIComponent(
       `Olá ${app.clientName}! Contacto do(a) seu(sua) profissional na Almare sobre a sua marcação para ${dateLabel} às ${app.timeSlot} (${app.serviceName}).`
@@ -176,7 +168,7 @@ export const StaffView: React.FC = () => {
                   <Text style={styles.staffSelectName}>{member.name}</Text>
                   <Text style={styles.staffSelectRole}>{member.roleTitle}</Text>
                   <View style={styles.pinTag}>
-                    <Text style={styles.pinTagText}>🔑 Código PIN: {member.pin || '1001'}</Text>
+                    <Text style={styles.pinTagText}>🔒 PIN Individual Configurado</Text>
                   </View>
                 </View>
                 <View style={[styles.staffSelectBtn, { backgroundColor: Theme.colors.barber.accent }]}>
@@ -199,7 +191,7 @@ export const StaffView: React.FC = () => {
                   <Text style={styles.staffSelectName}>{member.name}</Text>
                   <Text style={styles.staffSelectRole}>{member.roleTitle}</Text>
                   <View style={styles.pinTag}>
-                    <Text style={styles.pinTagText}>🔑 Código PIN: {member.pin || '2001'}</Text>
+                    <Text style={styles.pinTagText}>🔒 PIN Individual Configurado</Text>
                   </View>
                 </View>
                 <View style={[styles.staffSelectBtn, { backgroundColor: Theme.colors.beauty.accent }]}>
@@ -259,6 +251,25 @@ export const StaffView: React.FC = () => {
           <View style={styles.hoursBadge}>
             <Text style={styles.hoursBadgeText}>
               🕒 {activeStaff.workingHours?.start || '09:30'} - {activeStaff.workingHours?.end || '19:00'}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.hoursBadge,
+              {
+                borderColor: cloudConnected ? '#10B981' : '#F59E0B',
+                backgroundColor: cloudConnected ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.hoursBadgeText,
+                { color: cloudConnected ? '#10B981' : '#F59E0B', fontWeight: '800' },
+              ]}
+            >
+              {cloudConnected ? '🟢 Nuvem Ativa' : '🟡 Modo Local'}
             </Text>
           </View>
         </View>

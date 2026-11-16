@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { StaffMember, SalonBranch } from '../types';
 import { Theme } from '../constants/theme';
@@ -28,13 +28,15 @@ export const StaffCard: React.FC<StaffCardProps> = ({
   const isBarber = branch === 'barber';
   const accentColor = isBarber ? Theme.colors.barber.accent : Theme.colors.beauty.accent;
   const [isDropdownOpen, setIsDropdownOpen] = useState(true);
+  const [prevSelected, setPrevSelected] = useState(isSelected);
 
   // Auto-open dropdown menu whenever staff card becomes selected
-  useEffect(() => {
+  if (isSelected !== prevSelected) {
+    setPrevSelected(isSelected);
     if (isSelected) {
       setIsDropdownOpen(true);
     }
-  }, [isSelected]);
+  }
 
   const targetName = isNoPreference ? 'Sem preferência' : staff?.name || 'Profissional';
   const dropdownTitle = isNoPreference

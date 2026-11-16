@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
 
@@ -87,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onOpenPinModal,
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 44,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : 12,
     paddingBottom: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,

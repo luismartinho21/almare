@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, deleteApp, FirebaseApp } from 'firebase/app';
 import {
   getFirestore,
   Firestore,
@@ -7,7 +7,6 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
-  getDocs,
   Unsubscribe,
 } from 'firebase/firestore';
 import {
@@ -16,7 +15,7 @@ import {
   loadStoredFirebaseConfig,
   isFirebaseConfigured,
 } from '../config/firebaseConfig';
-import { Appointment, Service, StaffMember, BusinessConfig, ClientHistoryNote } from '../types';
+import { Appointment, Service, StaffMember, BusinessConfig } from '../types';
 import {
   saveAppointments,
   saveServices,
@@ -46,23 +45,32 @@ const notifyStatus = () => {
 };
 
 /**
- * Initializes Firebase using stored credentials or default config.
+ * Initializes Firebase using stored credentials or default production config (almare-553e8).
  */
 export const initFirebaseCloud = async (): Promise<boolean> => {
   try {
     const creds = await loadStoredFirebaseConfig();
-    activeConfig = creds;
 
     if (!isFirebaseConfigured(creds)) {
-      isConnected = false;
-      notifyStatus();
-      return false;
+      activeConfig = DEFAULT_FIREBASE_CONFIG;
+    } else {
+      activeConfig = creds;
     }
 
-    if (!getApps().length) {
-      appInstance = initializeApp(creds);
+    if (getApps().length > 0) {
+      const existing = getApp();
+      const existingOpts = existing.options;
+      if (
+        existingOpts.projectId !== activeConfig.projectId ||
+        existingOpts.apiKey !== activeConfig.apiKey
+      ) {
+        await deleteApp(existing);
+        appInstance = initializeApp(activeConfig);
+      } else {
+        appInstance = existing;
+      }
     } else {
-      appInstance = getApp();
+      appInstance = initializeApp(activeConfig);
     }
 
     dbInstance = getFirestore(appInstance);
@@ -84,40 +92,67 @@ export const getActiveCloudConfig = (): FirebaseCredentials => activeConfig;
 // REAL-TIME FIRESTORE SUBSCRIPTIONS
 // =========================================================================
 
+const sanitizeForFirestore = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
+
 /**
  * Subscribes in real-time to Appointments collection.
- * Any change on mobile or PC triggers this listener immediately (<1s).
+ * Any booking created or updated on mobile or PC triggers this listener immediately (<1s).
+ * Also detects newly added appointments after initial load for live Gestor/Staff notifications.
  */
 export const subscribeToCloudAppointments = (
-  onData: (appointments: Appointment[]) => void,
+  onData: (appointments: Appointment[], newlyAdded: Appointment[]) => void,
   initialLocal: Appointment[]
 ): Unsubscribe | null => {
   if (!dbInstance || !isConnected) return null;
+
+  let isInitialSnapshot = true;
+  const knownIds = new Set<string>();
 
   try {
     const colRef = collection(dbInstance, 'appointments');
     const unsub = onSnapshot(
       colRef,
       async snapshot => {
-        if (snapshot.empty && initialLocal.length > 0) {
-          // Cloud collection is empty: Seed from local initial appointments
+        if (snapshot.empty && !snapshot.metadata.fromCache && initialLocal.length > 0) {
+          // Cloud collection is genuinely empty on server: Seed from local initial appointments
           for (const item of initialLocal) {
-            await setDoc(doc(dbInstance!, 'appointments', item.id), item);
+            knownIds.add(item.id);
+            await setDoc(doc(dbInstance!, 'appointments', item.id), sanitizeForFirestore(item));
           }
+          isInitialSnapshot = false;
           return;
+        }
+
+        const newlyAdded: Appointment[] = [];
+
+        if (!isInitialSnapshot) {
+          snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+              const data = change.doc.data() as Appointment;
+              if (data && data.id && !knownIds.has(data.id)) {
+                newlyAdded.push(data);
+              }
+            }
+          });
         }
 
         const items: Appointment[] = [];
         snapshot.forEach(docSnap => {
-          items.push(docSnap.data() as Appointment);
+          const item = docSnap.data() as Appointment;
+          if (item && item.id) {
+            knownIds.add(item.id);
+            items.push(item);
+          }
         });
+
+        isInitialSnapshot = false;
 
         // Sort appointments descending by date / time
         items.sort((a, b) => (b.date + b.timeSlot).localeCompare(a.date + a.timeSlot));
 
         // Save to local backup storage
         await saveAppointments(items);
-        onData(items);
+        onData(items, newlyAdded);
       },
       err => {
         console.warn('[Firebase Cloud] appointments listener error:', err);
@@ -144,10 +179,9 @@ export const subscribeToCloudServices = (
     const unsub = onSnapshot(
       colRef,
       async snapshot => {
-        if (snapshot.empty && initialLocal.length > 0) {
-          // Cloud is empty: Seed from local services
+        if (snapshot.empty && !snapshot.metadata.fromCache && initialLocal.length > 0) {
           for (const s of initialLocal) {
-            await setDoc(doc(dbInstance!, 'services', s.id), s);
+            await setDoc(doc(dbInstance!, 'services', s.id), sanitizeForFirestore(s));
           }
           return;
         }
@@ -185,10 +219,9 @@ export const subscribeToCloudStaff = (
     const unsub = onSnapshot(
       colRef,
       async snapshot => {
-        if (snapshot.empty && initialLocal.length > 0) {
-          // Cloud is empty: Seed from local staff
+        if (snapshot.empty && !snapshot.metadata.fromCache && initialLocal.length > 0) {
           for (const m of initialLocal) {
-            await setDoc(doc(dbInstance!, 'staff', m.id), m);
+            await setDoc(doc(dbInstance!, 'staff', m.id), sanitizeForFirestore(m));
           }
           return;
         }
@@ -226,15 +259,16 @@ export const subscribeToCloudConfig = (
     const unsub = onSnapshot(
       docRef,
       async docSnap => {
-        if (!docSnap.exists()) {
-          // Seed initial config to cloud
-          await setDoc(docRef, initialLocal);
+        if (!docSnap.exists() && !docSnap.metadata.fromCache) {
+          await setDoc(docRef, sanitizeForFirestore(initialLocal));
           return;
         }
 
-        const conf = docSnap.data() as BusinessConfig;
-        await saveBusinessConfig(conf);
-        onData(conf);
+        if (docSnap.exists()) {
+          const conf = docSnap.data() as BusinessConfig;
+          await saveBusinessConfig(conf);
+          onData(conf);
+        }
       },
       err => {
         console.warn('[Firebase Cloud] config listener error:', err);
@@ -251,14 +285,14 @@ export const subscribeToCloudConfig = (
 // CLOUD MUTATION HELPERS
 // =========================================================================
 
-const sanitizeForFirestore = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
-
-export const cloudSaveAppointment = async (appointment: Appointment): Promise<void> => {
-  if (!dbInstance || !isConnected) return;
+export const cloudSaveAppointment = async (appointment: Appointment): Promise<boolean> => {
+  if (!dbInstance || !isConnected) return false;
   try {
     await setDoc(doc(dbInstance, 'appointments', appointment.id), sanitizeForFirestore(appointment));
+    return true;
   } catch (e) {
     console.warn('[Firebase Cloud] Failed to save appointment to cloud:', e);
+    return false;
   }
 };
 
@@ -283,7 +317,7 @@ export const cloudDeleteService = async (id: string): Promise<void> => {
 export const cloudSaveStaffMember = async (member: StaffMember): Promise<void> => {
   if (!dbInstance || !isConnected) return;
   try {
-    await setDoc(doc(dbInstance, 'staff', member.id), member);
+    await setDoc(doc(dbInstance, 'staff', member.id), sanitizeForFirestore(member));
   } catch (e) {
     console.warn('[Firebase Cloud] Failed to save staff to cloud:', e);
   }
@@ -301,7 +335,7 @@ export const cloudDeleteStaffMember = async (id: string): Promise<void> => {
 export const cloudSaveConfig = async (config: BusinessConfig): Promise<void> => {
   if (!dbInstance || !isConnected) return;
   try {
-    await setDoc(doc(dbInstance, 'settings', 'businessConfig'), config);
+    await setDoc(doc(dbInstance, 'settings', 'businessConfig'), sanitizeForFirestore(config));
   } catch (e) {
     console.warn('[Firebase Cloud] Failed to save config to cloud:', e);
   }
@@ -323,18 +357,18 @@ export const syncAllLocalToCloud = async (
   try {
     let count = 0;
     for (const a of appointments) {
-      await setDoc(doc(dbInstance, 'appointments', a.id), a);
+      await setDoc(doc(dbInstance, 'appointments', a.id), sanitizeForFirestore(a));
       count++;
     }
     for (const s of services) {
-      await setDoc(doc(dbInstance, 'services', s.id), s);
+      await setDoc(doc(dbInstance, 'services', s.id), sanitizeForFirestore(s));
       count++;
     }
     for (const st of staff) {
-      await setDoc(doc(dbInstance, 'staff', st.id), st);
+      await setDoc(doc(dbInstance, 'staff', st.id), sanitizeForFirestore(st));
       count++;
     }
-    await setDoc(doc(dbInstance, 'settings', 'businessConfig'), config);
+    await setDoc(doc(dbInstance, 'settings', 'businessConfig'), sanitizeForFirestore(config));
     count++;
 
     return { success: true, count };

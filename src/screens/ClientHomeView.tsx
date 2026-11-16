@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SalonBranch } from '../types';
+import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
 
 interface ClientHomeViewProps {
   onSelectBranch: (branch: SalonBranch) => void;
@@ -22,13 +23,14 @@ const { width } = Dimensions.get('window');
 export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, onOpenPinModal }) => {
   // Lado atualmente a folhear ('beauty' ou 'barber')
   const [turningBranch, setTurningBranch] = useState<'beauty' | 'barber' | null>(null);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   // Fade in de entrada inicial
-  const buttonsFadeAnim = useRef(new Animated.Value(0)).current;
+  const [buttonsFadeAnim] = useState(() => new Animated.Value(0));
 
   // Valor de animação de 0 a 1 para o fecho tipo livro
-  const beautyBookAnim = useRef(new Animated.Value(0)).current;
-  const barberBookAnim = useRef(new Animated.Value(0)).current;
+  const [beautyBookAnim] = useState(() => new Animated.Value(0));
+  const [barberBookAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(buttonsFadeAnim, {
@@ -41,6 +43,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
 
   // BEAUTY (Esquerda): Roda e fecha completamente sobre o lado direito (180°)
   const handleBeautyPress = () => {
+    if (turningBranch) return;
     setTurningBranch('beauty');
     Animated.timing(beautyBookAnim, {
       toValue: 1,
@@ -54,6 +57,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
 
   // BARBER (Direita): Roda e fecha completamente sobre o lado esquerdo (-180°)
   const handleBarberPress = () => {
+    if (turningBranch) return;
     setTurningBranch('barber');
     Animated.timing(barberBookAnim, {
       toValue: 1,
@@ -272,7 +276,7 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
             {/* Conteúdo textual */}
             <Animated.View style={[styles.cardContent, { opacity: barberFrontContentOpacity }]}>
               <Text style={styles.barberTitle}>ALMARE</Text>
-              <Text style={styles.barberSubtitle}>BARBER</Text>
+              <Text style={styles.barberSubtitle}>BARBEARIA</Text>
               <View style={styles.barberLine} />
             </Animated.View>
 
@@ -291,6 +295,26 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
           </TouchableOpacity>
         </Animated.View>
       </Animated.View>
+
+      {/* Botão discreto de Política de Privacidade & Condições de Cancelamento */}
+      {!turningBranch && (
+        <Animated.View style={[styles.privacyFooterWrapper, { opacity: buttonsFadeAnim }]}>
+          <TouchableOpacity
+            style={styles.privacyPillBtn}
+            onPress={() => setPrivacyModalVisible(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.privacyPillText}>
+              🔒 Política de Privacidade & Condições de Cancelamento
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      <PrivacyPolicyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+      />
     </View>
   );
 };
@@ -405,7 +429,7 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 14,
     fontWeight: '400',
-    letterSpacing: 8,
+    letterSpacing: 5,
     marginTop: 2,
   },
   barberLine: {
@@ -413,5 +437,27 @@ const styles = StyleSheet.create({
     width: 32,
     height: 1.5,
     backgroundColor: '#D4AF37',
+  },
+  privacyFooterWrapper: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  privacyPillBtn: {
+    backgroundColor: 'rgba(13, 13, 17, 0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  privacyPillText: {
+    color: '#E5E7EB',
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

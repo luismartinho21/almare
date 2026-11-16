@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -17,11 +17,11 @@ interface SplashScreenProps {
 
 export function SplashScreen({ onFinished }: SplashScreenProps) {
   // Fase 1: Zoom linear continuo ("vem tudo")
-  const zoomProgress = useRef(new Animated.Value(0)).current;
+  const [zoomProgress] = useState(() => new Animated.Value(0));
   // Fase 2: Fade out do texto e centralização do "A" ao atingir o pico
-  const textFadeProgress = useRef(new Animated.Value(0)).current;
+  const [textFadeProgress] = useState(() => new Animated.Value(0));
   // Fase 3: Fade out final de saída para a página inicial
-  const exitFadeProgress = useRef(new Animated.Value(1)).current;
+  const [exitFadeProgress] = useState(() => new Animated.Value(1));
 
   // Dimensões proporcionais extraídas da imagem oficial de alta resolução (1254x1254)
   const containerWidth = Math.min(width * 0.85, 380);

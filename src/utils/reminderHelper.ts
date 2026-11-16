@@ -340,6 +340,15 @@ export async function checkAndTriggerDueReminders(
 }
 
 /**
+ * Normalizes a phone number for wa.me URLs (digits only, with 351 prefix if 9 digits).
+ */
+export function formatWhatsAppPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '').replace(/^00/, '');
+  if (!digits) return '';
+  return digits.length === 9 ? `351${digits}` : digits.startsWith('351') ? digits : `351${digits}`;
+}
+
+/**
  * Generates the WhatsApp link for the gestor to notify the client 2 hours before
  */
 export function getGestorNotifyClientWhatsAppUrl(
@@ -352,7 +361,6 @@ export function getGestorNotifyClientWhatsAppUrl(
     `Olá ${appointment.clientName}! Lembramos que tem marcação hoje às ${appointment.timeSlot} no ${salonName} para ${appointment.serviceName} com ${appointment.staffName}. Por favor compareça com alguns minutos de antecedência. Qualquer imprevisto, responda a esta mensagem. Até já!`
   );
 
-  const cleanPhone = appointment.clientPhone.replace(/\D/g, '');
-  const fullPhone = cleanPhone.startsWith('351') ? cleanPhone : `351${cleanPhone}`;
+  const fullPhone = formatWhatsAppPhone(appointment.clientPhone);
   return `https://wa.me/${fullPhone}?text=${text}`;
 }

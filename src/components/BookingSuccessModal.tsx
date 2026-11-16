@@ -20,6 +20,7 @@ import {
   addToDeviceCalendar,
   openGoogleCalendar,
   scheduleTwoHourReminder,
+  formatWhatsAppPhone,
 } from '../utils/reminderHelper';
 
 interface BookingSuccessModalProps {
@@ -54,7 +55,7 @@ export const BookingSuccessModal: React.FC<BookingSuccessModalProps> = ({
     const msg = encodeURIComponent(
       `Olá ${shopName}! Fiz uma marcação para ${appointment.serviceName} no dia ${appointment.date} às ${appointment.timeSlot} em nome de ${appointment.clientName}.`
     );
-    const cleanPhone = shopPhone.replace(/\s+/g, '');
+    const cleanPhone = formatWhatsAppPhone(shopPhone);
     Linking.openURL(`https://wa.me/${cleanPhone}?text=${msg}`);
   };
 

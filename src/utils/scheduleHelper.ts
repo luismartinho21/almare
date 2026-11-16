@@ -43,6 +43,23 @@ export const getTodayDateString = (refDate: Date = new Date()): string => {
 };
 
 /**
+ * Adiciona ou subtrai dias a uma data ('YYYY-MM-DD' ou hoje) no fuso horário local,
+ * evitando desvios de fuso horário causados por toISOString() / UTC.
+ */
+export const getOffsetDateString = (offsetDays: number, baseDateStr?: string): string => {
+  let d: Date;
+  if (baseDateStr) {
+    const [y, m, day] = baseDateStr.split('-').map(Number);
+    d = new Date(y, (m || 1) - 1, day || 1, 12, 0, 0);
+  } else {
+    const now = new Date();
+    d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+  }
+  d.setDate(d.getDate() + offsetDays);
+  return getTodayDateString(d);
+};
+
+/**
  * Retorna a hora atual em minutos desde a meia-noite (hora local).
  */
 export const getCurrentTimeMinutes = (refDate: Date = new Date()): number => {
@@ -69,20 +86,21 @@ export const isSlotInPast = (slot: string, date: string, refDate: Date = new Dat
  * Se hoje ainda estiver aberto e com horários futuros por decorrer (antes das 18:30), retorna hoje.
  * Se hoje já tiver fechado ou for dia encerrado (Dom/Seg), retorna o próximo dia aberto.
  */
-export const getInitialBookingDate = (refDate: Date = new Date()): string => {
+export const getInitialBookingDate = (refDate: Date = new Date(), isCoupleExperience: boolean = false): string => {
   const todayStr = getTodayDateString(refDate);
   const currentMins = getCurrentTimeMinutes(refDate);
   const lastSlotMins = timeToMinutes('18:30');
+  const checkOpen = isCoupleExperience ? isCoupleExperienceOpenDay : isSalonOpenDay;
 
-  if (isSalonOpenDay(todayStr) && currentMins < lastSlotMins) {
+  if (checkOpen(todayStr) && currentMins < lastSlotMins) {
     return todayStr;
   }
 
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 14; i++) {
     const next = new Date(refDate);
     next.setDate(refDate.getDate() + i);
     const nextStr = getTodayDateString(next);
-    if (isSalonOpenDay(nextStr)) {
+    if (checkOpen(nextStr)) {
       return nextStr;
     }
   }
@@ -198,6 +216,23 @@ export const isSalonOpenDay = (dateStr: string): boolean => {
 };
 
 /**
+ * A Grand Romance Experience (Experiência a 2) apenas está disponível
+ * às Quartas (3), Quintas (4) e Sextas (5).
+ */
+export const isCoupleExperienceOpenDay = (dateStr: string): boolean => {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  return day === 3 || day === 4 || day === 5;
+};
+
+/**
+ * A Grand Romance Experience (Experiência a 2) apenas está disponível a partir das 18:00.
+ */
+export const isCoupleExperienceValidSlot = (slot: string): boolean => {
+  return timeToMinutes(slot) >= timeToMinutes('18:00');
+};
+
+/**
  * Verifica se um profissional está totalmente disponível durante o intervalo contínuo
  * exigido pelo serviço acumulado [slotStart, slotStart + durationMinutes].
  * 
@@ -213,7 +248,8 @@ export const isStaffAvailableForInterval = (
   durationMinutes: number,
   date: string,
   appointments: Appointment[],
-  refDate: Date = new Date()
+  refDate: Date = new Date(),
+  allowEveningExtension: boolean = false
 ): boolean => {
   if (!isSalonOpenDay(date)) return false;
 
@@ -252,8 +288,11 @@ export const isStaffAvailableForInterval = (
   const fitsMorning = startMins < morningEnd && slotStart >= startMins && slotEnd <= morningEnd;
 
   // Turno da Tarde: desde o início da tarde (max entre startMins e lunchEndMins) até endMins
+  // Na Experiência a 2 a partir das 18:00, permite que a sessão se prolongue após as 19:00
   const afternoonStart = Math.max(startMins, lunchEndMins);
-  const fitsAfternoon = afternoonStart < endMins && slotStart >= afternoonStart && slotEnd <= endMins;
+  const fitsAfternoon = allowEveningExtension
+    ? afternoonStart < endMins && slotStart >= afternoonStart && slotStart < endMins
+    : afternoonStart < endMins && slotStart >= afternoonStart && slotEnd <= endMins;
 
   if (!fitsMorning && !fitsAfternoon) {
     return false;
@@ -286,10 +325,11 @@ export const getFreeStaffForInterval = (
   durationMinutes: number,
   date: string,
   appointments: Appointment[],
-  refDate: Date = new Date()
+  refDate: Date = new Date(),
+  allowEveningExtension: boolean = false
 ): StaffMember[] => {
   return branchStaff.filter(s =>
-    isStaffAvailableForInterval(s, slot, durationMinutes, date, appointments, refDate)
+    isStaffAvailableForInterval(s, slot, durationMinutes, date, appointments, refDate, allowEveningExtension)
   );
 };
 
@@ -311,9 +351,16 @@ export const getPartnerBlockedSlots = ({
   refDate?: Date;
 }): Set<string> => {
   const blockedSet = new Set<string>();
-  if (!isSalonOpenDay(date)) return blockedSet;
+  if (!isCoupleExperienceOpenDay(date)) {
+    ALL_WORKING_SLOTS.forEach(s => blockedSet.add(s));
+    return blockedSet;
+  }
 
   ALL_WORKING_SLOTS.forEach(slot => {
+    if (!isCoupleExperienceValidSlot(slot)) {
+      blockedSet.add(slot);
+      return;
+    }
     if (isSlotInPast(slot, date, refDate)) return;
     const freeOpposite = getFreeStaffForInterval(
       oppositeBranchStaff,
@@ -321,7 +368,8 @@ export const getPartnerBlockedSlots = ({
       durationMinutes,
       date,
       appointments,
-      refDate
+      refDate,
+      true
     );
     if (freeOpposite.length === 0) {
       blockedSet.add(slot);
@@ -357,12 +405,17 @@ export const getOccupiedSlots = ({
 }): Set<string> => {
   const occupiedSet = new Set<string>();
 
-  if (!isSalonOpenDay(date)) {
+  if (!isSalonOpenDay(date) || (requiresPartnerAvailability && !isCoupleExperienceOpenDay(date))) {
     ALL_WORKING_SLOTS.forEach(slot => occupiedSet.add(slot));
     return occupiedSet;
   }
 
   ALL_WORKING_SLOTS.forEach(slot => {
+    if (requiresPartnerAvailability && !isCoupleExperienceValidSlot(slot)) {
+      occupiedSet.add(slot);
+      return;
+    }
+
     // Horários no passado ficam automaticamente marcados como ocupados/indisponíveis
     if (isSlotInPast(slot, date, refDate)) {
       occupiedSet.add(slot);
@@ -371,7 +424,15 @@ export const getOccupiedSlots = ({
 
     if (isNoPreference) {
       // Sem preferência: ocupado se nenhum profissional estiver disponível para a duração acumulada
-      const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments, refDate);
+      const freeStaff = getFreeStaffForInterval(
+        branchStaff,
+        slot,
+        durationMinutes,
+        date,
+        appointments,
+        refDate,
+        requiresPartnerAvailability
+      );
       if (freeStaff.length === 0) {
         occupiedSet.add(slot);
         return;
@@ -384,14 +445,23 @@ export const getOccupiedSlots = ({
         durationMinutes,
         date,
         appointments,
-        refDate
+        refDate,
+        requiresPartnerAvailability
       );
       if (!available) {
         occupiedSet.add(slot);
         return;
       }
     } else {
-      const freeStaff = getFreeStaffForInterval(branchStaff, slot, durationMinutes, date, appointments, refDate);
+      const freeStaff = getFreeStaffForInterval(
+        branchStaff,
+        slot,
+        durationMinutes,
+        date,
+        appointments,
+        refDate,
+        requiresPartnerAvailability
+      );
       if (freeStaff.length === 0) {
         occupiedSet.add(slot);
         return;
@@ -406,7 +476,8 @@ export const getOccupiedSlots = ({
         durationMinutes,
         date,
         appointments,
-        refDate
+        refDate,
+        true
       );
       if (freeOpposite.length === 0) {
         occupiedSet.add(slot);

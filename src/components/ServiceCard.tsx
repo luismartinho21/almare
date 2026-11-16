@@ -64,14 +64,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         onPress={() => onToggleSelect(service)}
         activeOpacity={0.8}
       >
-        {isExperience && (
-          <View style={[styles.experienceTagBadge, { backgroundColor: isBarber ? '#2B2515' : '#FEF3C7', borderColor: accentColor }]}>
-            <Text style={[styles.experienceTagBadgeText, { color: accentColor }]}>
-              ✨ {service.experienceConfig?.title ? service.experienceConfig.title.toUpperCase() : 'EXPERIÊNCIA EXCLUSIVA • RESTAURANTE & MENU'}
-            </Text>
-          </View>
-        )}
-
         <View style={styles.headerRow}>
           <View style={styles.titleArea}>
             <View style={{ flex: 1 }}>
@@ -165,60 +157,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                 </Text>
               </View>
             </View>
-          </View>
-        )}
-
-        {/* Caixa de status da experiência selecionada */}
-        {isSelected && isExperience && (
-          <View
-            style={[
-              styles.experienceStatusBox,
-              {
-                backgroundColor: isBarber ? '#22212B' : '#FFFDF5',
-                borderColor: experienceSelection ? accentColor : '#F59E0B',
-              },
-            ]}
-          >
-            <View style={styles.experienceStatusHeader}>
-              <Text style={[styles.experienceStatusTitle, { color: experienceSelection ? accentColor : '#F59E0B' }]}>
-                {experienceSelection ? '✓ RESTAURANTE & MENU SELECIONADOS' : '⚠️ ESCOLHA OBRIGATÓRIA ABAIXO'}
-              </Text>
-              {onOpenExperienceSelector && (
-                <TouchableOpacity
-                  style={[
-                    styles.experienceActionBtn,
-                    {
-                      backgroundColor: isBarber ? '#2C2B38' : '#FAF6EE',
-                      borderColor: accentColor,
-                    },
-                  ]}
-                  onPress={() => onOpenExperienceSelector(service)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.experienceActionBtnText, { color: accentColor }]}>
-                    {experienceSelection ? 'Alterar' : 'Abrir Lista'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {experienceSelection ? (
-              <View style={styles.experienceSelectedDetails}>
-                <Text style={[styles.experienceSelectedText, { color: isBarber ? '#F4F4F5' : '#1F2937' }]}>
-                  🍽️ <Text style={{ fontWeight: '800' }}>{experienceSelection.restaurantName}</Text>
-                </Text>
-                <Text style={[styles.experienceSelectedSub, { color: isBarber ? '#D4D4D8' : '#4B5563' }]}>
-                  📋 <Text style={{ fontWeight: '700' }}>{experienceSelection.menuName}</Text>
-                  {experienceSelection.priceSupplement && experienceSelection.priceSupplement > 0
-                    ? ` (+${experienceSelection.priceSupplement.toFixed(2)} €)`
-                    : ''}
-                </Text>
-              </View>
-            ) : (
-              <Text style={[styles.experienceWarningText, { color: isBarber ? '#FCA5A5' : '#B45309' }]}>
-                Escolha primeiro 1 dos {service.experienceConfig?.restaurants?.length || 1} restaurante(s) na aba abaixo e depois o menu pretendido ⬇️
-              </Text>
-            )}
           </View>
         )}
 

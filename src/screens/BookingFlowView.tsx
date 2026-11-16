@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Easing, Platform, Alert } from 'react-native';
 import { Service, StaffMember, Appointment, BookingExperienceSelection } from '../types';
 import { useApp } from '../context/AppContext';
 import { Theme } from '../constants/theme';
@@ -9,13 +9,24 @@ import { TimeSlotPicker } from '../components/TimeSlotPicker';
 import { BookingModal } from '../components/BookingModal';
 import { BookingSuccessModal } from '../components/BookingSuccessModal';
 import { ExperienceSelectorModal } from '../components/ExperienceSelectorModal';
+import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
 import {
   getFreeStaffForInterval,
   isStaffAvailableForInterval,
   isSalonOpenDay,
+  isCoupleExperienceOpenDay,
+  isCoupleExperienceValidSlot,
   ALL_WORKING_SLOTS,
   getInitialBookingDate,
 } from '../utils/scheduleHelper';
+
+const showNotice = (message: string) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(message);
+  } else {
+    Alert.alert('Atenção', message);
+  }
+};
 
 interface BookingFlowViewProps {
   onBackToHome: () => void;
@@ -34,7 +45,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const [currentStep, setCurrentStep] = useState<BookingStep>(1);
 
   // Fade in de entrada suave e sereno
-  const enterFadeAnim = useRef(new Animated.Value(0)).current;
+  const [enterFadeAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(enterFadeAnim, {
@@ -65,14 +76,24 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     });
   }, [branchServices]);
 
-  // Categories list (Signature sempre em 1.º lugar, até antes de TODOS)
+  // Categories list (Signature em 1.º lugar, seguido de Cortes/Cabelo, Barba e restantes, e TODOS em último)
   const categories = useMemo(() => {
     const set = new Set<string>();
     regularServices.forEach(s => set.add(s.category));
     const allCats = Array.from(set);
     const signatureCat = allCats.find(c => c.trim().toLowerCase() === 'signature');
-    const others = allCats.filter(c => c.trim().toLowerCase() !== 'signature');
-    return signatureCat ? [signatureCat, 'TODOS', ...others] : ['TODOS', ...others];
+    const others = allCats
+      .filter(c => c.trim().toLowerCase() !== 'signature')
+      .sort((a, b) => {
+        const getPriority = (cat: string) => {
+          const lower = cat.trim().toLowerCase();
+          if (lower.includes('corte') || lower.includes('cabelo')) return 1;
+          if (lower.includes('barba')) return 2;
+          return 3;
+        };
+        return getPriority(a) - getPriority(b);
+      });
+    return signatureCat ? [signatureCat, ...others, 'TODOS'] : [...others, 'TODOS'];
   }, [regularServices]);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('Signature');
@@ -98,17 +119,32 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isNoPreference, setIsNoPreference] = useState<boolean>(false);
 
+  // Dates & Time
+  const [selectedDate, setSelectedDate] = useState<string>(() => getInitialBookingDate());
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
+
   // Experiências especiais (Restaurante & Menu)
   const [experienceSelections, setExperienceSelections] = useState<Record<string, BookingExperienceSelection>>({});
   const [activeExpModalService, setActiveExpModalService] = useState<Service | null>(null);
+  const [prevBranch, setPrevBranch] = useState(activeBranch);
+  const [prevCoupleExp, setPrevCoupleExp] = useState(isCoupleExperienceSelected);
 
-  useEffect(() => {
+  if (activeBranch !== prevBranch) {
+    setPrevBranch(activeBranch);
     setSelectedServices([]);
     setSelectedStaff(null);
     setIsNoPreference(false);
     setSelectedTimeSlot('');
     setExperienceSelections({});
-  }, [activeBranch]);
+  }
+
+  if (isCoupleExperienceSelected !== prevCoupleExp) {
+    setPrevCoupleExp(isCoupleExperienceSelected);
+    if (isCoupleExperienceSelected && !isCoupleExperienceOpenDay(selectedDate)) {
+      setSelectedDate(getInitialBookingDate(new Date(), true));
+      setSelectedTimeSlot('');
+    }
+  }
 
   // Toggle service selection
   const handleToggleService = (service: Service) => {
@@ -147,13 +183,10 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     return selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
   }, [selectedServices]);
 
-  // Dates & Time
-  const [selectedDate, setSelectedDate] = useState<string>(() => getInitialBookingDate());
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-
   // Modals
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   const filteredServices = useMemo(() => {
     if (effectiveCategory === 'TODOS') return regularServices;
@@ -163,11 +196,33 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   // Check if a specific slot is available for a staff member or whole team (and opposite branch if Experience)
   const checkSlotAvailability = (targetStaff: StaffMember | null, noPref: boolean, slot: string): boolean => {
     if (!isSalonOpenDay(selectedDate) || !slot) return false;
+    if (isCoupleExperienceSelected) {
+      if (!isCoupleExperienceOpenDay(selectedDate) || !isCoupleExperienceValidSlot(slot)) {
+        return false;
+      }
+    }
     let currentFree = false;
     if (noPref) {
-      currentFree = getFreeStaffForInterval(branchStaff, slot, totalDuration, selectedDate, appointments).length > 0;
+      currentFree =
+        getFreeStaffForInterval(
+          branchStaff,
+          slot,
+          totalDuration,
+          selectedDate,
+          appointments,
+          new Date(),
+          isCoupleExperienceSelected
+        ).length > 0;
     } else if (targetStaff) {
-      currentFree = isStaffAvailableForInterval(targetStaff, slot, totalDuration, selectedDate, appointments);
+      currentFree = isStaffAvailableForInterval(
+        targetStaff,
+        slot,
+        totalDuration,
+        selectedDate,
+        appointments,
+        new Date(),
+        isCoupleExperienceSelected
+      );
     }
     if (!currentFree) return false;
 
@@ -177,7 +232,9 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
         slot,
         totalDuration,
         selectedDate,
-        appointments
+        appointments,
+        new Date(),
+        true
       );
       return oppositeFree.length > 0;
     }
@@ -186,12 +243,20 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
 
   const getUnavailableSlotMessage = (targetStaff: StaffMember | null, noPref: boolean, slot: string): string => {
     if (isCoupleExperienceSelected) {
+      if (!isCoupleExperienceOpenDay(selectedDate)) {
+        return 'A Grand Romance Experience apenas está disponível às Quartas, Quintas e Sextas-feiras.';
+      }
+      if (!isCoupleExperienceValidSlot(slot)) {
+        return 'A Grand Romance Experience apenas está disponível a partir das 18:00.';
+      }
       const oppositeFree = getFreeStaffForInterval(
         oppositeBranchStaff,
         slot,
         totalDuration,
         selectedDate,
-        appointments
+        appointments,
+        new Date(),
+        true
       );
       if (oppositeFree.length === 0) {
         return isBarber
@@ -205,6 +270,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
   // Check if a staff member or team has AT LEAST ONE available slot on selectedDate
   const hasAnyAvailableSlot = (targetStaff: StaffMember | null, noPref: boolean): boolean => {
     if (!isSalonOpenDay(selectedDate)) return false;
+    if (isCoupleExperienceSelected && !isCoupleExperienceOpenDay(selectedDate)) return false;
     return ALL_WORKING_SLOTS.some(slot => checkSlotAvailability(targetStaff, noPref, slot));
   };
 
@@ -218,14 +284,16 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
       selectedTimeSlot,
       totalDuration,
       selectedDate,
-      appointments
+      appointments,
+      new Date(),
+      isCoupleExperienceSelected
     );
     return freeList[0] || branchStaff[0];
   };
 
   const handleOpenCheckout = (staffTarget?: StaffMember | null, noPref?: boolean) => {
     if (selectedServices.length === 0) {
-      alert('Por favor, selecione pelo menos um serviço.');
+      showNotice('Por favor, selecione pelo menos um serviço.');
       return;
     }
     const unchosenExp = selectedServices.find(
@@ -233,27 +301,31 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     );
     if (unchosenExp) {
       const rCount = unchosenExp.experienceConfig?.restaurants?.length || 1;
-      alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de ${rCount} restaurante(s) parceiro(s) e o respetivo menu.`);
+      showNotice(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de ${rCount} restaurante(s) parceiro(s) e o respetivo menu.`);
       setActiveExpModalService(unchosenExp);
       return;
     }
     const checkNoPref = noPref ?? isNoPreference;
     const checkStaff = staffTarget ?? selectedStaff;
     if (!checkStaff && !checkNoPref) {
-      alert('Por favor, selecione um profissional para consultar e confirmar o horário.');
+      showNotice('Por favor, selecione um profissional para consultar e confirmar o horário.');
       return;
     }
-    if (!isSalonOpenDay(selectedDate)) {
-      alert('O salão encontra-se encerrado na data selecionada. Por favor escolha um dia de Terça a Sábado.');
+    if (!isSalonOpenDay(selectedDate) || (isCoupleExperienceSelected && !isCoupleExperienceOpenDay(selectedDate))) {
+      showNotice(
+        isCoupleExperienceSelected
+          ? 'A Grand Romance Experience apenas está disponível às Quartas, Quintas e Sextas-feiras.'
+          : 'O salão encontra-se encerrado na data selecionada. Por favor escolha um dia de Terça a Sábado.'
+      );
       return;
     }
     if (!selectedTimeSlot) {
-      alert('Por favor, selecione uma vaga de horário disponível.');
+      showNotice('Por favor, selecione uma vaga de horário disponível.');
       return;
     }
     const isFree = checkSlotAvailability(checkStaff, checkNoPref, selectedTimeSlot);
     if (!isFree) {
-      alert(getUnavailableSlotMessage(checkStaff, checkNoPref, selectedTimeSlot));
+      showNotice(getUnavailableSlotMessage(checkStaff, checkNoPref, selectedTimeSlot));
       return;
     }
     setBookingModalVisible(true);
@@ -264,13 +336,13 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
     if (selectedServices.length === 0 || !effectiveStaff) return;
 
     if (!isSalonOpenDay(selectedDate) || !selectedTimeSlot) {
-      alert('Por favor selecione uma data e horário válidos.');
+      showNotice('Por favor selecione uma data e horário válidos.');
       return;
     }
 
     const isFree = checkSlotAvailability(effectiveStaff, isNoPreference, selectedTimeSlot);
     if (!isFree) {
-      alert(getUnavailableSlotMessage(effectiveStaff, isNoPreference, selectedTimeSlot));
+      showNotice(getUnavailableSlotMessage(effectiveStaff, isNoPreference, selectedTimeSlot));
       return;
     }
 
@@ -503,7 +575,7 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
                 );
                 if (unchosenExp) {
                   const rCount = unchosenExp.experienceConfig?.restaurants?.length || 1;
-                  alert(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de ${rCount} restaurante(s) parceiro(s) e o seu menu antes de continuar.`);
+                  showNotice(`Para a experiência "${unchosenExp.name}", é obrigatório escolher 1 de ${rCount} restaurante(s) parceiro(s) e o seu menu antes de continuar.`);
                   setActiveExpModalService(unchosenExp);
                   return;
                 }
@@ -745,6 +817,28 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
             })}
           </View>
         )}
+
+        {/* Link direto para Política de Privacidade & Condições de Cancelamento */}
+        <View style={styles.legalFooterContainer}>
+          <TouchableOpacity
+            style={[
+              styles.legalFooterBtn,
+              {
+                borderColor: isBarber ? '#2E2E3E' : '#E5DCBA',
+                backgroundColor: isBarber ? '#15151C' : '#F3EFE6',
+              },
+            ]}
+            onPress={() => setPrivacyModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.legalFooterBtnText, { color: accentColor }]}>
+              🔒 Política de Privacidade Pública & Condições de Cancelamento
+            </Text>
+            <Text style={[styles.legalFooterSubText, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}>
+              Cancelamento gratuito até 24h antes • Pagamento presencial no salão • RGPD
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Booking Modal */}
@@ -796,6 +890,12 @@ export const BookingFlowView: React.FC<BookingFlowViewProps> = ({ onBackToHome }
           setExperienceSelections({});
           onBackToHome();
         }}
+      />
+
+      {/* Privacy & Cancellation Modal */}
+      <PrivacyPolicyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
       />
     </Animated.View>
   );
@@ -945,5 +1045,26 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontSize: 14,
     fontWeight: '900',
+  },
+  legalFooterContainer: {
+    marginTop: 22,
+    marginBottom: 8,
+  },
+  legalFooterBtn: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  legalFooterBtnText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  legalFooterSubText: {
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
 });

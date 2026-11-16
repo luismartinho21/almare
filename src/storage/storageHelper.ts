@@ -67,14 +67,7 @@ export const loadAppointments = async (): Promise<Appointment[]> => {
   }
   try {
     const stored: Appointment[] = JSON.parse(json);
-    const storedIds = new Set(stored.map(a => a.id));
-    const missing = INITIAL_APPOINTMENTS.filter(a => !storedIds.has(a.id));
-    if (missing.length > 0) {
-      const merged = [...stored, ...missing];
-      await saveAppointments(merged);
-      return merged;
-    }
-    return stored;
+    return Array.isArray(stored) ? stored : INITIAL_APPOINTMENTS;
   } catch (e) {
     return INITIAL_APPOINTMENTS;
   }
@@ -148,6 +141,11 @@ export const loadServices = async (): Promise<Service[]> => {
 
         if (s.branch === 'beauty' && (s.category === 'Cabelo' || s.category === 'Combos')) {
           newObj.category = initial.category;
+          itemUpdated = true;
+        }
+
+        if ((s.id === 'b-romance' || s.id === 'be-romance' || s.experienceConfig?.enabled) && s.category === 'Experiências') {
+          newObj.category = 'Signature';
           itemUpdated = true;
         }
 

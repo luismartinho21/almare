@@ -8,14 +8,29 @@ import {
   TextInput,
   Modal,
   Pressable,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { SalonBranch, Service, Appointment, ServiceExperienceConfig } from '../types';
+import { SalonBranch, Service, ServiceExperienceConfig } from '../types';
 import { Theme } from '../constants/theme';
+import { INITIAL_ROLE_PINS } from '../constants/mockData';
 import { FinancialDashboard } from '../components/FinancialDashboard';
-import { loadStoredFirebaseConfig } from '../config/firebaseConfig';
+import {
+  loadStoredFirebaseConfig,
+  DEFAULT_FIREBASE_CONFIG,
+  PRODUCTION_FIRESTORE_RULES,
+} from '../config/firebaseConfig';
 import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
 import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
+
+const showAdminNotice = (message: string) => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.alert(message);
+  } else {
+    Alert.alert('Administração Almare', message);
+  }
+};
 
 export const AdminConfigView: React.FC = () => {
   const {
@@ -28,7 +43,6 @@ export const AdminConfigView: React.FC = () => {
     staff,
     addStaffMember,
     deleteStaffMember,
-    appointments,
     cloudConnected,
     cloudProjectId,
     syncWithCloudNow,
@@ -47,6 +61,41 @@ export const AdminConfigView: React.FC = () => {
   const [fbSnippet, setFbSnippet] = useState('');
   const [cloudMsg, setCloudMsg] = useState('');
   const [cloudLoading, setCloudLoading] = useState(false);
+  const [rulesCopied, setRulesCopied] = useState(false);
+
+  const handleCopyFirestoreRules = async () => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(PRODUCTION_FIRESTORE_RULES);
+      }
+      setRulesCopied(true);
+      setTimeout(() => setRulesCopied(false), 3500);
+      showAdminNotice(
+        'Regras de Segurança (firestore.rules) copiadas! Cole-as no Firebase Console em Firestore Database ➔ Regras ➔ Publicar.'
+      );
+    } catch {
+      showAdminNotice('Copie o conteúdo da caixa de texto das Regras de Segurança abaixo.');
+    }
+  };
+
+  const handleRestoreDefaultCloud = async () => {
+    setFbApiKey(DEFAULT_FIREBASE_CONFIG.apiKey);
+    setFbProjectId(DEFAULT_FIREBASE_CONFIG.projectId);
+    setFbAuthDomain(DEFAULT_FIREBASE_CONFIG.authDomain);
+    setFbStorageBucket(DEFAULT_FIREBASE_CONFIG.storageBucket);
+    setFbSenderId(DEFAULT_FIREBASE_CONFIG.messagingSenderId);
+    setFbAppId(DEFAULT_FIREBASE_CONFIG.appId);
+    setCloudLoading(true);
+    setCloudMsg('A restaurar configuração oficial de produção (almare-553e8)...');
+    try {
+      const success = await connectCloudWithCredentials(DEFAULT_FIREBASE_CONFIG);
+      if (success) {
+        setCloudMsg('Ligado ao projeto oficial de produção (almare-553e8)!');
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadStoredFirebaseConfig().then(creds => {
@@ -84,7 +133,7 @@ export const AdminConfigView: React.FC = () => {
 
   const handleSaveAndConnectCloud = async () => {
     if (!fbProjectId.trim() || !fbApiKey.trim()) {
-      alert('Por favor preencha pelo menos o Project ID e a API Key.');
+      showAdminNotice('Por favor preencha pelo menos o Project ID e a API Key.');
       return;
     }
     setCloudLoading(true);
@@ -100,10 +149,10 @@ export const AdminConfigView: React.FC = () => {
       });
       if (success) {
         setCloudMsg('Base de dados ligada e sincronizada com sucesso!');
-        alert('Sucesso! A base de dados na nuvem está ativa. Telemóvel e PC sincronizam agora automaticamente em tempo real!');
+        showAdminNotice('Sucesso! A base de dados na nuvem está ativa. Telemóvel e PC sincronizam agora automaticamente em tempo real!');
       } else {
         setCloudMsg('Não foi possível inicializar. Verifique os dados introduzidos.');
-        alert('Não foi possível ligar ao Firebase. Confirme se o Project ID e a API Key estão corretos.');
+        showAdminNotice('Não foi possível ligar ao Firebase. Confirme se o Project ID e a API Key estão corretos.');
       }
     } catch (e: any) {
       setCloudMsg(`Erro: ${e.message}`);
@@ -117,9 +166,9 @@ export const AdminConfigView: React.FC = () => {
     const res = await syncWithCloudNow();
     setCloudLoading(false);
     if (res.success) {
-      alert(`Sincronização concluída! ${res.count} registos enviados para a nuvem.`);
+      showAdminNotice(`Sincronização concluída! ${res.count} registos enviados para a nuvem.`);
     } else {
-      alert(res.error || 'Não foi possível sincronizar com a nuvem.');
+      showAdminNotice(res.error || 'Não foi possível sincronizar com a nuvem.');
     }
   };
 
@@ -135,10 +184,27 @@ export const AdminConfigView: React.FC = () => {
   const [beautyHours, setBeautyHours] = useState(config.beautyOpenDays);
 
   // Security & Access PINs
-  const [adminPin, setAdminPin] = useState(config.pins?.adminPin || '9999');
-  const [barberPin, setBarberPin] = useState(config.pins?.gestorBarberPin || '1111');
-  const [beautyPin, setBeautyPin] = useState(config.pins?.gestorBeautyPin || '2222');
-  const [staffPin, setStaffPin] = useState(config.pins?.staffPin || '3333');
+  const [adminPin, setAdminPin] = useState(config.pins?.adminPin || INITIAL_ROLE_PINS.adminPin);
+  const [barberPin, setBarberPin] = useState(config.pins?.gestorBarberPin || INITIAL_ROLE_PINS.gestorBarberPin);
+  const [beautyPin, setBeautyPin] = useState(config.pins?.gestorBeautyPin || INITIAL_ROLE_PINS.gestorBeautyPin);
+  const [staffPin, setStaffPin] = useState(config.pins?.staffPin || INITIAL_ROLE_PINS.staffPin);
+  const [prevConfig, setPrevConfig] = useState(config);
+
+  if (config !== prevConfig) {
+    setPrevConfig(config);
+    setBarberName(config.barberShopName);
+    setBarberAddr(config.barberAddress);
+    setBarberPhone(config.barberPhone);
+    setBarberHours(config.barberOpenDays);
+    setBeautyName(config.beautyShopName);
+    setBeautyAddr(config.beautyAddress);
+    setBeautyPhone(config.beautyPhone);
+    setBeautyHours(config.beautyOpenDays);
+    setAdminPin(config.pins?.adminPin || INITIAL_ROLE_PINS.adminPin);
+    setBarberPin(config.pins?.gestorBarberPin || INITIAL_ROLE_PINS.gestorBarberPin);
+    setBeautyPin(config.pins?.gestorBeautyPin || INITIAL_ROLE_PINS.gestorBeautyPin);
+    setStaffPin(config.pins?.staffPin || INITIAL_ROLE_PINS.staffPin);
+  }
 
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -211,7 +277,7 @@ export const AdminConfigView: React.FC = () => {
 
   const handleCreateInlineExtra = async () => {
     if (!inlineExtraName.trim()) {
-      alert('Introduza o nome do novo extra.');
+      showAdminNotice('Introduza o nome do novo extra.');
       return;
     }
     const createdExtra = await addService({
@@ -245,10 +311,10 @@ export const AdminConfigView: React.FC = () => {
       beautyPhone,
       beautyOpenDays: beautyHours,
       pins: {
-        adminPin: adminPin.trim() || '9999',
-        gestorBarberPin: barberPin.trim() || '1111',
-        gestorBeautyPin: beautyPin.trim() || '2222',
-        staffPin: staffPin.trim() || '3333',
+        adminPin: adminPin.trim() || INITIAL_ROLE_PINS.adminPin,
+        gestorBarberPin: barberPin.trim() || INITIAL_ROLE_PINS.gestorBarberPin,
+        gestorBeautyPin: beautyPin.trim() || INITIAL_ROLE_PINS.gestorBeautyPin,
+        staffPin: staffPin.trim() || INITIAL_ROLE_PINS.staffPin,
       },
     });
     setSaveSuccess(true);
@@ -301,12 +367,12 @@ export const AdminConfigView: React.FC = () => {
 
   const handleSaveService = async () => {
     if (!newServName.trim()) {
-      alert('Introduza o nome do serviço.');
+      showAdminNotice('Introduza o nome do serviço.');
       return;
     }
 
     if (isExperience && (!expPersonalized || !expConfigDraft || expConfigDraft.restaurants.length === 0)) {
-      alert('Para guardar um serviço com Experiência Exclusiva, personalize primeiro os restaurantes parceiros e os respetivos menus.');
+      showAdminNotice('Para guardar um serviço com Experiência Exclusiva, personalize primeiro os restaurantes parceiros e os respetivos menus.');
       setExpEditorVisible(true);
       return;
     }
@@ -350,7 +416,7 @@ export const AdminConfigView: React.FC = () => {
 
   const handleCreateStaff = async () => {
     if (!newStaffName.trim()) {
-      alert('Introduza o nome do profissional.');
+      showAdminNotice('Introduza o nome do profissional.');
       return;
     }
     await addStaffMember({
@@ -884,16 +950,74 @@ export const AdminConfigView: React.FC = () => {
                   {cloudLoading ? 'A ligar...' : '💾 Ligar à Nuvem e Ativar Sincronização'}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  {
+                    marginTop: 10,
+                    backgroundColor: '#27272A',
+                    borderWidth: 1,
+                    borderColor: '#D4AF37',
+                  },
+                ]}
+                onPress={handleRestoreDefaultCloud}
+                disabled={cloudLoading}
+              >
+                <Text style={[styles.saveBtnText, { color: '#D4AF37' }]}>
+                  ⚡ Restaurar Credenciais de Produção (almare-553e8)
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Quick Tutorial */}
-            <View style={[styles.sectionCard, { backgroundColor: '#18181F' }]}>
-              <Text style={[styles.sectionTitle, { color: '#E4E4E7' }]}>Como obter o Firebase Gratuito em 2 minutos:</Text>
-              <Text style={styles.tutorialStep}>1. Aceda a <Text style={{ color: '#D4AF37' }}>console.firebase.google.com</Text> com a sua conta Google.</Text>
-              <Text style={styles.tutorialStep}>2. Clique em <Text style={{ fontWeight: '700', color: '#FFF' }}>"Adicionar projeto"</Text> e dê o nome "Almare".</Text>
-              <Text style={styles.tutorialStep}>3. No menu esquerdo, vá a <Text style={{ fontWeight: '700', color: '#FFF' }}>Firestore Database</Text> ➔ <Text style={{ fontWeight: '700', color: '#FFF' }}>Criar base de dados</Text> ➔ escolha "Modo de teste".</Text>
-              <Text style={styles.tutorialStep}>4. Nas Definições do Projeto (ícone de engrenagem), clique no ícone Web <Text style={{ color: '#D4AF37' }}>&lt;/&gt;</Text> para ver as credenciais.</Text>
-              <Text style={styles.tutorialStep}>5. Copie e cole aqui o código. O telemóvel e o PC passam a estar instantaneamente sincronizados!</Text>
+            {/* Production Security Rules (firestore.rules) */}
+            <View style={[styles.sectionCard, { backgroundColor: '#141923', borderColor: '#10B981', borderWidth: 1 }]}>
+              <Text style={[styles.sectionTitle, { color: '#10B981' }]}>
+                🔒 Regras de Segurança em Produção (firestore.rules)
+              </Text>
+              <Text style={styles.sectionCardDesc}>
+                Substitua o &quot;Modo de Teste&quot; (que expira ao fim de 30 dias) por estas regras definitivas. Elas bloqueiam coleções desconhecidas e validam rigorosamente apenas <Text style={{ color: '#FFF', fontWeight: '700' }}>appointments</Text>, <Text style={{ color: '#FFF', fontWeight: '700' }}>services</Text>, <Text style={{ color: '#FFF', fontWeight: '700' }}>staff</Text> e <Text style={{ color: '#FFF', fontWeight: '700' }}>settings</Text>.
+              </Text>
+
+              <Text style={styles.tutorialStep}>
+                1. Aceda a <Text style={{ color: '#D4AF37' }}>console.firebase.google.com</Text> ➔ projeto <Text style={{ color: '#FFF', fontWeight: '700' }}>almare-553e8</Text>.
+              </Text>
+              <Text style={styles.tutorialStep}>
+                2. Abra <Text style={{ color: '#FFF', fontWeight: '700' }}>Firestore Database</Text> ➔ separador <Text style={{ color: '#FFF', fontWeight: '700' }}>Regras (Rules)</Text>.
+              </Text>
+              <Text style={styles.tutorialStep}>
+                3. Cole as regras abaixo e clique em <Text style={{ color: '#10B981', fontWeight: '700' }}>Publicar (Publish)</Text>.
+              </Text>
+
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    minHeight: 150,
+                    maxHeight: 220,
+                    textAlignVertical: 'top',
+                    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+                    fontSize: 11,
+                    color: '#A7F3D0',
+                    backgroundColor: '#090D16',
+                    marginTop: 10,
+                  },
+                ]}
+                multiline
+                editable={false}
+                value={PRODUCTION_FIRESTORE_RULES}
+              />
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: '#10B981', marginTop: 12 }]}
+                onPress={handleCopyFirestoreRules}
+              >
+                <Text style={[styles.saveBtnText, { color: '#FFF' }]}>
+                  {rulesCopied
+                    ? '✅ Regras Copiadas para a Área de Transferência!'
+                    : '📋 Copiar Regras de Produção (firestore.rules)'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -959,8 +1083,8 @@ export const AdminConfigView: React.FC = () => {
                 <Text style={styles.label}>Categoria do Serviço</Text>
                 <View style={styles.catPillRow}>
                   {(newServBranch === 'barber'
-                    ? ['Cortes', 'Barbas', 'Signature', 'Extras']
-                    : ['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Extras']
+                    ? ['Cortes', 'Barbas', 'Signature', 'Experiências', 'Extras']
+                    : ['Manicure / Pedicure', 'Head-Spa', 'Tratamentos', 'Signature', 'Experiências', 'Extras']
                   ).map(cat => (
                     <TouchableOpacity
                       key={cat}

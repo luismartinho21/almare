@@ -11,6 +11,7 @@ import {
   Pressable,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Service, StaffMember, ServiceExperienceConfig } from '../types';
@@ -20,6 +21,7 @@ import { FinancialDashboard } from '../components/FinancialDashboard';
 import { compressImageFile } from '../utils/imageHelper';
 import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
 import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
+import { getTodayDateString, getOffsetDateString } from '../utils/scheduleHelper';
 
 const DEFAULT_BEAUTY_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
 const BEAUTY_AVATAR_PRESETS = [
@@ -54,7 +56,7 @@ export const GestorBeautyView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<GestorTab>('management');
   const [managementSubTab, setManagementSubTab] = useState<ManagementSubTab>('appointments');
   const [dateFilter, setDateFilter] = useState<'today' | 'custom' | 'past' | 'future' | 'all'>('today');
-  const [customDate, setCustomDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customDate, setCustomDate] = useState<string>(getTodayDateString());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>('ALL');
 
@@ -100,8 +102,8 @@ export const GestorBeautyView: React.FC = () => {
   const [staffStatus, setStaffStatus] = useState<'active' | 'inactive'>('active');
   const [staffAbsenceNote, setStaffAbsenceNote] = useState('');
   const [staffUnavailableDates, setStaffUnavailableDates] = useState<string[]>([]);
-  const [absenceStartDate, setAbsenceStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [absenceEndDate, setAbsenceEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [absenceStartDate, setAbsenceStartDate] = useState(getTodayDateString());
+  const [absenceEndDate, setAbsenceEndDate] = useState(getTodayDateString());
 
   // Universal In-App Confirmation Modal state (prevents Alert.alert failures on Web)
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -151,7 +153,7 @@ export const GestorBeautyView: React.FC = () => {
     }
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
 
   const beautyStaff = useMemo(() => staff.filter(s => s.branch === 'beauty'), [staff]);
 
@@ -384,7 +386,7 @@ export const GestorBeautyView: React.FC = () => {
   };
 
   const handleOpenCreateStaff = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
     const nextPin = generateStaffPin('beauty');
     setEditingStaffMember(null);
     setStaffPin(nextPin);
@@ -407,7 +409,7 @@ export const GestorBeautyView: React.FC = () => {
   };
 
   const handleOpenEditStaff = (member: StaffMember) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
     setEditingStaffMember(member);
     setStaffPin(member.pin || generateStaffPin('beauty'));
     setStaffName(member.name);
@@ -472,14 +474,11 @@ export const GestorBeautyView: React.FC = () => {
       return;
     }
 
-    const dStart = new Date(start + 'T00:00:00');
-    const dEnd = new Date(end + 'T00:00:00');
     const dates: string[] = [];
-    const cur = new Date(dStart);
-
-    while (cur <= dEnd) {
-      dates.push(cur.toISOString().split('T')[0]);
-      cur.setDate(cur.getDate() + 1);
+    let curStr = start;
+    while (curStr <= end) {
+      dates.push(curStr);
+      curStr = getOffsetDateString(1, curStr);
     }
 
     setStaffUnavailableDates(dates);
@@ -829,9 +828,7 @@ export const GestorBeautyView: React.FC = () => {
                   <TouchableOpacity
                     style={styles.customDateNavBtn}
                     onPress={() => {
-                      const d = new Date(customDate);
-                      d.setDate(d.getDate() - 1);
-                      setCustomDate(d.toISOString().split('T')[0]);
+                      setCustomDate(getOffsetDateString(-1, customDate));
                     }}
                   >
                     <Text style={styles.customDateNavBtnText}>◀ Dia Anterior</Text>
@@ -847,9 +844,7 @@ export const GestorBeautyView: React.FC = () => {
                   <TouchableOpacity
                     style={styles.customDateNavBtn}
                     onPress={() => {
-                      const d = new Date(customDate);
-                      d.setDate(d.getDate() + 1);
-                      setCustomDate(d.toISOString().split('T')[0]);
+                      setCustomDate(getOffsetDateString(1, customDate));
                     }}
                   >
                     <Text style={styles.customDateNavBtnText}>Dia Seguinte ▶</Text>
@@ -1397,7 +1392,7 @@ export const GestorBeautyView: React.FC = () => {
                   <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>ℹ️ Visível no botão Saber Mais</Text>
                 </View>
                 <Text style={styles.fieldSubHint}>
-                  Texto completo e detalhado apresentado quando o cliente clica em "Saber mais" (tanto no telemóvel como no PC).
+                  Texto completo e detalhado apresentado quando o cliente clica em &quot;Saber mais&quot; (tanto no telemóvel como no PC).
                 </Text>
                 <TextInput
                   style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
@@ -1814,11 +1809,13 @@ export const GestorBeautyView: React.FC = () => {
                   </View>
 
                   <View style={{ flex: 1, gap: 8 }}>
-                    <TouchableOpacity style={styles.uploadPhotoBtn} onPress={handlePickAvatarFile}>
-                      <Text style={styles.uploadPhotoBtnText}>📷 Carregar Foto do Dispositivo</Text>
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' && (
+                      <TouchableOpacity style={styles.uploadPhotoBtn} onPress={handlePickAvatarFile}>
+                        <Text style={styles.uploadPhotoBtnText}>📷 Carregar Foto do Dispositivo</Text>
+                      </TouchableOpacity>
+                    )}
 
-                    <Text style={styles.labelMini}>Ou escolha uma sugestão:</Text>
+                    <Text style={styles.labelMini}>Escolha uma sugestão ou cole URL abaixo:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                       {BEAUTY_AVATAR_PRESETS.map((preset, idx) => (
                         <TouchableOpacity

@@ -7,6 +7,8 @@ import {
   AFTERNOON_SLOTS,
   ALL_WORKING_SLOTS,
   isSalonOpenDay,
+  isCoupleExperienceOpenDay,
+  isCoupleExperienceValidSlot,
   getOccupiedSlots,
   getPartnerBlockedSlots,
   timeToMinutes,
@@ -81,7 +83,9 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
       const isToday = i === 0;
 
       const dayOfWeek = d.getDay();
-      const isOpenDay = dayOfWeek !== 0 && dayOfWeek !== 1; // Terça a Sábado
+      const isOpenDay = requiresPartnerAvailability
+        ? (dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5) // Quarta a Sexta para Grand Romance Experience
+        : (dayOfWeek !== 0 && dayOfWeek !== 1); // Terça a Sábado
       const isTodayExpired = isToday && currentMins >= lastSlotMins;
       const isOpen = isOpenDay;
 
@@ -100,11 +104,14 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
       });
     }
     return dates;
-  }, [currentTime]);
+  }, [currentTime, requiresPartnerAvailability]);
 
   const isCurrentDateOpen = useMemo(() => {
+    if (requiresPartnerAvailability) {
+      return isCoupleExperienceOpenDay(selectedDate);
+    }
     return isSalonOpenDay(selectedDate);
-  }, [selectedDate]);
+  }, [selectedDate, requiresPartnerAvailability]);
 
   // Slots em que o ramo oposto (Masculino/Feminino) está sem vagas para Experiência a 2
   const partnerBlockedSlots = useMemo(() => {
@@ -145,14 +152,18 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
 
   // Apenas horários futuros aparecem para o dia de hoje; para dias futuros, aparecem todos
   const visibleMorningSlots = useMemo(() => {
+    if (requiresPartnerAvailability) return [];
     if (!isSelectedToday) return MORNING_SLOTS;
     return MORNING_SLOTS.filter(slot => !isSlotInPast(slot, selectedDate, currentTime));
-  }, [isSelectedToday, selectedDate, currentTime]);
+  }, [isSelectedToday, selectedDate, currentTime, requiresPartnerAvailability]);
 
   const visibleAfternoonSlots = useMemo(() => {
-    if (!isSelectedToday) return AFTERNOON_SLOTS;
-    return AFTERNOON_SLOTS.filter(slot => !isSlotInPast(slot, selectedDate, currentTime));
-  }, [isSelectedToday, selectedDate, currentTime]);
+    const baseAfternoon = requiresPartnerAvailability
+      ? AFTERNOON_SLOTS.filter(slot => isCoupleExperienceValidSlot(slot))
+      : AFTERNOON_SLOTS;
+    if (!isSelectedToday) return baseAfternoon;
+    return baseAfternoon.filter(slot => !isSlotInPast(slot, selectedDate, currentTime));
+  }, [isSelectedToday, selectedDate, currentTime, requiresPartnerAvailability]);
 
   const availableSlots = useMemo(() => {
     if (!isCurrentDateOpen) return [];
@@ -253,7 +264,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           1. Escolha a Data
         </Text>
         <Text style={[styles.scheduleBadge, { color: accentColor }]}>
-          Ter a Sáb: 09:30-12:30 e 14:00-19:00
+          {requiresPartnerAvailability ? 'Qua a Sex: a partir das 18:00' : 'Ter a Sáb: 09:30-12:30 e 14:00-19:00'}
         </Text>
       </View>
 
@@ -325,10 +336,15 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
       {/* When salon is closed on selected date */}
       {!isCurrentDateOpen ? (
         <View style={[styles.closedNoticeBox, isBarber ? styles.closedBoxBarber : styles.closedBoxBeauty]}>
-          <Text style={styles.closedNoticeTitle}>Salão Encerrado nesta data</Text>
+          <Text style={styles.closedNoticeTitle}>
+            {requiresPartnerAvailability
+              ? 'Grand Romance Experience Indisponível nesta Data'
+              : 'Salão Encerrado nesta data'}
+          </Text>
           <Text style={styles.closedNoticeSub}>
-            O salão encontra-se aberto de Terça a Sábado, das 09:30 às 12:30 e das 14:00 às 19:00.
-            Por favor, selecione uma data de Terça a Sábado acima.
+            {requiresPartnerAvailability
+              ? 'A Grand Romance Experience (Experiência a 2) encontra-se disponível exclusivamente às Quartas, Quintas e Sextas-feiras, a partir das 18:00. Por favor, selecione uma Quarta, Quinta ou Sexta-feira acima.'
+              : 'O salão encontra-se aberto de Terça a Sábado, das 09:30 às 12:30 e das 14:00 às 19:00. Por favor, selecione uma data de Terça a Sábado acima.'}
           </Text>
         </View>
       ) : (

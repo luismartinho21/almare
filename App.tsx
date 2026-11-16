@@ -91,8 +91,22 @@ function MainScreen() {
           ]}
         >
           <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={styles.bannerTitle}>{activeNotification.title}</Text>
-            <Text style={styles.bannerMessage}>{activeNotification.message}</Text>
+            <Text
+              style={[
+                styles.bannerTitle,
+                activeNotification.branch === 'beauty' && { color: '#9D7A2A' },
+              ]}
+            >
+              {activeNotification.title}
+            </Text>
+            <Text
+              style={[
+                styles.bannerMessage,
+                activeNotification.branch === 'beauty' && { color: '#1F2937' },
+              ]}
+            >
+              {activeNotification.message}
+            </Text>
           </View>
           <TouchableOpacity onPress={dismissNotification} style={styles.bannerCloseBtn}>
             <Text style={styles.bannerCloseText}>✕</Text>
