@@ -1,9 +1,11 @@
-const CACHE_NAME = 'almare-pwa-v1';
+const CACHE_NAME = 'almare-pwa-v2';
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
   '/apple-touch-icon.png',
   '/favicon.ico',
 ];
