@@ -12,7 +12,9 @@
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://almarebarberbeauty.online/" />
 
-    <!-- Mobile Web App / iOS Home Screen -->
+    <!-- Mobile Web App / PWA / iOS Home Screen -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Almare" />
@@ -65,6 +67,23 @@
       Precisa de ativar o JavaScript no seu navegador para aceder às marcações online da Almare.
     </noscript>
     <div id="root"></div>
-  <script src="/_expo/static/js/web/index-a93e10b6d9118c547b3da7a68a2bdbd4.js" defer></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+      window.__almareInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__almareInstallPrompt = e;
+        window.dispatchEvent(new CustomEvent('almare-install-available'));
+      });
+      window.addEventListener('appinstalled', function () {
+        window.__almareInstallPrompt = null;
+        window.dispatchEvent(new CustomEvent('almare-app-installed'));
+      });
+    </script>
+  <script src="/_expo/static/js/web/index-b7bf38ffb2e20a14b769aacce50d2be6.js" defer></script>
 </body>
 </html>

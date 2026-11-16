@@ -1,0 +1,40 @@
+{
+  "id": "/",
+  "name": "Almare — Barbearia & Estética",
+  "short_name": "Almare",
+  "description": "Agende o seu horário na Almare Barber & Almare Estética de forma rápida, sem instalar nada ou como App no seu telemóvel.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D0D11",
+  "theme_color": "#0D0D11",
+  "lang": "pt-PT",
+  "categories": ["lifestyle", "beauty"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
