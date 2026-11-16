@@ -9,6 +9,8 @@ import {
   Easing,
   Dimensions,
   StatusBar,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SalonBranch } from '../types';
 import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
@@ -24,9 +26,49 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
   // Lado atualmente a folhear ('beauty' ou 'barber')
   const [turningBranch, setTurningBranch] = useState<'beauty' | 'barber' | null>(null);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [canShowInstallBtn, setCanShowInstallBtn] = useState(false);
 
   // Fade in de entrada inicial
   const [buttonsFadeAnim] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      (window.navigator as any)?.standalone === true;
+    if (isStandalone) return;
+
+    setCanShowInstallBtn(true);
+    const onInstalled = () => setCanShowInstallBtn(false);
+    window.addEventListener('almare-app-installed', onInstalled);
+    return () => window.removeEventListener('almare-app-installed', onInstalled);
+  }, []);
+
+  const handleInstallAppPress = async () => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const promptEvent = (window as any).__almareInstallPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      if (choice?.outcome === 'accepted') {
+        (window as any).__almareInstallPrompt = null;
+        setCanShowInstallBtn(false);
+      }
+      return;
+    }
+
+    const ua = window.navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
+    if (isIOS) {
+      window.alert(
+        'Para instalar a App Almare no iPhone/iPad:\n\n1. Toque no botão Partilhar (⬆️) na barra do Safari\n2. Escolha "Adicionar ao Ecrã Principal"'
+      );
+    } else {
+      window.alert(
+        'Para instalar a App Almare no seu dispositivo:\n\nAbra o menu do navegador (⋮) e selecione "Instalar aplicação" ou "Adicionar ao ecrã principal".'
+      );
+    }
+  };
 
   // Valor de animação de 0 a 1 para o fecho tipo livro
   const [beautyBookAnim] = useState(() => new Animated.Value(0));
@@ -296,19 +338,54 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
         </Animated.View>
       </Animated.View>
 
-      {/* Botão discreto de Política de Privacidade & Condições de Cancelamento */}
+      {/* Botão discreto de Política de Privacidade, Livro de Reclamações & Direitos */}
       {!turningBranch && (
-        <Animated.View style={[styles.privacyFooterWrapper, { opacity: buttonsFadeAnim }]}>
-          <TouchableOpacity
-            style={styles.privacyPillBtn}
-            onPress={() => setPrivacyModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.privacyPillText}>
-              🔒 Política de Privacidade & Condições de Cancelamento
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
+        <Animated.View
+          style={[styles.privacyFooterWrapper, { opacity: buttonsFadeAnim }]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.footerPillsRow}>
+            {canShowInstallBtn && (
+              <TouchableOpacity
+                style={[styles.privacyPillBtn, styles.installPillBtn]}
+                onPress={handleInstallAppPress}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.privacyPillText, styles.installPillText]}>
+                  📲 Instalar App
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.privacyPillBtn}
+              onPress={() => setPrivacyModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.privacyPillText}>
+                🔒 Privacidade & Cancelamento
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.privacyPillBtn}
+              onPress={() => {
+                const url = 'https://www.livroreclamacoes.pt/Inicio/';
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                } else {
+                  Linking.openURL(url);
+                }
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.privacyPillText}>
+                📖 Livro de Reclamações
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          </Animated.View>
       )}
 
       <PrivacyPolicyModal
@@ -440,18 +517,24 @@ const styles = StyleSheet.create({
   },
   privacyFooterWrapper: {
     position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
+    bottom: 12,
+    left: 12,
+    right: 12,
     alignItems: 'center',
     zIndex: 30,
+  },
+  footerPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
   },
   privacyPillBtn: {
     backgroundColor: 'rgba(13, 13, 17, 0.84)',
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.45)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
   },
   privacyPillText: {
@@ -459,5 +542,26 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  installPillBtn: {
+    borderColor: '#D4AF37',
+    backgroundColor: '#D4AF37',
+  },
+  installPillText: {
+    color: '#0D0D11',
+    fontWeight: '800',
+  },
+  rightsBadge: {
+    marginTop: 5,
+    backgroundColor: 'rgba(13, 13, 17, 0.55)',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  rightsText: {
+    color: 'rgba(229, 231, 235, 0.65)',
+    fontSize: 9.5,
+    fontWeight: '500',
+    letterSpacing: 0.4,
   },
 });

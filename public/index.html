@@ -10,8 +10,11 @@
     <meta name="keywords" content="Almare, Almare Barber, Almare Estética, Almare Beauty, Barbearia, Estética, Marcações Online, Agendamento, Salão, Cabeleireiro, Head-Spa" />
     <meta name="author" content="Almare" />
     <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://almarebarberbeauty.online/" />
 
-    <!-- Mobile Web App / iOS Home Screen -->
+    <!-- Mobile Web App / PWA / iOS Home Screen -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Almare" />
@@ -23,8 +26,8 @@
     <meta property="og:site_name" content="Almare — Barbearia &amp; Estética" />
     <meta property="og:title" content="Almare — Barbearia &amp; Estética | Marcações Online" />
     <meta property="og:description" content="Marque já o seu horário na Almare Barber ou Almare Estética diretamente pelo link, sem instalar nada." />
-    <meta property="og:url" content="https://luismartinho21.github.io/almare/" />
-    <meta property="og:image" content="https://luismartinho21.github.io/almare/og-image.jpg" />
+    <meta property="og:url" content="https://almarebarberbeauty.online/" />
+    <meta property="og:image" content="https://almarebarberbeauty.online/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:alt" content="Almare — Barbearia &amp; Estética" />
 
@@ -32,7 +35,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Almare — Barbearia &amp; Estética | Marcações Online" />
     <meta name="twitter:description" content="Marque já o seu horário na Almare Barber ou Almare Estética diretamente pelo link, sem instalar nada." />
-    <meta name="twitter:image" content="https://luismartinho21.github.io/almare/og-image.jpg" />
+    <meta name="twitter:image" content="https://almarebarberbeauty.online/og-image.jpg" />
 
     <!-- The `react-native-web` recommended style reset -->
     <style id="expo-reset">
@@ -62,5 +65,22 @@
       Precisa de ativar o JavaScript no seu navegador para aceder às marcações online da Almare.
     </noscript>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+      window.__almareInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__almareInstallPrompt = e;
+        window.dispatchEvent(new CustomEvent('almare-install-available'));
+      });
+      window.addEventListener('appinstalled', function () {
+        window.__almareInstallPrompt = null;
+        window.dispatchEvent(new CustomEvent('almare-app-installed'));
+      });
+    </script>
   </body>
 </html>

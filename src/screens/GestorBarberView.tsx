@@ -18,12 +18,13 @@ import { StaffMember, Service, ServiceExperienceConfig } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
+import { ClientsDirectory } from '../components/ClientsDirectory';
 import { compressImageFile } from '../utils/imageHelper';
 import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
 import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
 import { getTodayDateString, getOffsetDateString } from '../utils/scheduleHelper';
 
-type GestorTab = 'management' | 'services' | 'staff';
+type GestorTab = 'management' | 'services' | 'staff' | 'clients';
 type ManagementSubTab = 'appointments' | 'finance';
 
 const DEFAULT_BARBER_AVATAR = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200';
@@ -645,6 +646,15 @@ export const GestorBarberView: React.FC = () => {
             Colaboradores
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'clients' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('clients')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'clients' && styles.tabBtnTextActive]}>
+            Clientes
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -1107,6 +1117,10 @@ export const GestorBarberView: React.FC = () => {
         {/* ============================================================ */}
         {/* TAB 3: GESTÃO COMPLETA DE FUNCIONÁRIOS (BARBER) */}
         {/* ============================================================ */}
+        {activeTab === 'clients' && (
+          <ClientsDirectory branch="barber" />
+        )}
+
         {activeTab === 'staff' && (
           <View>
             <View style={styles.servicesHeaderRow}>

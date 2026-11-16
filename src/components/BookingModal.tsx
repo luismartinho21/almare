@@ -226,7 +226,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 if (Platform.OS === 'web' && typeof window !== 'undefined') {
                   window.open('./privacy.html', '_blank');
                 } else {
-                  Linking.openURL('https://luismartinho21.github.io/almare/privacy.html');
+                  Linking.openURL('https://almarebarberbeauty.online/privacy.html');
                 }
               }}
             >

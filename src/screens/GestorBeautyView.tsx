@@ -18,6 +18,7 @@ import { Service, StaffMember, ServiceExperienceConfig } from '../types';
 import { Theme } from '../constants/theme';
 import { getGestorNotifyClientWhatsAppUrl } from '../utils/reminderHelper';
 import { FinancialDashboard } from '../components/FinancialDashboard';
+import { ClientsDirectory } from '../components/ClientsDirectory';
 import { compressImageFile } from '../utils/imageHelper';
 import { ExperienceConfigSection } from '../components/ExperienceConfigSection';
 import { ExperienceEditorModal } from '../components/ExperienceEditorModal';
@@ -32,7 +33,7 @@ const BEAUTY_AVATAR_PRESETS = [
   'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200',
 ];
 
-type GestorTab = 'management' | 'services' | 'staff';
+type GestorTab = 'management' | 'services' | 'staff' | 'clients';
 type ManagementSubTab = 'appointments' | 'finance';
 
 export const GestorBeautyView: React.FC = () => {
@@ -664,6 +665,15 @@ export const GestorBeautyView: React.FC = () => {
             Colaboradores
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.topTabBtn, activeTab === 'clients' && styles.topTabBtnActive]}
+          onPress={() => setActiveTab('clients')}
+        >
+          <Text style={[styles.topTabBtnText, activeTab === 'clients' && styles.topTabBtnTextActive]}>
+            Clientes
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -1131,6 +1141,10 @@ export const GestorBeautyView: React.FC = () => {
         {/* ============================================================ */}
         {/* TAB 3: GESTÃO COMPLETA DE FUNCIONÁRIAS BEAUTY */}
         {/* ============================================================ */}
+        {activeTab === 'clients' && (
+          <ClientsDirectory branch="beauty" />
+        )}
+
         {activeTab === 'staff' && (
           <View>
             <View style={styles.servicesHeaderRow}>

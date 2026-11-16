@@ -260,6 +260,30 @@ export const saveClientHistoryNote = async (note: ClientHistoryNote): Promise<Cl
 };
 
 // --- BUSINESS CONFIG ---
+const LEGACY_FAKE_PHONES = ['+351 912 345 678', '+351 912 345 679', '912345678', '912345679'];
+
+/**
+ * Replaces leftover demo values (fake phones/addresses/names) that may still be
+ * stored locally or in the cloud with the real Almare identity.
+ */
+export const migrateLegacyConfig = (c: BusinessConfig): BusinessConfig => {
+  const fixPhone = (p?: string) =>
+    !p || LEGACY_FAKE_PHONES.includes(p.trim()) ? '+351 914 098 280' : p;
+  const fixAddr = (a: string | undefined, real: string) =>
+    !a || /Rua Principal Almare/i.test(a) ? real : a;
+  const fixName = (n: string | undefined, real: string) =>
+    !n || /Para (Eles|Elas)/i.test(n) ? real : n;
+  return {
+    ...c,
+    barberShopName: fixName(c.barberShopName, INITIAL_BUSINESS_CONFIG.barberShopName),
+    barberAddress: fixAddr(c.barberAddress, INITIAL_BUSINESS_CONFIG.barberAddress),
+    barberPhone: fixPhone(c.barberPhone),
+    beautyShopName: fixName(c.beautyShopName, INITIAL_BUSINESS_CONFIG.beautyShopName),
+    beautyAddress: fixAddr(c.beautyAddress, INITIAL_BUSINESS_CONFIG.beautyAddress),
+    beautyPhone: fixPhone(c.beautyPhone),
+  };
+};
+
 export const loadBusinessConfig = async (): Promise<BusinessConfig> => {
   const json = await getItem(KEYS.CONFIG);
   if (!json) {
@@ -278,7 +302,7 @@ export const loadBusinessConfig = async (): Promise<BusinessConfig> => {
         ...(parsed.pins || {}),
       },
     };
-    return updatedConfig;
+    return migrateLegacyConfig(updatedConfig);
   } catch (e) {
     return INITIAL_BUSINESS_CONFIG;
   }

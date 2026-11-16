@@ -12,7 +12,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { formatWhatsAppPhone } from '../utils/reminderHelper';
 
-export const PUBLIC_PRIVACY_POLICY_URL = 'https://luismartinho21.github.io/almare/privacy.html';
+export const PUBLIC_PRIVACY_POLICY_URL = 'https://almarebarberbeauty.online/privacy.html';
 
 interface PrivacyPolicyModalProps {
   visible: boolean;
@@ -30,11 +30,15 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
   };
 
   const handleContactCancelOrPrivacy = () => {
-    const cleanPhone = formatWhatsAppPhone(shopPhone || '+351912345678');
-    const msg = encodeURIComponent(
-      `Olá ${shopName}! Gostaria de solicitar o cancelamento/alteração de uma marcação ou informações sobre os meus dados pessoais.`
-    );
-    Linking.openURL(`https://wa.me/${cleanPhone}?text=${msg}`);
+    const msg = `Olá ${shopName}! Gostaria de solicitar o cancelamento/alteração de uma marcação ou informações sobre os meus dados pessoais.`;
+    if (!shopPhone) {
+      Linking.openURL(
+        `mailto:Almare.lda2026@gmail.com?subject=${encodeURIComponent('Marcação / Dados pessoais')}&body=${encodeURIComponent(msg)}`
+      );
+      return;
+    }
+    const cleanPhone = formatWhatsAppPhone(shopPhone);
+    Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`);
   };
 
   if (!visible) return null;
@@ -94,7 +98,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
             <View style={styles.sectionBox}>
               <Text style={styles.sectionTitle}>3. Eliminação de Dados e Contacto Direto</Text>
               <Text style={styles.paragraph}>
-                Nos termos do RGPD e das diretrizes da App Store e Google Play, pode solicitar a qualquer momento o cancelamento de uma reserva ou a <Text style={styles.bold}>eliminação imediata dos seus dados</Text> através do contacto direto da Almare ({shopPhone}).
+                Nos termos do RGPD e das diretrizes da App Store e Google Play, pode solicitar a qualquer momento o cancelamento de uma reserva ou a <Text style={styles.bold}>eliminação imediata dos seus dados</Text> através do email <Text style={styles.bold}>Almare.lda2026@gmail.com</Text>{shopPhone ? ` ou do contacto ${shopPhone}` : ''}.
               </Text>
             </View>
 

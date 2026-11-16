@@ -30,9 +30,6 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "experiments": {
-      "baseUrl": "/almare"
-    },
     "plugins": [
       [
         "expo-splash-screen",

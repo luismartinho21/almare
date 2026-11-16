@@ -83,14 +83,14 @@ export const INITIAL_ROLE_PINS: RolePinsConfig = {
 };
 
 export const INITIAL_BUSINESS_CONFIG: BusinessConfig = {
-  barberShopName: 'Almare Barber - Para Eles',
-  barberAddress: 'Rua Principal Almare, Nº 14, Lisboa',
-  barberPhone: '+351 912 345 678',
+  barberShopName: 'Almare Barber',
+  barberAddress: 'Rua do Couto Paredes 19, 4900-674 Viana do Castelo',
+  barberPhone: '+351 914 098 280',
   barberOpenDays: 'Terça a Sábado: 09:30 - 12:30 e 14:00 - 19:00',
 
-  beautyShopName: 'Almare Beauty - Para Elas',
-  beautyAddress: 'Rua Principal Almare, Nº 16, Lisboa',
-  beautyPhone: '+351 912 345 679',
+  beautyShopName: 'Almare Beauty',
+  beautyAddress: 'Rua do Couto Paredes 19, 4900-674 Viana do Castelo',
+  beautyPhone: '+351 914 098 280',
   beautyOpenDays: 'Terça a Sábado: 09:30 - 12:30 e 14:00 - 19:00',
 
   slotIntervalMinutes: 30,

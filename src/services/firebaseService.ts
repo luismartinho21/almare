@@ -21,6 +21,7 @@ import {
   saveServices,
   saveStaff,
   saveBusinessConfig,
+  migrateLegacyConfig,
 } from '../storage/storageHelper';
 
 let appInstance: FirebaseApp | null = null;
@@ -272,9 +273,14 @@ export const subscribeToCloudConfig = (
         }
 
         if (docSnap.exists()) {
-          const conf = docSnap.data() as BusinessConfig;
+          const raw = docSnap.data() as BusinessConfig;
+          const conf = migrateLegacyConfig(raw);
           await saveBusinessConfig(conf);
           onData(conf);
+          if (JSON.stringify(conf) !== JSON.stringify(raw) && !docSnap.metadata.fromCache) {
+            // Corrige também o documento na nuvem (remove dados fictícios antigos)
+            setDoc(docRef, sanitizeForFirestore(conf)).catch(() => {});
+          }
         }
       },
       err => {
