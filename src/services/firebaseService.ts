@@ -187,9 +187,16 @@ export const subscribeToCloudServices = (
         }
 
         const items: Service[] = [];
-        snapshot.forEach(docSnap => {
-          items.push(docSnap.data() as Service);
-        });
+        for (const docSnap of snapshot.docs) {
+          const s = docSnap.data() as Service;
+          if ((s.id === 'b-romance' || s.id === 'be-romance' || s.experienceConfig?.enabled) && s.category === 'Experiências') {
+            const migrated: Service = { ...s, category: 'Signature' };
+            items.push(migrated);
+            setDoc(doc(dbInstance!, 'services', s.id), sanitizeForFirestore(migrated)).catch(() => {});
+          } else {
+            items.push(s);
+          }
+        }
 
         await saveServices(items);
         onData(items);
