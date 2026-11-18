@@ -42,6 +42,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const [showServiceDetails, setShowServiceDetails] = useState(false);
   const [expandedExtraIds, setExpandedExtraIds] = useState<string[]>([]);
 
+  const hasShortDesc = Boolean(service.description && service.description.trim().length > 0);
+  const hasLongDesc = Boolean(service.longDescription && service.longDescription.trim().length > 0);
+
   const toggleExtraExpanded = (extraId: string) => {
     setExpandedExtraIds(prev =>
       prev.includes(extraId) ? prev.filter(id => id !== extraId) : [...prev, extraId]
@@ -93,36 +96,44 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           </View>
         </View>
 
-        <View style={styles.actionRowMiddle}>
-          <Text
-            style={[styles.description, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}
-            numberOfLines={showServiceDetails ? undefined : 2}
-          >
-            {service.description || 'Serviço personalizado com foco na excelência e bem-estar Almare.'}
-          </Text>
+        {(hasShortDesc || hasLongDesc) && (
+          <View style={styles.actionRowMiddle}>
+            {hasShortDesc ? (
+              <Text
+                style={[styles.description, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}
+                numberOfLines={showServiceDetails ? undefined : 2}
+              >
+                {service.description.trim()}
+              </Text>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
 
-          {/* Botão Saber Mais do Serviço Principal */}
-          <TouchableOpacity
-            style={[
-              styles.saberMaisBtn,
-              {
-                borderColor: showServiceDetails ? accentColor : (isBarber ? '#3F3F4E' : '#E5DEC9'),
-                backgroundColor: showServiceDetails
-                  ? (isBarber ? '#2C2B36' : '#FAF6EE')
-                  : 'transparent',
-              },
-            ]}
-            onPress={() => setShowServiceDetails(prev => !prev)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.saberMaisBtnText, { color: accentColor }]}>
-              {showServiceDetails ? 'Ocultar detalhes ▲' : 'ℹ️ Saber mais ▼'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {/* Botão Saber Mais do Serviço Principal (apenas se o gestor preencheu Saber Mais) */}
+            {hasLongDesc && (
+              <TouchableOpacity
+                style={[
+                  styles.saberMaisBtn,
+                  {
+                    borderColor: showServiceDetails ? accentColor : (isBarber ? '#3F3F4E' : '#E5DEC9'),
+                    backgroundColor: showServiceDetails
+                      ? (isBarber ? '#2C2B36' : '#FAF6EE')
+                      : 'transparent',
+                  },
+                ]}
+                onPress={() => setShowServiceDetails(prev => !prev)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.saberMaisBtnText, { color: accentColor }]}>
+                  {showServiceDetails ? 'Ocultar detalhes ▲' : 'ℹ️ Saber mais ▼'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Caixa expandida de Saber Mais com descrição rica */}
-        {showServiceDetails && (
+        {showServiceDetails && hasLongDesc && (
           <View
             style={[
               styles.detailsBox,
@@ -138,7 +149,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </Text>
             </View>
             <Text style={[styles.detailsText, { color: isBarber ? '#E4E4E7' : '#374151' }]}>
-              {service.longDescription || service.description || 'Procedimento realizado com os melhores produtos profissionais e atendimento minucioso de alta qualidade Almare.'}
+              {service.longDescription!.trim()}
             </Text>
             <View style={styles.detailsMetaRow}>
               <View style={[styles.detailsMetaPill, { backgroundColor: isBarber ? '#2D2D38' : '#EFE9DA' }]}>
@@ -255,6 +266,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               {availableExtras.map(extra => {
                 const isExtraSelected = selectedExtras.some(e => e.id === extra.id);
                 const isExtraExpanded = expandedExtraIds.includes(extra.id);
+                const hasExtraShortDesc = Boolean(extra.description && extra.description.trim().length > 0);
+                const hasExtraLongDesc = Boolean(extra.longDescription && extra.longDescription.trim().length > 0);
 
                 return (
                   <View key={extra.id} style={styles.extraItemWrapper}>
@@ -294,12 +307,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                         <Text style={[styles.extraName, { color: isBarber ? '#F3F4F6' : '#1F2937' }]}>
                           {extra.name}
                         </Text>
-                        {extra.description ? (
+                        {hasExtraShortDesc ? (
                           <Text
                             style={[styles.extraDesc, { color: isBarber ? '#9CA3AF' : '#6B7280' }]}
                             numberOfLines={1}
                           >
-                            {extra.description}
+                            {extra.description.trim()}
                           </Text>
                         ) : null}
                         <Text style={[styles.extraDuration, { color: isBarber ? '#71717A' : '#9CA3AF' }]}>
@@ -307,24 +320,26 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                         </Text>
                       </View>
 
-                      {/* Botão Saber Mais do Extra */}
-                      <TouchableOpacity
-                        style={[
-                          styles.extraSaberMaisBtn,
-                          {
-                            borderColor: isExtraExpanded ? accentColor : (isBarber ? '#3F3F4E' : '#DFD7C4'),
-                            backgroundColor: isExtraExpanded
-                              ? (isBarber ? '#2D2D38' : '#F4EEE0')
-                              : 'transparent',
-                          },
-                        ]}
-                        onPress={() => toggleExtraExpanded(extra.id)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.extraSaberMaisText, { color: accentColor }]}>
-                          {isExtraExpanded ? 'Ocultar ▲' : 'ℹ️ Saber mais'}
-                        </Text>
-                      </TouchableOpacity>
+                      {/* Botão Saber Mais do Extra (apenas se tiver descrição longa) */}
+                      {hasExtraLongDesc && (
+                        <TouchableOpacity
+                          style={[
+                            styles.extraSaberMaisBtn,
+                            {
+                              borderColor: isExtraExpanded ? accentColor : (isBarber ? '#3F3F4E' : '#DFD7C4'),
+                              backgroundColor: isExtraExpanded
+                                ? (isBarber ? '#2D2D38' : '#F4EEE0')
+                                : 'transparent',
+                            },
+                          ]}
+                          onPress={() => toggleExtraExpanded(extra.id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.extraSaberMaisText, { color: accentColor }]}>
+                            {isExtraExpanded ? 'Ocultar ▲' : 'ℹ️ Saber mais'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
 
                       <View
                         style={[
@@ -348,7 +363,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                     </TouchableOpacity>
 
                     {/* Caixa de detalhes expandida do Extra */}
-                    {isExtraExpanded && (
+                    {isExtraExpanded && hasExtraLongDesc && (
                       <View
                         style={[
                           styles.extraExpandedDetailsBox,
@@ -362,7 +377,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                           ℹ️ SOBRE O EXTRA: {extra.name.toUpperCase()}
                         </Text>
                         <Text style={[styles.extraExpandedDesc, { color: isBarber ? '#D4D4D8' : '#374151' }]}>
-                          {extra.longDescription || extra.description || 'Extra complementar de qualidade premium para potenciar e enriquecer o resultado do seu serviço.'}
+                          {extra.longDescription!.trim()}
                         </Text>
                         <View style={styles.extraExpandedMetaRow}>
                           <Text style={[styles.extraExpandedMetaText, { color: isBarber ? '#A1A1AA' : '#6B7280' }]}>
@@ -623,9 +638,9 @@ const InlineExperienceAccordion: React.FC<InlineExperienceAccordionProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 13,
+    marginBottom: 10,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -645,36 +660,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   titleArea: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   category: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.9,
   },
   name: {
-    fontSize: 16,
+    fontSize: 14.5,
     fontWeight: '700',
     marginTop: 2,
   },
   priceTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 7,
   },
   priceText: {
-    fontSize: 15,
+    fontSize: 13.5,
     fontWeight: '800',
   },
   description: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     flex: 1,
     marginRight: 8,
   },
@@ -682,56 +697,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
     marginTop: 2,
     flexWrap: 'wrap',
     gap: 6,
   },
   saberMaisBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 7,
     borderWidth: 1,
     alignSelf: 'flex-start',
   },
   saberMaisBtnText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   detailsBox: {
-    padding: 12,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 9,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   detailsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   detailsBadge: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
   detailsText: {
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 10,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 8,
   },
   detailsMetaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
   },
   detailsMetaPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 5,
   },
   detailsMetaPillText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
   },
   footerRow: {
@@ -740,16 +755,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   duration: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   selectBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 7,
   },
   selectBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   /* ── ABA DE EXTRAS / MENU DROP-DOWN ── */

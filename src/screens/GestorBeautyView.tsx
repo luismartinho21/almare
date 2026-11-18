@@ -309,8 +309,8 @@ export const GestorBeautyView: React.FC = () => {
       branch: 'beauty',
       category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
-      description: inlineExtraDesc.trim() || 'Extra de beleza e bem-estar Almare Beauty.',
-      longDescription: inlineExtraLongDesc.trim() || inlineExtraDesc.trim(),
+      description: inlineExtraDesc.trim(),
+      longDescription: inlineExtraLongDesc.trim(),
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: '',
@@ -359,7 +359,7 @@ export const GestorBeautyView: React.FC = () => {
         branch: 'beauty',
         category: newServCat.trim() || 'Manicure / Pedicure',
         name: newServName.trim(),
-        description: newServDesc.trim() || 'Serviço de excelência Almare Beauty.',
+        description: newServDesc.trim(),
         longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
@@ -1387,14 +1387,14 @@ export const GestorBeautyView: React.FC = () => {
               {/* 1. Descrição Curta */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>1. Descrição Curta (Cartão Principal)</Text>
-                  <Text style={{ fontSize: 10, color: '#9CA3AF' }}>Aparece pequena no cartão</Text>
+                  <Text style={styles.label}>1. Descrição Curta (Opcional)</Text>
+                  <Text style={{ fontSize: 10, color: '#9CA3AF' }}>Opcional • Cartão principal</Text>
                 </View>
                 <TextInput
                   style={[styles.input, { height: 45 }]}
                   value={newServDesc}
                   onChangeText={setNewServDesc}
-                  placeholder="Ex: Cutículas, limagem, esfoliação e aplicação de verniz gel duradouro."
+                  placeholder="(Opcional) Ex: Cutículas, limagem, esfoliação e aplicação de verniz gel."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1402,18 +1402,18 @@ export const GestorBeautyView: React.FC = () => {
               {/* 2. Saber Mais / Descrição Completa */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>2. Saber Mais (Descrição Completa)</Text>
-                  <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>ℹ️ Visível no botão Saber Mais</Text>
+                  <Text style={styles.label}>2. Saber Mais / Descrição Completa (Opcional)</Text>
+                  <Text style={{ fontSize: 10, color: Theme.colors.beauty.badge }}>ℹ️ Opcional • Botão Saber Mais</Text>
                 </View>
                 <Text style={styles.fieldSubHint}>
-                  Texto completo e detalhado apresentado quando o cliente clica em &quot;Saber mais&quot; (tanto no telemóvel como no PC).
+                  Opcional. Se deixar em branco, o botão &quot;Saber mais&quot; não será exibido neste serviço.
                 </Text>
                 <TextInput
                   style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
                   multiline
                   value={newServLongDesc}
                   onChangeText={setNewServLongDesc}
-                  placeholder="Detalhes dos passos, benefícios e produtos de beleza incluídos..."
+                  placeholder="(Opcional) Detalhes dos passos, benefícios e produtos de beleza incluídos..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1535,10 +1535,10 @@ export const GestorBeautyView: React.FC = () => {
 
                       {/* 1. Descrição Curta do Extra */}
                       <View style={{ marginBottom: 6 }}>
-                        <Text style={styles.labelMini}>1. Descrição Curta do Extra:</Text>
+                        <Text style={styles.labelMini}>1. Descrição Curta do Extra (Opcional):</Text>
                         <TextInput
                           style={[styles.input, { height: 42, marginTop: 2 }]}
-                          placeholder="Aparece pequena no drop-down..."
+                          placeholder="(Opcional) Aparece pequena no drop-down..."
                           placeholderTextColor="#71717A"
                           value={inlineExtraDesc}
                           onChangeText={setInlineExtraDesc}
@@ -1547,10 +1547,10 @@ export const GestorBeautyView: React.FC = () => {
 
                       {/* 2. Saber Mais do Extra (Completa) */}
                       <View style={{ marginBottom: 8 }}>
-                        <Text style={styles.labelMini}>2. Saber Mais do Extra (Completa):</Text>
+                        <Text style={styles.labelMini}>2. Saber Mais do Extra (Opcional):</Text>
                         <TextInput
                           style={[styles.input, { height: 60, marginTop: 2, textAlignVertical: 'top', paddingTop: 6 }]}
-                          placeholder="Aparece quando o cliente clica em 'Saber mais' neste extra..."
+                          placeholder="(Opcional) Se preenchido, mostra o botão 'Saber mais' neste extra..."
                           placeholderTextColor="#71717A"
                           multiline
                           value={inlineExtraLongDesc}

@@ -87,9 +87,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenRoleModal, onOpenPinModal,
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : 12,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 6 : 9,
+    paddingBottom: 9,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
   },
   barberBg: {
@@ -113,14 +113,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoTitle: {
-    fontSize: 20,
+    fontSize: 17.5,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 1.8,
   },
   logoSubtitle: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    letterSpacing: 1.4,
     marginTop: -2,
   },
   roleActionsRow: {

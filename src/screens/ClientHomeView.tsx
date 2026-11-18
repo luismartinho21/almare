@@ -26,19 +26,19 @@ export const ClientHomeView: React.FC<ClientHomeViewProps> = ({ onSelectBranch, 
   // Lado atualmente a folhear ('beauty' ou 'barber')
   const [turningBranch, setTurningBranch] = useState<'beauty' | 'barber' | null>(null);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
-  const [canShowInstallBtn, setCanShowInstallBtn] = useState(false);
+  const [canShowInstallBtn, setCanShowInstallBtn] = useState<boolean>(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      (window.navigator as any)?.standalone === true;
+    return !isStandalone;
+  });
 
   // Fade in de entrada inicial
   const [buttonsFadeAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const isStandalone =
-      window.matchMedia?.('(display-mode: standalone)')?.matches ||
-      (window.navigator as any)?.standalone === true;
-    if (isStandalone) return;
-
-    setCanShowInstallBtn(true);
     const onInstalled = () => setCanShowInstallBtn(false);
     window.addEventListener('almare-app-installed', onInstalled);
     return () => window.removeEventListener('almare-app-installed', onInstalled);
@@ -407,8 +407,8 @@ const styles = StyleSheet.create({
     zIndex: 60,
   },
   centerEmblem: {
-    width: Math.min(width * 0.72, 320),
-    height: Math.min(width * 0.72, 320),
+    width: Math.min(width * 0.56, 240),
+    height: Math.min(width * 0.56, 240),
   },
   cardsRow: {
     flex: 1,
@@ -452,19 +452,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: '20%',
-    paddingBottom: '4%',
-    paddingHorizontal: '2%',
+    paddingTop: '22%',
+    paddingBottom: '8%',
+    paddingHorizontal: '7%',
     zIndex: 1,
   },
   womanSilhouette: {
-    width: '95%',
-    height: '92%',
+    width: '80%',
+    height: '78%',
     opacity: 0.36,
   },
   manSilhouette: {
-    width: '95%',
-    height: '92%',
+    width: '80%',
+    height: '78%',
     opacity: 0.36,
   },
 
@@ -478,40 +478,40 @@ const styles = StyleSheet.create({
   },
   beautyTitle: {
     color: '#B8860B',
-    fontSize: 22,
+    fontSize: 18.5,
     fontWeight: '900',
-    letterSpacing: 5,
+    letterSpacing: 4.5,
   },
   beautySubtitle: {
     color: '#1F2937',
-    fontSize: 14,
+    fontSize: 11.5,
     fontWeight: '400',
-    letterSpacing: 8,
+    letterSpacing: 7,
     marginTop: 2,
   },
   beautyLine: {
-    marginTop: 14,
-    width: 32,
+    marginTop: 11,
+    width: 26,
     height: 1.5,
     backgroundColor: '#B8860B',
   },
 
   barberTitle: {
     color: '#D4AF37',
-    fontSize: 22,
+    fontSize: 18.5,
     fontWeight: '900',
-    letterSpacing: 5,
+    letterSpacing: 4.5,
   },
   barberSubtitle: {
     color: '#F8FAFC',
-    fontSize: 14,
+    fontSize: 11.5,
     fontWeight: '400',
-    letterSpacing: 5,
+    letterSpacing: 4.5,
     marginTop: 2,
   },
   barberLine: {
-    marginTop: 14,
-    width: 32,
+    marginTop: 11,
+    width: 26,
     height: 1.5,
     backgroundColor: '#D4AF37',
   },

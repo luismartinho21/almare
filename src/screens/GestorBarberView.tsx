@@ -528,8 +528,8 @@ export const GestorBarberView: React.FC = () => {
       branch: 'barber',
       category: inlineExtraCat.trim() || 'Extras',
       name: inlineExtraName.trim(),
-      description: inlineExtraDesc.trim() || 'Extra de precisão e qualidade Almare Barber.',
-      longDescription: inlineExtraLongDesc.trim() || inlineExtraDesc.trim(),
+      description: inlineExtraDesc.trim(),
+      longDescription: inlineExtraLongDesc.trim(),
       price: parseFloat(inlineExtraPrice.replace(',', '.')) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: '',
@@ -578,7 +578,7 @@ export const GestorBarberView: React.FC = () => {
         branch: 'barber',
         category: newServCat.trim() || 'Cortes',
         name: newServName.trim(),
-        description: newServDesc.trim() || 'Serviço de excelência Almare Barber.',
+        description: newServDesc.trim(),
         longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
@@ -1700,14 +1700,14 @@ export const GestorBarberView: React.FC = () => {
               {/* 1. Descrição Curta */}
               <View style={styles.serviceFieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.serviceFieldLabel}>1. Descrição Curta (Cartão Principal)</Text>
-                  <Text style={{ fontSize: 10, color: '#A1A1AA' }}>Aparece pequena no cartão</Text>
+                  <Text style={styles.serviceFieldLabel}>1. Descrição Curta (Opcional)</Text>
+                  <Text style={{ fontSize: 10, color: '#A1A1AA' }}>Opcional • Cartão principal</Text>
                 </View>
                 <TextInput
                   style={[styles.serviceInput, { height: 45 }]}
                   value={newServDesc}
                   onChangeText={setNewServDesc}
-                  placeholder="Ex: Corte à tesoura ou máquina, lavagem premium e styling final."
+                  placeholder="(Opcional) Ex: Corte à tesoura ou máquina, lavagem e styling."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1715,18 +1715,18 @@ export const GestorBarberView: React.FC = () => {
               {/* 2. Saber Mais / Descrição Completa */}
               <View style={styles.serviceFieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.serviceFieldLabel}>2. Saber Mais (Descrição Completa)</Text>
-                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Visível no botão Saber Mais</Text>
+                  <Text style={styles.serviceFieldLabel}>2. Saber Mais / Descrição Completa (Opcional)</Text>
+                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Opcional • Botão Saber Mais</Text>
                 </View>
                 <Text style={styles.modalFieldHint}>
-                  Texto completo e detalhado apresentado quando o cliente clica em &quot;Saber mais&quot; (tanto no telemóvel como no PC).
+                  Opcional. Se deixar em branco, o botão &quot;Saber mais&quot; não será exibido neste serviço.
                 </Text>
                 <TextInput
                   style={[styles.serviceInput, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
                   value={newServLongDesc}
                   onChangeText={setNewServLongDesc}
                   multiline
-                  placeholder="Explique os benefícios, técnicas e produtos usados em detalhe..."
+                  placeholder="(Opcional) Explique os benefícios, técnicas e produtos usados em detalhe..."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1868,10 +1868,10 @@ export const GestorBarberView: React.FC = () => {
 
                           {/* 1. Descrição Curta do Extra */}
                           <View style={{ marginTop: 6 }}>
-                            <Text style={styles.modalFieldLabelMini}>1. Descrição Curta do Extra:</Text>
+                            <Text style={styles.modalFieldLabelMini}>1. Descrição Curta do Extra (Opcional):</Text>
                             <TextInput
                               style={[styles.serviceInput, { height: 42, marginTop: 4 }]}
-                              placeholder="Aparece pequena no drop-down..."
+                              placeholder="(Opcional) Aparece pequena no drop-down..."
                               placeholderTextColor="#71717A"
                               value={inlineExtraDesc}
                               onChangeText={setInlineExtraDesc}
@@ -1880,10 +1880,10 @@ export const GestorBarberView: React.FC = () => {
 
                           {/* 2. Saber Mais do Extra (Descrição Completa) */}
                           <View style={{ marginTop: 6 }}>
-                            <Text style={styles.modalFieldLabelMini}>2. Saber Mais do Extra (Completa):</Text>
+                            <Text style={styles.modalFieldLabelMini}>2. Saber Mais do Extra (Opcional):</Text>
                             <TextInput
                               style={[styles.serviceInput, { height: 60, textAlignVertical: 'top', marginTop: 4, paddingTop: 6 }]}
-                              placeholder="Aparece quando o cliente clica em 'Saber mais' neste extra..."
+                              placeholder="(Opcional) Se preenchido, mostra o botão 'Saber mais' neste extra..."
                               placeholderTextColor="#71717A"
                               multiline
                               value={inlineExtraLongDesc}

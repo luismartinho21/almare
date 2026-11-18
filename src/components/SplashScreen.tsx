@@ -24,7 +24,7 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
   const [exitFadeProgress] = useState(() => new Animated.Value(1));
 
   // Dimensões proporcionais extraídas da imagem oficial de alta resolução (1254x1254)
-  const containerWidth = Math.min(width * 0.85, 380);
+  const containerWidth = Math.min(width * 0.72, 300);
   const emblemHeight = containerWidth * (444 / 1254);
   const textHeight = containerWidth * (305 / 1254);
   const gap = containerWidth * (16 / 1254);
@@ -76,10 +76,10 @@ export function SplashScreen({ onFinished }: SplashScreenProps) {
     };
   }, [zoomProgress, textFadeProgress, exitFadeProgress, onFinished]);
 
-  // Escala linear do arranque pequeno (0.35) até ao pico do maior zoom (1.80)
+  // Escala linear do arranque pequeno (0.32) até ao pico do maior zoom (1.38)
   const scale = zoomProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.35, 1.8],
+    outputRange: [0.32, 1.38],
   });
 
   // Fade in inicial suave nos primeiros instantes

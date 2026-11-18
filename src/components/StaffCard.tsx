@@ -203,9 +203,9 @@ export const StaffCard: React.FC<StaffCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 13,
+    marginBottom: 10,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -227,42 +227,42 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   avatarContainer: {
-    marginRight: 12,
+    marginRight: 10,
   },
   avatarRound: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   avatarTeamIcon: {
-    fontSize: 22,
+    fontSize: 19,
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '900',
   },
   info: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
   name: {
-    fontSize: 16,
+    fontSize: 14.5,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   role: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
   },
   desc: {
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 16,
+    fontSize: 11,
+    marginTop: 3,
+    lineHeight: 15,
   },
   rightSection: {
     alignItems: 'center',

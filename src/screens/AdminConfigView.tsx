@@ -284,8 +284,8 @@ export const AdminConfigView: React.FC = () => {
       branch: newServBranch,
       category: 'Extras',
       name: inlineExtraName.trim(),
-      description: inlineExtraDesc.trim() || `Extra de alta qualidade para ${newServBranch === 'barber' ? 'Barber' : 'Beauty'}.`,
-      longDescription: inlineExtraLongDesc.trim() || inlineExtraDesc.trim(),
+      description: inlineExtraDesc.trim(),
+      longDescription: inlineExtraLongDesc.trim(),
       price: parseFloat(inlineExtraPrice) || 5,
       durationMinutes: parseInt(inlineExtraDur, 10) || 10,
       iconName: 'sparkles',
@@ -400,7 +400,7 @@ export const AdminConfigView: React.FC = () => {
         branch: newServBranch,
         category: newServCat.trim() || (newServBranch === 'barber' ? 'Cortes' : 'Manicure / Pedicure'),
         name: newServName.trim(),
-        description: newServDesc.trim() || 'Serviço de alta qualidade Almare.',
+        description: newServDesc.trim(),
         longDescription: newServLongDesc.trim(),
         price: priceNum,
         durationMinutes: durNum,
@@ -1132,14 +1132,14 @@ export const AdminConfigView: React.FC = () => {
               {/* 1. Descrição Curta */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>1. Descrição Curta (Cartão Principal)</Text>
-                  <Text style={{ fontSize: 10, color: '#A1A1AA' }}>Aparece pequena no cartão</Text>
+                  <Text style={styles.label}>1. Descrição Curta (Opcional)</Text>
+                  <Text style={{ fontSize: 10, color: '#A1A1AA' }}>Opcional • Cartão principal</Text>
                 </View>
                 <TextInput
                   style={[styles.input, { height: 45 }]}
                   value={newServDesc}
                   onChangeText={setNewServDesc}
-                  placeholder="Ex: Corte à tesoura ou máquina, lavagem premium e styling final."
+                  placeholder="(Opcional) Ex: Corte à tesoura ou máquina, lavagem e styling."
                   placeholderTextColor="#71717A"
                 />
               </View>
@@ -1147,15 +1147,15 @@ export const AdminConfigView: React.FC = () => {
               {/* 2. Saber Mais / Descrição Completa */}
               <View style={styles.fieldGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.label}>2. Saber Mais (Descrição Completa)</Text>
-                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Abre no botão Saber Mais</Text>
+                  <Text style={styles.label}>2. Saber Mais / Descrição Completa (Opcional)</Text>
+                  <Text style={{ fontSize: 10, color: '#D4AF37' }}>ℹ️ Opcional • Botão Saber Mais</Text>
                 </View>
                 <TextInput
                   style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 8 }]}
                   multiline
                   value={newServLongDesc}
                   onChangeText={setNewServLongDesc}
-                  placeholder="Descreva detalhadamente o que inclui o serviço, benefícios e produtos..."
+                  placeholder="(Opcional) Se preenchido, mostra o botão 'Saber mais' neste serviço..."
                   placeholderTextColor="#71717A"
                 />
               </View>
