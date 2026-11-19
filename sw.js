@@ -1,4 +1,4 @@
-const CACHE_NAME = 'almare-pwa-v4';
+const CACHE_NAME = 'almare-pwa-v5';
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',
