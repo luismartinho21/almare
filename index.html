@@ -69,8 +69,19 @@
     <div id="root"></div>
     <script>
       if ('serviceWorker' in navigator) {
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').catch(function () {});
+          navigator.serviceWorker
+            .register('/sw.js', { updateViaCache: 'none' })
+            .then(function (reg) {
+              reg.update().catch(function () {});
+            })
+            .catch(function () {});
         });
       }
       window.__almareInstallPrompt = null;
@@ -84,6 +95,6 @@
         window.dispatchEvent(new CustomEvent('almare-app-installed'));
       });
     </script>
-  <script src="/_expo/static/js/web/index-8bcd9104c11262be442823e00c6c672e.js" defer></script>
+  <script src="/_expo/static/js/web/index-1b48b4c9b3b0e14f34261d7de9d43884.js" defer></script>
 </body>
 </html>
