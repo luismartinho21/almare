@@ -1,4 +1,4 @@
-const CACHE_NAME = 'almare-pwa-v22';
+const CACHE_NAME = 'almare-pwa-v23';
 const PRECACHE_URLS = [
   '/',
   '/privacy.html',
